@@ -1,0 +1,353 @@
+/* ==========================================================
+   GOOGLE FONT
+========================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ==========================================================
+   VARIABLES
+========================================================== */
+
+:root{
+
+    --bg:#0F172A;
+    --sidebar:#111827;
+    --card:#1E293B;
+    --card-hover:#273548;
+
+    --primary:#3B82F6;
+    --primary-hover:#2563EB;
+
+    --text:#F8FAFC;
+    --muted:#94A3B8;
+
+    --border:#334155;
+
+    --radius:18px;
+
+    --shadow:
+        0 12px 30px rgba(0,0,0,.35);
+
+    --transition:.25s ease;
+
+}
+
+/* ==========================================================
+   RESET
+========================================================== */
+
+*{
+
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
+}
+
+body{
+
+    font-family:"Inter",sans-serif;
+
+    background:var(--bg);
+
+    color:var(--text);
+
+    display:flex;
+
+    min-height:100vh;
+
+}
+/* ==========================================================
+   SIDEBAR
+========================================================== */
+
+.sidebar{
+
+    width:260px;
+
+    background:var(--sidebar);
+
+    border-right:1px solid var(--border);
+
+    padding:30px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    position:sticky;
+
+    top:0;
+
+    height:100vh;
+
+}
+
+.logo{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:14px;
+
+    margin-bottom:60px;
+
+}
+
+.logo i{
+
+    font-size:34px;
+
+    color:var(--primary);
+
+}
+
+.logo h2{
+
+    font-size:28px;
+
+    font-weight:700;
+
+}
+nav{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:12px;
+
+}
+
+nav a{
+
+    text-decoration:none;
+
+    color:var(--muted);
+
+    display:flex;
+
+    align-items:center;
+
+    gap:14px;
+
+    padding:15px;
+
+    border-radius:14px;
+
+    transition:var(--transition);
+
+}
+
+nav a:hover{
+
+    background:var(--card);
+
+    color:white;
+
+    transform:translateX(6px);
+
+}
+
+nav i{
+
+    width:20px;
+
+}
+/* ==========================================================
+   MAIN
+========================================================== */
+
+main{
+
+    flex:1;
+
+    padding:50px;
+
+}
+.hero{
+
+    margin-bottom:45px;
+
+}
+
+.hero h1{
+
+    font-size:58px;
+
+    font-weight:700;
+
+    margin-bottom:10px;
+
+}
+
+.hero p{
+
+    color:var(--primary);
+
+    font-size:22px;
+
+    font-weight:600;
+
+    margin-bottom:15px;
+
+}
+
+.hero span{
+
+    color:var(--muted);
+
+    font-size:17px;
+
+}
+/* ==========================================================
+   SEARCH
+========================================================== */
+
+.search-section{
+
+    display:flex;
+
+    gap:15px;
+
+    margin-bottom:45px;
+
+}
+.search-section input{
+
+    flex:1;
+
+    background:var(--card);
+
+    border:1px solid transparent;
+
+    color:white;
+
+    padding:18px 22px;
+
+    border-radius:var(--radius);
+
+    font-size:16px;
+
+    outline:none;
+
+    transition:var(--transition);
+
+}
+
+.search-section input:focus{
+
+    border-color:var(--primary);
+
+    box-shadow:0 0 0 4px rgba(59,130,246,.18);
+
+}
+.search-section button{
+
+    background:var(--primary);
+
+    color:white;
+
+    border:none;
+
+    padding:18px 30px;
+
+    border-radius:var(--radius);
+
+    cursor:pointer;
+
+    font-size:16px;
+
+    font-weight:600;
+
+    transition:var(--transition);
+
+}
+
+.search-section button:hover{
+
+    background:var(--primary-hover);
+
+    transform:translateY(-3px);
+
+}
+/* ==========================================================
+   CONTENT SECTIONS
+========================================================== */
+
+#gameSection{
+
+    background:var(--card);
+
+    border-radius:var(--radius);
+
+    min-height:380px;
+
+    margin-bottom:35px;
+
+    box-shadow:var(--shadow);
+
+}
+
+#analyticsSection{
+
+    background:var(--card);
+
+    border-radius:var(--radius);
+
+    min-height:450px;
+
+    box-shadow:var(--shadow);
+
+}
+/* ==========================================================
+   SCROLLBAR
+========================================================== */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:var(--bg);
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:var(--card-hover);
+
+    border-radius:10px;
+
+}
+
+::-webkit-scrollbar-thumb:hover{
+
+    background:var(--primary);
+
+}
+
+.genre-badges {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.badge {
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
