@@ -85,17 +85,25 @@ async function fetchSuggestions(query) {
     const topResults = data.items.slice(0, 5);
 
     topResults.forEach(game => {
-        const item = document.createElement("div");
-        item.className = "suggestion-item";
-        item.innerHTML = `
-            <img src="${game.tiny_image}" alt="${game.name}">
-            <span>${game.name}</span>
-        `;
-        item.addEventListener("click", () => {
-            document.getElementById("gameInput").value = game.name;
-            suggestionsBox.innerHTML = "";
-            document.getElementById("searchBtn").click();
-        });
-        suggestionsBox.appendChild(item);
+    const item = document.createElement("div");
+    item.className = "suggestion-item";
+    
+    const priceText = game.price 
+        ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+        : "N/A";
+    
+    item.innerHTML = `
+        <img src="${game.tiny_image}" alt="${game.name}">
+        <div class="suggestion-info">
+            <span class="suggestion-name">${game.name}</span>
+            <span class="suggestion-dev">${priceText}</span>
+        </div>
+    `;
+    item.addEventListener("click", () => {
+        document.getElementById("gameInput").value = game.name;
+        suggestionsBox.innerHTML = "";
+        document.getElementById("searchBtn").click();
     });
+    suggestionsBox.appendChild(item);
+});
 }

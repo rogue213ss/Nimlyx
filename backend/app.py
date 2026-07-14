@@ -86,7 +86,32 @@ def find_game(game_name):
     }
 
     return jsonify(clean_data)
+@app.route("/api/featured")
+def featured_games():
+    url = "https://store.steampowered.com/api/featuredcategories?l=english&cc=US"
+    response = requests.get(url)
+    data = response.json()
 
+    def clean_items(category):
+        items = data.get(category, {}).get("items", [])
+        cleaned = []
+        for item in items:
+            cleaned.append({
+                "id": item.get("id"),
+                "name": item.get("name"),
+                "image": item.get("header_image"),
+                "final_price": item.get("final_price", 0),
+                "original_price": item.get("original_price"),
+                "discount_percent": item.get("discount_percent", 0)
+            })
+        return cleaned
+
+    return jsonify({
+        "top_sellers": clean_items("top_sellers"),
+        "new_releases": clean_items("new_releases"),
+        "specials": clean_items("specials")
+    })
 
 if __name__ == "__main__":
     app.run(debug=True)
+
