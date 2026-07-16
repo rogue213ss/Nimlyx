@@ -1,8 +1,21 @@
+/* ==========================================================
+   HELPER — search a game (used everywhere a card is clicked)
+========================================================== */
+
+function searchGame(name) {
+    window.location.href = `/search?q=${encodeURIComponent(name)}`;
+}
+/* ==========================================================
+   GAME DETAILS CARD (full search result)
+========================================================== */
+
 function displayGame(game) {
     const gameSection = document.getElementById("gameSection");
     gameSection.innerHTML = "";
 
-    const genreBadges = game.genres.map(genre => `<span class="badge">${genre}</span>`).join("");
+    const genreBadges = game.genres
+        .map(genre => `<span class="badge">${genre}</span>`)
+        .join("");
 
     const platformBadges = Object.keys(game.platforms)
         .filter(platform => game.platforms[platform] === true)
@@ -13,13 +26,13 @@ function displayGame(game) {
     card.className = "game-card";
 
     card.innerHTML = `
-     <img src="${game.header_image}" alt="${game.name}" class="game-header-img">
+        <img src="${game.header_image}" alt="${game.name}" class="game-header-img">
 
-    <div class="game-card-header">
-        <h2>${game.name}</h2>
-        <i class="fa-regular fa-copy"></i>
-    </div>
-     
+        <div class="game-card-header">
+            <h2>${game.name}</h2>
+            <i class="fa-regular fa-copy"></i>
+        </div>
+
         <div class="game-info-list">
             <div class="info-row">
                 <span class="info-label">Price</span>
@@ -47,17 +60,20 @@ function displayGame(game) {
     gameSection.appendChild(card);
 }
 
-document.getElementById("searchBtn").addEventListener("click", async () => {
-    const gameName = document.getElementById("gameInput").value;
-    try {
-        const response = await fetch(`http://127.0.0.1:5000/api/find/${gameName}`);
-        const data = await response.json();
-        console.log(data);
-        displayGame(data);
-    } catch (error) {
-        console.error("Error connecting to backend:", error);
-    }
+/* ==========================================================
+   SEARCH BUTTON
+========================================================== */
+
+document.getElementById("searchBtn").addEventListener("click", () => {
+    const gameName = document.getElementById("gameInput").value.trim();
+    console.log("Button clicked, value is:", gameName);
+    if (!gameName) return;
+    window.location.href = `/search?q=${encodeURIComponent(gameName)}`;
 });
+/* ==========================================================
+   SEARCH SUGGESTIONS (debounced)
+========================================================== */
+
 let debounceTimer;
 
 document.getElementById("gameInput").addEventListener("input", (e) => {
@@ -73,8 +89,9 @@ document.getElementById("gameInput").addEventListener("input", (e) => {
         fetchSuggestions(query);
     }, 400);
 });
+
 async function fetchSuggestions(query) {
-    const response = await fetch(`http://127.0.0.1:5000/api/search/${query}`);
+    const response = await fetch(`/api/search/${query}`);
     const data = await response.json();
 
     const suggestionsBox = document.getElementById("suggestions");
@@ -85,25 +102,148 @@ async function fetchSuggestions(query) {
     const topResults = data.items.slice(0, 5);
 
     topResults.forEach(game => {
-    const item = document.createElement("div");
-    item.className = "suggestion-item";
-    
-    const priceText = game.price 
-        ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
-        : "N/A";
-    
-    item.innerHTML = `
-        <img src="${game.tiny_image}" alt="${game.name}">
-        <div class="suggestion-info">
-            <span class="suggestion-name">${game.name}</span>
-            <span class="suggestion-dev">${priceText}</span>
+        const item = document.createElement("div");
+        item.className = "suggestion-item";
+
+        const priceText = game.price
+            ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+            : "N/A";
+
+        item.innerHTML = `
+            <img src="${game.tiny_image}" alt="${game.name}">
+            <div class="suggestion-info">
+                <span class="suggestion-name">${game.name}</span>
+                <span class="suggestion-dev">${priceText}</span>
+            </div>
+        `;
+
+        item.addEventListener("click", () => {
+            suggestionsBox.innerHTML = "";
+            searchGame(game.name);
+        });
+
+        suggestionsBox.appendChild(item);
+    });
+}
+
+/* ==========================================================
+   HOMEPAGE — FEATURED GAMES
+========================================================== */
+
+async function loadFeatured() {
+    try {
+        const [topSellers, specials, newReleases] = await Promise.all([
+            fetch("/api/browse/topsellers").then(r => r.json()),
+            fetch("/api/browse/specials").then(r => r.json()),
+            fetch("/api/browse/popularnew").then(r => r.json())
+        ]);
+ console.log("SPECIALS:", specials);
+        console.log("NEW RELEASES:", newReleases);
+        renderTopSellers(topSellers);
+        renderSpecials(specials);
+        renderNewReleases(newReleases);
+    } catch (error) {
+        console.error("Error loading featured games:", error);
+    }
+}
+
+loadFeatured();
+
+/* ==========================================================
+   HOMEPAGE CARD BUILDER (shared by all 3 render functions)
+========================================================== */
+
+function buildHomeCard({ image, name, badgeHtml = "", priceHtml = "" }) {
+    const card = document.createElement("div");
+    card.className = "game-home-card";
+
+    card.innerHTML = `
+        <img src="${image}" alt="${name}">
+        ${badgeHtml}
+        <div class="card-content">
+            <div class="card-title">${name}</div>
+            ${priceHtml}
         </div>
     `;
-    item.addEventListener("click", () => {
-        document.getElementById("gameInput").value = game.name;
-        suggestionsBox.innerHTML = "";
-        document.getElementById("searchBtn").click();
-    });
-    suggestionsBox.appendChild(item);
-});
+
+    card.addEventListener("click", () => searchGame(name));
+
+    return card;
 }
+
+/* ==========================================================
+   TOP SELLERS
+========================================================== */
+
+function renderTopSellers(games) {
+    const container = document.getElementById("topSellers");
+    container.innerHTML = "";
+
+    games.forEach(game => {
+        const badgeHtml = `<div class="top-badge">🔥 Top Seller</div>`;
+        const card = buildHomeCard({
+            image: game.image,
+            name: game.name,
+            badgeHtml
+        });
+        container.appendChild(card);
+    });
+}
+
+/* ==========================================================
+   SPECIALS
+========================================================== */
+
+function renderSpecials(games) {
+    const container = document.getElementById("specials");
+    container.innerHTML = "";
+
+    games.forEach(game => {
+        const finalCents = Number(game.final_price);
+        const final = finalCents > 0 ? `$${(finalCents / 100).toFixed(2)}` : "Free";
+        const original = game.original_price || "";
+
+        const priceHtml = `
+            <div class="card-bottom">
+                <div>
+                    ${original ? `<span class="old-price">${original}</span>` : ""}
+                    <span class="new-price">${final}</span>
+                </div>
+                ${game.discount_percent ? `<span class="discount">${game.discount_percent}</span>` : ""}
+            </div>
+        `;
+
+        const card = buildHomeCard({ image: game.image, name: game.name, priceHtml });
+        container.appendChild(card);
+    });
+}
+/* ==========================================================
+   NEW RELEASES
+========================================================== */
+
+function renderNewReleases(games) {
+    const container = document.getElementById("newReleases");
+    container.innerHTML = "";
+
+    games.forEach(game => {
+        const finalCents = Number(game.final_price);
+        const price = finalCents > 0 ? `$${(finalCents / 100).toFixed(2)}` : "Free";
+
+        const priceHtml = `<div class="card-bottom"><span class="new-price">${price}</span></div>`;
+
+        const card = buildHomeCard({ image: game.image, name: game.name, priceHtml });
+        container.appendChild(card);
+    });
+}
+
+/* ==========================================================
+   TOP SELLERS SCROLL BUTTONS
+========================================================== */
+
+document.getElementById("scrollLeft").addEventListener("click", () => {
+    document.getElementById("topSellers").scrollBy({ left: -300, behavior: "smooth" });
+});
+
+document.getElementById("scrollRight").addEventListener("click", () => {
+    document.getElementById("topSellers").scrollBy({ left: 300, behavior: "smooth" });
+});

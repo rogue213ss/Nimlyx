@@ -1,6 +1,10 @@
+
+
 from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import requests
+from bs4 import BeautifulSoup
+
 
 app = Flask(__name__)
 CORS(app)
@@ -69,7 +73,6 @@ def find_game(game_name):
 
     raw = details_data[str(app_id)]["data"]
 
-    # Clean data using pandas-friendly extraction
     clean_data = {
         "name": raw.get("name"),
         "header_image": raw.get("header_image"),
@@ -79,10 +82,28 @@ def find_game(game_name):
         "developers": raw.get("developers", []),
         "publishers": raw.get("publishers", []),
         "release_date": raw.get("release_date", {}).get("date"),
+        "coming_soon": raw.get("release_date", {}).get("coming_soon", False),
         "total_reviews": raw.get("recommendations", {}).get("total", 0),
-        "metacritic": raw.get("metacritic", {}).get("score", None),
+        "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
-        "platforms": raw.get("platforms", {})  
+        "platforms": raw.get("platforms", {}),
+        "movies": [
+            {
+                "name": movie.get("name"),
+                "thumbnail": movie.get("thumbnail"),
+                "video_url": (
+                    movie.get("mp4", {}).get("max")
+                    or movie.get("mp4", {}).get("480")
+                    or movie.get("webm", {}).get("max")
+                    or movie.get("webm", {}).get("480")
+                )
+            }
+            for movie in raw.get("movies", [])
+        ],
+        "screenshots": [
+            shot.get("path_full")
+            for shot in raw.get("screenshots", [])
+        ]
     }
 
     return jsonify(clean_data)
@@ -95,10 +116,17 @@ def featured_games():
     def clean_items(category):
         items = data.get(category, {}).get("items", [])
         cleaned = []
+        
+        hardware_keywords = ["steam deck", "steam controller", "steam machine", "steam link"]
+        
         for item in items:
+            name = item.get("name", "")
+            if any(keyword in name.lower() for keyword in hardware_keywords):
+                continue
+            
             cleaned.append({
                 "id": item.get("id"),
-                "name": item.get("name"),
+                "name": name,
                 "image": item.get("header_image"),
                 "final_price": item.get("final_price", 0),
                 "original_price": item.get("original_price"),
@@ -111,7 +139,78 @@ def featured_games():
         "new_releases": clean_items("new_releases"),
         "specials": clean_items("specials")
     })
+@app.route("/search")
+def search_page():
+    return render_template("search.html")
+@app.route("/api/browse/<category>")
+def browse_games(category):
+    allowed = ["topsellers", "specials", "popularnew"]
 
+    if category not in allowed:
+        return jsonify({"error": "Invalid category"}), 400
+
+    url = (
+        f"https://store.steampowered.com/search/results/"
+        f"?query=&start=0&count=25&filter={category}&cc=US&l=english"
+    )
+
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        games = soup.find_all("a", class_="search_result_row")
+
+        hardware_keywords = [
+            "steam deck",
+            "steam controller",
+            "steam machine",
+            "steam link"
+        ]
+
+        cleaned = []
+
+        for game in games:
+            app_id = game.get("data-ds-appid")
+
+            title = game.find("span", class_="title")
+            name = title.text.strip() if title else "Unknown"
+
+            if any(keyword in name.lower() for keyword in hardware_keywords):
+                continue
+
+            img = game.find("img")
+            image = img["src"] if img else None
+
+            price_div = game.find("div", class_="search_price_discount_combined")
+
+            final_price_el = game.find("div", class_="discount_final_price")
+            is_free = final_price_el and "free" in final_price_el.get("class", [])
+
+            if is_free:
+                final_price = "0"
+            else:
+                final_price = price_div.get("data-price-final") if price_div else None
+
+            original_price_span = game.find("div", class_="discount_original_price")
+            original_price = original_price_span.text.strip() if original_price_span else None
+
+            discount_span = game.find("div", class_="discount_pct")
+            discount_percent = discount_span.text.strip() if discount_span else None
+
+            cleaned.append({
+                "id": app_id,
+                "name": name,
+                "image": image,
+                "final_price": final_price,
+                "original_price": original_price,
+                "discount_percent": discount_percent
+            })
+
+        return jsonify(cleaned)
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True)
 

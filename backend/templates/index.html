@@ -18,106 +18,74 @@
 </head>
 <body>
 
-    <!-- Sidebar -->
+ <header class="topbar">
 
-    <aside class="sidebar">
+    <div class="topbar-brand">
+        <i class="fa-solid fa-gamepad"></i>
+        <span>Nimlyx</span>
+    </div>
 
-        <div class="logo">
-            <i class="fa-solid fa-gamepad"></i>
-            <h2>Nimlyx</h2>
+    
+    <div class="topbar-search">
+        <input
+            type="text"
+            id="gameInput"
+            placeholder="Search any Steam game..."
+            autocomplete="off"
+        >
+
+        <button id="searchBtn" aria-label="Search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+
+        <div id="suggestions" class="suggestions-dropdown"></div>
+    </div>
+
+</header>
+
+<main>
+
+    <!-- Search Results (Hidden until user searches) -->
+    <section id="gameSection" class="hidden"></section>
+
+<!-- Homepage -->
+<section id="homeContent">
+
+    <section class="home-section">
+        <h2 class="section-title">🔥 Top Sellers</h2>
+        <div class="carousel-wrapper">
+            <button class="scroll-btn scroll-left" id="scrollLeft">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div id="topSellers" class="carousel-row"></div>
+            <button class="scroll-btn scroll-right" id="scrollRight">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
         </div>
+    </section>
 
-        <nav>
+    <section class="home-section">
+        <h2 class="section-title">💸 Specials</h2>
+        <div id="specials" class="grid-row"></div>
+    </section>
 
-            <a href="#">
-                <i class="fa-solid fa-house"></i>
-                Dashboard
-            </a>
+    <section class="home-section">
+        <h2 class="section-title">🆕 New Releases</h2>
+        <div id="newReleases" class="grid-row-compact"></div>
+    </section>
 
-            <a href="#">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                Search
-            </a>
-
-            <a href="#">
-                <i class="fa-solid fa-chart-line"></i>
-                Analytics
-            </a>
-
-            <a href="#">
-                <i class="fa-solid fa-file-export"></i>
-                Export
-            </a>
-
-        </nav>
-
-    </aside>
-
-    <!-- Main Content -->
-
-    <main>
-
-        <!-- Hero -->
-
-        <section class="hero">
-
-            <h1>Nimlyx</h1>
-
-            <p>Analyze. Explore. Discover.</p>
-
-            <span>
-                Search and visualize Steam games with interactive analytics.
-            </span>
-
-        </section>
-
-        <!-- Search -->
-<section class="search-section">
-    <input
-        type="text"
-        id="gameInput"
-        placeholder="Search for any Steam game..."
-    >
-    <button id="searchBtn">
-        <i class="fa-solid fa-magnifying-glass"></i>
-        Search
-    </button>
 </section>
 
-<div id="suggestions" class="suggestions-dropdown"></div>
+    <!-- Analytics (Hidden until search) -->
+    <section id="analyticsSection" class="hidden">
+        <div class="stats-container"></div>
 
-        <!-- Game Information -->
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+    </section>
 
-        <section id="gameSection">
-
-            <!-- JavaScript will insert the game card here -->
-
-        </section>
-
-        <!-- Analytics -->
-
-        <section id="analyticsSection">
-
-            <!-- Statistics Cards -->
-
-            <div class="stats-container">
-
-                <!-- JS -->
-
-            </div>
-
-            <!-- Charts -->
-
-            <div class="chart-container">
-
-                <canvas id="mainChart"></canvas>
-
-            </div>
-
-        </section>
-
-    </main>
-
+</main>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
