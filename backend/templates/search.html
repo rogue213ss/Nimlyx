@@ -1,69 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nimlyx | Game Details</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
-
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx | Game Details</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
 
-    <!-- ================= HEADER ================= -->
-
-    <header class="topbar">
-
-        <a href="/" class="topbar-brand">
-            <i class="fa-solid fa-gamepad"></i>
-            <span>NIMLYX</span>
-        </a>
-
-        <div class="topbar-search">
-
-            <input
-                type="text"
-                id="gameInput"
-                placeholder="Search for a game...">
-
-            <button id="searchBtn">
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </button>
-
-        </div>
-
-    </header>
-
-    <!-- ================= MAIN ================= -->
-
-<main>
-
-    <!-- HERO -->
-    <section class="hero-section" id="heroSection"></section>
-
-    <!-- TWO COLUMN LAYOUT -->
-    <div class="details-layout">
-
-        <!-- LEFT 70% -->
-        <div class="details-left">
-            <section class="media-section" id="mediaSection"></section>
-            <section class="about-section" id="aboutSection"></section>
-            <section class="tags-section" id="tagsSection"></section>
-            <section class="requirements-section" id="requirementsSection"></section>
-        </div>
-
-        <!-- RIGHT 30% -->
-        <div class="details-right">
-            <section class="stats-section" id="statsSection"></section>
-        </div>
-
+<!-- ================= TOPBAR ================= -->
+<header class="topbar">
+   <a href="/" class="brand" style="text-decoration:none;color:inherit;">
+    <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+    </svg>
+    Nimlyx
+</a>
+    <div class="search-bar">
+        <input type="text" id="gameInput" placeholder="Search games, genres, developers…">
+        <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <div id="suggestions" class="suggestions-dropdown"></div>
     </div>
-<section class="media-section" id="mediaSection"></section>
-</main>
+</header>
 
-    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<!-- ================= HERO ================= -->
+<section class="hero">
+    <img class="hero__bg" id="heroBg" alt="">
+    <div class="hero__scrim"></div>
+    <div class="hero__vignette"></div>
+    <div class="hero__content">
+        <div class="hero__kicker" id="heroKicker"></div>
+        <h1 class="hero__title" id="heroTitle"></h1>
+        <div class="hero__meta" id="heroMeta"></div>
+        <div class="hero__ctas">
+            <button class="btn btn--primary" id="watchTrailerBtn">
+                <i class="fa-solid fa-circle-play"></i> Watch Trailer
+            </button>
+            <a class="btn btn--secondary" id="steamLink" href="#" target="_blank" rel="noopener">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> View on Steam
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- ================= SHELL ================= -->
+<div class="shell">
+    <main class="col-main">
+
+        <section class="about reveal">
+            <div class="section__head">
+                <div class="section__title">About</div>
+                <span class="ai-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Summary</span>
+            </div>
+            <div id="aboutText"></div>
+        </section>
+
+        <section class="featured-wrap reveal">
+            <div class="section__head">
+                <div class="section__title">Screenshots</div>
+            </div>
+            <div class="featured-shot">
+                <img id="featuredImg" alt="Featured screenshot">
+                <button class="featured-shot__expand" title="Fullscreen (coming soon)">
+                    <i class="fa-solid fa-expand"></i>
+                </button>
+            </div>
+            <div class="thumb-strip-wrap">
+                <button class="strip-nav strip-nav--prev" id="stripPrev" aria-label="Scroll left"><i class="fa-solid fa-chevron-left"></i></button>
+                <div class="thumb-strip" id="thumbStrip"></div>
+                <button class="strip-nav strip-nav--next" id="stripNext" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+        </section>
+
+        <section class="trailer-wrap reveal" id="trailerSection">
+            <div class="section__head">
+                <div class="section__title">Trailer</div>
+            </div>
+            <div class="trailer__frame" id="trailerFrame"></div>
+        </section>
+
+        <section class="genres-wrap reveal">
+            <div class="section__head">
+                <div class="section__title">Genres</div>
+            </div>
+            <div class="genre-list" id="genreList"></div>
+        </section>
+
+        <section class="credits-wrap reveal">
+            <div class="section__head">
+                <div class="section__title">Developers &amp; Publishers</div>
+            </div>
+            <div class="credits">
+                <div class="credit-block">
+                    <div class="credit-icon"><i class="fa-solid fa-code"></i></div>
+                    <div>
+                        <div class="credit-label">Developer</div>
+                        <div class="credit-value" id="devValue"></div>
+                    </div>
+                </div>
+                <div class="credit-block">
+                    <div class="credit-icon"><i class="fa-solid fa-building"></i></div>
+                    <div>
+                        <div class="credit-label">Publisher</div>
+                        <div class="credit-value" id="pubValue"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <aside class="col-side">
+        <div class="score-card reveal">
+            <span class="score-card__label"><i class="fa-solid fa-wand-magic-sparkles"></i> Nimlyx Score</span>
+            <div class="score-ring">
+                <svg viewBox="0 0 132 132">
+                    <defs>
+                        <linearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#60A5FA"/>
+                            <stop offset="100%" stop-color="#8B7CF6"/>
+                        </linearGradient>
+                    </defs>
+                    <circle class="track" cx="66" cy="66" r="56"></circle>
+                    <circle class="progress" id="scoreProgress" cx="66" cy="66" r="56"></circle>
+                </svg>
+                <div class="score-ring__value">
+                    <strong id="scoreValue">0</strong>
+                    <span>/ 100</span>
+                </div>
+            </div>
+            <div class="score-verdict" id="scoreVerdict"></div>
+            <div class="score-note" id="scoreNote"></div>
+        </div>
+
+        <div class="stats-card reveal">
+            <h3>Quick Stats</h3>
+            <div id="statsRows"></div>
+        </div>
+    </aside>
+</div>
+
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 
 </body>
 </html>

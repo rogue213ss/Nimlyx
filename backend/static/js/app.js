@@ -5,71 +5,154 @@
 function searchGame(name) {
     window.location.href = `/search?q=${encodeURIComponent(name)}`;
 }
+
 /* ==========================================================
-   GAME DETAILS CARD (full search result)
+   HERO — FEATURED GAME SPOTLIGHT
+   Isolated addition. Fetches GET /api/featured and reads the
+   `hero` array only:
+     [{ appid, name, header_image, short_description, price }]
 ========================================================== */
 
-function displayGame(game) {
-    const gameSection = document.getElementById("gameSection");
-    gameSection.innerHTML = "";
+(function () {
+    const ROTATE_MS = 10000;
+    const FADE_MS = 380;
 
-    const genreBadges = game.genres
-        .map(genre => `<span class="badge">${genre}</span>`)
-        .join("");
+    let heroGames = [];
+    let heroIndex = 0;
+    let rotateTimer = null;
 
-    const platformBadges = Object.keys(game.platforms)
-        .filter(platform => game.platforms[platform] === true)
-        .map(platform => `<span class="badge">${platform}</span>`)
-        .join("");
+    async function initHero() {
+        const heroSection = document.getElementById("heroSection");
+        if (!heroSection) return;
 
-    const card = document.createElement("div");
-    card.className = "game-card";
+        try {
+            const response = await fetch("/api/featured");
+            const data = await response.json();
 
-    card.innerHTML = `
-        <img src="${game.header_image}" alt="${game.name}" class="game-header-img">
+            if (!Array.isArray(data.hero) || data.hero.length === 0) return;
 
-        <div class="game-card-header">
-            <h2>${game.name}</h2>
-            <i class="fa-regular fa-copy"></i>
-        </div>
+            heroGames = data.hero;
 
-        <div class="game-info-list">
-            <div class="info-row">
-                <span class="info-label">Price</span>
-                <span class="info-value">${game.price}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Reviews</span>
-                <span class="info-value">${game.total_reviews.toLocaleString()}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Metacritic</span>
-                <span class="info-value">${game.metacritic ?? "N/A"}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Platforms</span>
-                <span class="info-value">${platformBadges}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Genres</span>
-                <span class="info-value">${genreBadges}</span>
-            </div>
-        </div>
-    `;
+            buildIndicators();
+            renderSlide(0, false);
+            bindInteractions();
+            startRotation();
+        } catch (error) {
+            console.error("Error loading hero:", error);
+        }
+    }
 
-    gameSection.appendChild(card);
-}
+    function buildIndicators() {
+        const dotsContainer = document.getElementById("heroIndicators");
+        dotsContainer.innerHTML = "";
+
+        heroGames.forEach((game, i) => {
+            const dot = document.createElement("button");
+            dot.type = "button";
+            dot.className = "hero-dot";
+            dot.setAttribute("aria-label", `Show ${game.name}`);
+
+            dot.addEventListener("click", (e) => {
+                e.stopPropagation();
+                if (i === heroIndex) return;
+                renderSlide(i, true);
+                restartRotation();
+            });
+
+            dotsContainer.appendChild(dot);
+        });
+    }
+
+    function renderSlide(index, animate) {
+        const game = heroGames[index];
+        if (!game) return;
+
+        const bgLayer = document.getElementById("heroBackground");
+        const contentLayer = document.getElementById("heroContent");
+        const titleEl = document.getElementById("heroTitle");
+        const descEl = document.getElementById("heroDescription");
+
+        const applySlideContent = () => {
+            bgLayer.style.backgroundImage = `url("${game.header_image}")`;
+            titleEl.textContent = game.name;
+            descEl.textContent = game.short_description || "";
+        };
+
+        if (!animate) {
+            applySlideContent();
+        } else {
+            bgLayer.classList.add("hero-fade-out");
+            contentLayer.classList.add("hero-fade-out");
+
+            setTimeout(() => {
+                applySlideContent();
+                bgLayer.classList.remove("hero-fade-out");
+                contentLayer.classList.remove("hero-fade-out");
+            }, FADE_MS);
+        }
+
+        document.querySelectorAll(".hero-dot").forEach((dot, i) => {
+            dot.classList.toggle("active", i === index);
+        });
+
+        heroIndex = index;
+    }
+
+    function nextSlide() {
+        const next = (heroIndex + 1) % heroGames.length;
+        renderSlide(next, true);
+    }
+
+    function startRotation() {
+        if (heroGames.length < 2) return;
+        rotateTimer = setInterval(nextSlide, ROTATE_MS);
+    }
+
+    function restartRotation() {
+        clearInterval(rotateTimer);
+        startRotation();
+    }
+
+    function bindInteractions() {
+        const heroSection = document.getElementById("heroSection");
+        const ctaButton = document.getElementById("heroCta");
+
+        heroSection.addEventListener("click", openGameSearch);
+
+        ctaButton.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openGameSearch();
+        });
+    }
+
+    function openGameSearch() {
+        const game = heroGames[heroIndex];
+        if (!game) return;
+        window.location.href = `/search?q=${encodeURIComponent(game.name)}`;
+    }
+
+    initHero();
+})();
 
 /* ==========================================================
    SEARCH BUTTON
 ========================================================== */
 
-document.getElementById("searchBtn").addEventListener("click", () => {
-    const gameName = document.getElementById("gameInput").value.trim();
-    console.log("Button clicked, value is:", gameName);
-    if (!gameName) return;
-    window.location.href = `/search?q=${encodeURIComponent(gameName)}`;
+const searchBtn = document.getElementById("searchBtn");
+if (searchBtn) {
+    searchBtn.addEventListener("click", () => {
+        const gameName = document.getElementById("gameInput").value.trim();
+        if (!gameName) return;
+        window.location.href = `/search?q=${encodeURIComponent(gameName)}`;
+    });
+}
+
+document.getElementById("gameInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && searchBtn) {
+        searchBtn.click();
+    }
 });
+
 /* ==========================================================
    SEARCH SUGGESTIONS (debounced)
 ========================================================== */
@@ -125,125 +208,3 @@ async function fetchSuggestions(query) {
         suggestionsBox.appendChild(item);
     });
 }
-
-/* ==========================================================
-   HOMEPAGE — FEATURED GAMES
-========================================================== */
-
-async function loadFeatured() {
-    try {
-        const [topSellers, specials, newReleases] = await Promise.all([
-            fetch("/api/browse/topsellers").then(r => r.json()),
-            fetch("/api/browse/specials").then(r => r.json()),
-            fetch("/api/browse/popularnew").then(r => r.json())
-        ]);
- console.log("SPECIALS:", specials);
-        console.log("NEW RELEASES:", newReleases);
-        renderTopSellers(topSellers);
-        renderSpecials(specials);
-        renderNewReleases(newReleases);
-    } catch (error) {
-        console.error("Error loading featured games:", error);
-    }
-}
-
-loadFeatured();
-
-/* ==========================================================
-   HOMEPAGE CARD BUILDER (shared by all 3 render functions)
-========================================================== */
-
-function buildHomeCard({ image, name, badgeHtml = "", priceHtml = "" }) {
-    const card = document.createElement("div");
-    card.className = "game-home-card";
-
-    card.innerHTML = `
-        <img src="${image}" alt="${name}">
-        ${badgeHtml}
-        <div class="card-content">
-            <div class="card-title">${name}</div>
-            ${priceHtml}
-        </div>
-    `;
-
-    card.addEventListener("click", () => searchGame(name));
-
-    return card;
-}
-
-/* ==========================================================
-   TOP SELLERS
-========================================================== */
-
-function renderTopSellers(games) {
-    const container = document.getElementById("topSellers");
-    container.innerHTML = "";
-
-    games.forEach(game => {
-        const badgeHtml = `<div class="top-badge">🔥 Top Seller</div>`;
-        const card = buildHomeCard({
-            image: game.image,
-            name: game.name,
-            badgeHtml
-        });
-        container.appendChild(card);
-    });
-}
-
-/* ==========================================================
-   SPECIALS
-========================================================== */
-
-function renderSpecials(games) {
-    const container = document.getElementById("specials");
-    container.innerHTML = "";
-
-    games.forEach(game => {
-        const finalCents = Number(game.final_price);
-        const final = finalCents > 0 ? `$${(finalCents / 100).toFixed(2)}` : "Free";
-        const original = game.original_price || "";
-
-        const priceHtml = `
-            <div class="card-bottom">
-                <div>
-                    ${original ? `<span class="old-price">${original}</span>` : ""}
-                    <span class="new-price">${final}</span>
-                </div>
-                ${game.discount_percent ? `<span class="discount">${game.discount_percent}</span>` : ""}
-            </div>
-        `;
-
-        const card = buildHomeCard({ image: game.image, name: game.name, priceHtml });
-        container.appendChild(card);
-    });
-}
-/* ==========================================================
-   NEW RELEASES
-========================================================== */
-
-function renderNewReleases(games) {
-    const container = document.getElementById("newReleases");
-    container.innerHTML = "";
-
-    games.forEach(game => {
-        const finalCents = Number(game.final_price);
-        const price = finalCents > 0 ? `$${(finalCents / 100).toFixed(2)}` : "Free";
-
-        const priceHtml = `<div class="card-bottom"><span class="new-price">${price}</span></div>`;
-
-        const card = buildHomeCard({ image: game.image, name: game.name, priceHtml });
-        container.appendChild(card);
-    });
-}
-
-/* ==========================================================
-   TOP SELLERS SCROLL BUTTONS
-========================================================== */
-
-document.getElementById("scrollLeft").addEventListener("click", () => {
-    document.getElementById("topSellers").scrollBy({ left: -300, behavior: "smooth" });
-});
-
-document.getElementById("scrollRight").addEventListener("click", () => {
-    document.getElementById("topSellers").scrollBy({ left: 300, behavior: "smooth" });
-});

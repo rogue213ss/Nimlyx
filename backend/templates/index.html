@@ -1,94 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nimlyx | Analyze. Explore. Discover.</title>
-
-   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-
-    <!-- Google Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx — Discover. Analyze. Decide.</title>
+<meta name="description" content="Nimlyx analyzes Steam games using ratings, reviews, screenshots and trailers so you know what you're getting before you buy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<!-- Swap this for your Flask static pipeline, e.g. {{ url_for('static', filename='css/style.css') }} -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body class="home-page">
 
- <header class="topbar">
+<!--
+  NIMLYX — HOMEPAGE TEMPLATE
+  ================================================================
+  Expected context variables from the Flask view:
 
-    <div class="topbar-brand">
-        <i class="fa-solid fa-gamepad"></i>
-        <span>Nimlyx</span>
+    featured_games    → list[Game], 4–6 items — powers the hero carousel
+    trending_games    → list[Game]
+    top_seller_games  → list[Game]
+    deal_games        → list[Game]
+    top_rated_games   → list[Game]
+
+  Expected fields on a Game object:
+    id, name, header_image, analyze_url          (all sections)
+    short_description                            (hero only)
+    current_players                              (trending)
+    copies_sold_label   e.g. "2.1M copies"        (top sellers)
+    price_original, price_final, discount_percent (deals)
+    nimlyx_score                                  (top rated)
+  ================================================================
+-->
+
+{% macro game_card(game, stat_value, stat_label, badge=None, was_price=None) %}
+<a class="home-card" href="{{ game.analyze_url }}">
+  <div class="home-card-media">
+    <img src="{{ game.header_image }}" alt="{{ game.name }}" loading="lazy">
+    {% if badge %}<span class="home-card-badge">{{ badge }}</span>{% endif %}
+  </div>
+  <div class="home-card-body">
+    <h3 class="home-card-title">{{ game.name }}</h3>
+    <div class="home-card-meta">
+      <div class="home-card-stat">
+        {% if was_price %}<span class="home-card-price-was">{{ was_price }}</span>{% endif %}
+        <span class="home-card-value">{{ stat_value }}</span>
+      </div>
+      <span class="home-card-label">{{ stat_label }}</span>
     </div>
+  </div>
+</a>
+{% endmacro %}
 
-    
-    <div class="topbar-search">
-        <input
-            type="text"
-            id="gameInput"
-            placeholder="Search any Steam game..."
-            autocomplete="off"
-        >
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
 
-        <button id="searchBtn" aria-label="Search">
-            <i class="fa-solid fa-magnifying-glass"></i>
-        </button>
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
 
-        <div id="suggestions" class="suggestions-dropdown"></div>
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/deals">Deals</a>
+        <a href="/top-rated">Top Rated</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+    <div id="suggestions" class="suggestions-dropdown"></div>
+</form>
+      <button type="button" class="home-btn-ghost">Sign In</button>
     </div>
-
+  </div>
 </header>
 
 <main>
 
-    <!-- Search Results (Hidden until user searches) -->
-    <section id="gameSection" class="hidden"></section>
+<!-- ============================================
+     HERO
+     ============================================ -->
+{% if featured_games %}
+<section class="home-hero" id="homeHero" aria-label="Featured game spotlight">
+  <div class="home-hero-track">
+    {% for game in featured_games %}
+    <div class="home-hero-slide{% if loop.first %} is-active{% endif %}"
+         style="background-image:url('{{ game.header_image }}');"
+         data-name="{{ game.name }}"
+         data-description="{{ game.short_description }}"
+         data-analyze-url="{{ game.analyze_url }}">
+    </div>
+    {% endfor %}
+  </div>
+  <div class="home-hero-overlay"></div>
 
-<!-- Homepage -->
-<section id="homeContent">
+  <div class="home-container home-hero-content">
+    <span class="home-hero-kicker">Discover. Analyze. Decide.</span>
+    <h1 class="home-hero-title" id="homeHeroTitle">{{ featured_games[0].name }}</h1>
+    <p class="home-hero-desc" id="homeHeroDesc">{{ featured_games[0].short_description }}</p>
+    <a class="home-btn home-btn-primary" id="homeHeroCta" href="{{ featured_games[0].analyze_url }}">
+      Analyze Game
+    </a>
 
-    <section class="home-section">
-        <h2 class="section-title">🔥 Top Sellers</h2>
-        <div class="carousel-wrapper">
-            <button class="scroll-btn scroll-left" id="scrollLeft">
-                <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <div id="topSellers" class="carousel-row"></div>
-            <button class="scroll-btn scroll-right" id="scrollRight">
-                <i class="fa-solid fa-chevron-right"></i>
-            </button>
-        </div>
-    </section>
+    <div class="home-hero-indicators" id="homeHeroIndicators">
+      {% for game in featured_games %}
+      <button type="button" class="home-hero-dot{% if loop.first %} is-active{% endif %}" data-slide="{{ loop.index0 }}" aria-label="Show {{ game.name }}"></button>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
 
-    <section class="home-section">
-        <h2 class="section-title">💸 Specials</h2>
-        <div id="specials" class="grid-row"></div>
-    </section>
-
-    <section class="home-section">
-        <h2 class="section-title">🆕 New Releases</h2>
-        <div id="newReleases" class="grid-row-compact"></div>
-    </section>
-
+<!-- ============================================
+     TRENDING NOW
+     ============================================ -->
+<!-- ============================================
+     FREE TO PLAY
+     ============================================ -->
+<section class="home-section" id="free-to-play">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <span class="home-eyebrow">No cost, no catch</span>
+        <h2 class="home-section-title">Free to Play</h2>
+      </div>
+      <a class="home-view-all" href="/free">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="home-card-grid">
+      {% for game in free_games %}
+        {{ game_card(game, "Free", "no purchase required") }}
+      {% endfor %}
+    </div>
+  </div>
 </section>
 
-    <!-- Analytics (Hidden until search) -->
-    <section id="analyticsSection" class="hidden">
-        <div class="stats-container"></div>
+<!-- ============================================
+     TOP SELLERS
+     ============================================ -->
+<section class="home-section" id="top-sellers">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <span class="home-eyebrow">Popular this week</span>
+        <h2 class="home-section-title">Top Sellers</h2>
+      </div>
+      <a class="home-view-all" href="/top-sellers">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="home-card-grid">
+      {% for game in top_seller_games %}
+        {{ game_card(game, game.copies_sold_label, "top seller") }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
 
-        <div class="chart-container">
-            <canvas id="mainChart"></canvas>
+<!-- ============================================
+     BIGGEST DEALS
+     ============================================ -->
+<section class="home-section" id="deals">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <span class="home-eyebrow">Price drops</span>
+        <h2 class="home-section-title">Biggest Deals</h2>
+      </div>
+      <a class="home-view-all" href="/deals">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="home-card-grid">
+      {% for game in deal_games %}
+        {{ game_card(game, game.price_final, "final price", badge="-" ~ game.discount_percent ~ "%", was_price=game.price_original) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     HIGHEST RATED
+     ============================================ -->
+<section class="home-section" id="top-rated">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <span class="home-eyebrow">Analyst picks</span>
+        <h2 class="home-section-title">Highest Rated</h2>
+      </div>
+      <a class="home-view-all" href="/top-rated">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="home-card-grid">
+      {% for game in top_rated_games %}
+        {{ game_card(game, game.nimlyx_score, "Nimlyx Score") }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     WHY NIMLYX
+     ============================================ -->
+<section class="home-section home-why" id="why">
+  <div class="home-container">
+    <div class="home-why-head">
+      <span class="home-eyebrow">Why Nimlyx</span>
+      <h2 class="home-section-title">Steam gives you a page. We give you an answer.</h2>
+    </div>
+    <div class="home-why-grid">
+      <div class="home-feature-card">
+        <div class="home-feature-mark">
+          <svg width="26" height="18" viewBox="0 0 28 20" fill="none"><polyline points="1,17 8,9 13,13 27,2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-    </section>
+        <h3 class="home-feature-title">One score hides ten opinions</h3>
+        <p class="home-feature-text">We break player sentiment into what people actually praise and complain about — performance, story, grind, monetization — instead of flattening it into a single number.</p>
+      </div>
+      <div class="home-feature-card">
+        <div class="home-feature-mark">
+          <svg width="26" height="18" viewBox="0 0 28 20" fill="none"><polyline points="1,4 8,4 8,17 15,17 15,9 27,9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <h3 class="home-feature-title">Context Steam doesn't show you</h3>
+        <p class="home-feature-text">We track how a game changes after launch — patch notes, price history, review momentum — so its reputation today is never a mystery.</p>
+      </div>
+      <div class="home-feature-card">
+        <div class="home-feature-mark">
+          <svg width="26" height="18" viewBox="0 0 28 20" fill="none"><circle cx="14" cy="10" r="8" stroke="currentColor" stroke-width="2"/><path d="M14 6v4l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3 class="home-feature-title">Answers in seconds, not tabs</h3>
+        <p class="home-feature-text">No wishlist to manage, no cart to fill. Search a title and get the verdict: worth it, wait for a sale, or skip it.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 </main>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<!-- ============================================
+     FOOTER
+     Remove this if a shared footer partial already exists.
+     ============================================ -->
+<footer class="home-footer">
+  <div class="home-container home-footer-inner">
+    <div class="home-footer-brand">
+      <div class="home-footer-logo">
+        <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+          <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+        </svg>
+        Nimlyx
+      </div>
+      <span class="home-footer-tag">Nimlyx analyzes Steam so you don't have to guess.</span>
+    </div>
+    <div class="home-footer-links">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/contact">Contact</a>
+    </div>
+  </div>
+  <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+</footer>
 
+<!-- Swap this for your Flask static pipeline, e.g. {{ url_for('static', filename='js/script.js') }} -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
