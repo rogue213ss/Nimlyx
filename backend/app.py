@@ -50,13 +50,23 @@ def fetch_browse_category(category, count=25):
         discount_span = game.find("div", class_="discount_pct")
         discount_percent = discount_span.text.strip() if discount_span else None
 
+        platforms_div = game.find("div", class_="search_platforms")
+        platforms = []
+        if platforms_div:
+            for span in platforms_div.find_all("span", class_="platform_img"):
+                classes = span.get("class", [])
+                for cls in classes:
+                    if cls in ("win", "mac", "linux"):
+                        platforms.append(cls)
+
         cleaned.append({
             "id": app_id,
             "name": name,
             "image": image,
             "final_price": final_price,
             "original_price": original_price,
-            "discount_percent": discount_percent
+            "discount_percent": discount_percent,
+            "platforms": platforms
         })
 
     return cleaned
@@ -81,6 +91,20 @@ def to_game_dict(item, stat_fields=None):
 
 @app.route("/")
 def home():
+    def format_price(cents):
+        if cents is None:
+            return "Free"
+        s = str(cents)
+        if not s.isdigit():
+            return "Free"
+        n = int(s)
+        return "Free" if n == 0 else f"${n / 100:.2f}"
+
+    def platform_label(platforms):
+        names = {"win": "Windows", "mac": "macOS", "linux": "Linux"}
+        labels = [names[p] for p in platforms if p in names]
+        return ", ".join(labels) if labels else "—"
+
     try:
         top_sellers_raw = fetch_browse_category("topsellers")
         specials_raw = fetch_browse_category("specials")
@@ -106,13 +130,43 @@ def home():
             for g in top_sellers_raw[:5]
         ]
 
-        # Free to Play — real data, no placeholder needed
+        # ---------------- TOP SELLERS ----------------
+        # Left: real rank (#1, #2...) based on Steam's own ordering.
+        # Right: real price.
+        top_seller_games = [
+            to_game_dict(g, {
+                "footer_left": f"#{i + 1} Global",
+                "footer_right": format_price(g.get("final_price")),
+            })
+            for i, g in enumerate(top_sellers_raw[:8])
+        ]
+
+        # ---------------- BIGGEST DEALS ----------------
+        # Left: real discount percent. Right: was → now price.
+        deal_games = []
+        for g in specials_raw:
+            discount = (g.get("discount_percent") or "").replace("%", "").replace("-", "")
+            if not discount:
+                continue
+            was = g.get("original_price") or ""
+            now = format_price(g.get("final_price"))
+            deal_games.append(to_game_dict(g, {
+                "footer_left": f"-{discount}%",
+                "footer_right": f"{was} → {now}" if was else now,
+            }))
+        deal_games = deal_games[:8]
+
+        # ---------------- FREE TO PLAY ----------------
+        # Left: "Free". Right: real platform support (Windows/Mac/Linux),
+        # since Steam's search results don't expose genre tags.
         free_games = []
         for g in top_sellers_raw + new_releases_raw:
             final_cents = g.get("final_price")
             if final_cents == "0" or final_cents == 0:
-                free_games.append(to_game_dict(g, {"price_label": "Free to Play"}))
-        # de-dupe by id, keep order
+                free_games.append(to_game_dict(g, {
+                    "footer_left": "Free",
+                    "footer_right": platform_label(g.get("platforms", [])),
+                }))
         seen_ids = set()
         deduped_free = []
         for g in free_games:
@@ -121,46 +175,34 @@ def home():
                 deduped_free.append(g)
         free_games = deduped_free[:8]
 
-        top_seller_games = [
-            to_game_dict(g, {"copies_sold_label": "Top seller"})
-            for g in top_sellers_raw[:8]
-        ]
-
-        deal_games = []
-        for g in specials_raw:
-            if not g.get("discount_percent"):
-                continue
-            final_cents = g.get("final_price")
-            final_price = f"${(int(final_cents) / 100):.2f}" if final_cents and str(final_cents).isdigit() else "Free"
-            deal_games.append(to_game_dict(g, {
-                "price_final": final_price,
-                "price_original": g.get("original_price") or "",
-                "discount_percent": (g.get("discount_percent") or "").replace("%", "").replace("-", "")
-            }))
-        deal_games = deal_games[:8]
-
-        top_rated_games = [
-            to_game_dict(g, {"nimlyx_score": "—"})
+        # ---------------- NEW RELEASES ----------------
+        # Replaces the old fake "Highest Rated" placeholder section.
+        # Left: "New". Right: real price.
+        new_release_games = [
+            to_game_dict(g, {
+                "footer_left": "New",
+                "footer_right": format_price(g.get("final_price")),
+            })
             for g in new_releases_raw[:8]
         ]
 
         return render_template(
             "index.html",
             featured_games=featured_games,
-            free_games=free_games,
             top_seller_games=top_seller_games,
             deal_games=deal_games,
-            top_rated_games=top_rated_games,
+            free_games=free_games,
+            new_release_games=new_release_games,
         )
 
     except requests.exceptions.RequestException:
         return render_template(
             "index.html",
             featured_games=[],
-            free_games=[],
             top_seller_games=[],
             deal_games=[],
-            top_rated_games=[],
+            free_games=[],
+            new_release_games=[],
         )
 
 

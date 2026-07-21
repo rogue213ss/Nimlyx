@@ -34,25 +34,24 @@
   ================================================================
 -->
 
-{% macro game_card(game, stat_value, stat_label, badge=None, was_price=None) %}
+
+
+{% macro game_card(game) %}
 <a class="home-card" href="{{ game.analyze_url }}">
   <div class="home-card-media">
     <img src="{{ game.header_image }}" alt="{{ game.name }}" loading="lazy">
-    {% if badge %}<span class="home-card-badge">{{ badge }}</span>{% endif %}
   </div>
   <div class="home-card-body">
     <h3 class="home-card-title">{{ game.name }}</h3>
-    <div class="home-card-meta">
-      <div class="home-card-stat">
-        {% if was_price %}<span class="home-card-price-was">{{ was_price }}</span>{% endif %}
-        <span class="home-card-value">{{ stat_value }}</span>
-      </div>
-      <span class="home-card-label">{{ stat_label }}</span>
+    <div class="home-card-divider"></div>
+    <div class="home-card-footer">
+      <span class="home-card-footer-left">{{ game.footer_left }}</span>
+      <span class="home-card-footer-right">{{ game.footer_right }}</span>
     </div>
   </div>
 </a>
 {% endmacro %}
-
+ 
 <!-- ============================================
      HEADER
      ============================================ -->
@@ -132,26 +131,19 @@
 <!-- ============================================
      FREE TO PLAY
      ============================================ -->
-<section class="home-section" id="free-to-play">
-  <div class="home-container">
-    <div class="home-section-head">
-      <div>
-        <span class="home-eyebrow">No cost, no catch</span>
-        <h2 class="home-section-title">Free to Play</h2>
-      </div>
-      <a class="home-view-all" href="/free">
-        View all
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-      </a>
-    </div>
-    <div class="home-card-grid">
-      {% for game in free_games %}
-        {{ game_card(game, "Free", "no purchase required") }}
-      {% endfor %}
-    </div>
-  </div>
-</section>
 
+
+<!-- ============================================
+     TOP SELLERS
+     ============================================ -->
+
+<!-- ============================================
+     BIGGEST DEALS
+     ============================================ -->
+
+<!-- ============================================
+     HIGHEST RATED
+     ============================================ -->
 <!-- ============================================
      TOP SELLERS
      ============================================ -->
@@ -159,7 +151,7 @@
   <div class="home-container">
     <div class="home-section-head">
       <div>
-        <span class="home-eyebrow">Popular this week</span>
+        <span class="home-eyebrow">📈 Popular this week</span>
         <h2 class="home-section-title">Top Sellers</h2>
       </div>
       <a class="home-view-all" href="/top-sellers">
@@ -169,12 +161,12 @@
     </div>
     <div class="home-card-grid">
       {% for game in top_seller_games %}
-        {{ game_card(game, game.copies_sold_label, "top seller") }}
+        {{ game_card(game) }}
       {% endfor %}
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================================
      BIGGEST DEALS
      ============================================ -->
@@ -182,7 +174,7 @@
   <div class="home-container">
     <div class="home-section-head">
       <div>
-        <span class="home-eyebrow">Price drops</span>
+        <span class="home-eyebrow">🔥 Biggest discounts</span>
         <h2 class="home-section-title">Biggest Deals</h2>
       </div>
       <a class="home-view-all" href="/deals">
@@ -192,35 +184,57 @@
     </div>
     <div class="home-card-grid">
       {% for game in deal_games %}
-        {{ game_card(game, game.price_final, "final price", badge="-" ~ game.discount_percent ~ "%", was_price=game.price_original) }}
+        {{ game_card(game) }}
       {% endfor %}
     </div>
   </div>
 </section>
-
+ 
 <!-- ============================================
-     HIGHEST RATED
+     FREE TO PLAY
      ============================================ -->
-<section class="home-section" id="top-rated">
+<section class="home-section" id="free-to-play">
   <div class="home-container">
     <div class="home-section-head">
       <div>
-        <span class="home-eyebrow">Analyst picks</span>
-        <h2 class="home-section-title">Highest Rated</h2>
+        <span class="home-eyebrow">🎮 No cost, no catch</span>
+        <h2 class="home-section-title">Free to Play</h2>
       </div>
-      <a class="home-view-all" href="/top-rated">
+      <a class="home-view-all" href="/free">
         View all
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
       </a>
     </div>
     <div class="home-card-grid">
-      {% for game in top_rated_games %}
-        {{ game_card(game, game.nimlyx_score, "Nimlyx Score") }}
+      {% for game in free_games %}
+        {{ game_card(game) }}
       {% endfor %}
     </div>
   </div>
 </section>
-
+ 
+<!-- ============================================
+     NEW RELEASES
+     ============================================ -->
+<section class="home-section" id="new-releases">
+  <div class="home-container">
+    <div class="home-section-head">
+      <div>
+        <span class="home-eyebrow">🆕 Just landed</span>
+        <h2 class="home-section-title">New Releases</h2>
+      </div>
+      <a class="home-view-all" href="/new-releases">
+        View all
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+    <div class="home-card-grid">
+      {% for game in new_release_games %}
+        {{ game_card(game) }}
+      {% endfor %}
+    </div>
+  </div>
+</section>
 <!-- ============================================
      WHY NIMLYX
      ============================================ -->

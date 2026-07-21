@@ -454,3 +454,55 @@
     font-size: 12px;
     color: var(--home-text-muted);
 }
+/* ================================================================
+   CARD FOOTER — replaces the old single stat_value/stat_label
+   with a two-column left/right layout + divider. Each section
+   passes different meaning into the same two slots, so cards stay
+   visually consistent while the *information* changes per section.
+   ================================================================ */
+.home-card-divider {
+  height: 1px;
+  background: var(--home-glass-border);
+  margin: 12px 0 10px;
+}
+
+.home-card-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.home-card-footer-left {
+  font-family: var(--home-font-mono);
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--home-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-card-footer-right {
+  font-family: var(--home-font-mono);
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--home-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Discount rows ("-75%") get a positive/green treatment on the left */
+#deals .home-card-footer-left {
+  color: #34D399;
+}
+
+/* Free to Play rows get the same green treatment */
+#free-to-play .home-card-footer-left {
+  color: #34D399;
+}
+
+/* New releases "New" tag in accent blue */
+#new-releases .home-card-footer-left {
+  color: var(--home-accent);
+}
