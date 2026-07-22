@@ -512,3 +512,275 @@
 #new-releases .home-card-footer-left {
   color: var(--home-accent);
 }
+/* ================================================================
+   NIMLYX — DISCOVER PAGE STYLES
+   Namespaced under .discover-page / .discover-* — reuses the same
+   design tokens declared in :root above, so both pages stay visually
+   consistent without duplicating values.
+   ================================================================ */
+
+.discover-page,
+.discover-page *{ box-sizing:border-box; }
+
+.discover-page{
+  margin:0;
+  background: radial-gradient(circle at 50% -10%, rgba(59,130,246,0.10), transparent 55%), var(--home-bg-base);
+  color:var(--home-text-primary);
+  font-family:var(--home-font-body);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+.discover-page a{ color:inherit; text-decoration:none; }
+.discover-page button{ font-family:inherit; border:none; background:none; color:inherit; cursor:pointer; }
+.discover-page img{ display:block; max-width:100%; }
+.discover-page a:focus-visible,
+.discover-page button:focus-visible,
+.discover-page input:focus-visible{
+  outline:2px solid var(--home-accent);
+  outline-offset:3px;
+  border-radius:4px;
+}
+
+/* ----------------------------------------------------------------
+   HERO
+   ---------------------------------------------------------------- */
+.discover-hero{
+  padding:88px 0 64px;
+  text-align:center;
+}
+.discover-hero .home-container{
+  max-width:680px;
+}
+.discover-hero-eyebrow{
+  display:inline-block;
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--home-accent); margin-bottom:18px;
+}
+.discover-hero-title{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:clamp(2rem, 4vw, 3.1rem);
+  letter-spacing:-0.02em; line-height:1.1;
+  margin-bottom:18px;
+}
+.discover-hero-subtitle{
+  font-size:1.02rem; color:var(--home-text-muted); line-height:1.65;
+  max-width:520px; margin:0 auto 32px;
+}
+.discover-hero-start{
+  display:inline-flex; align-items:center; gap:8px;
+  font-size:.88rem; font-weight:600; color:var(--home-text-primary);
+  padding:12px 22px; border-radius:999px;
+  border:1px solid var(--home-glass-border);
+  background:var(--home-glass-fill);
+  transition:border-color .25s var(--home-ease), background .25s var(--home-ease), transform .25s var(--home-ease);
+}
+.discover-hero-start:hover{
+  border-color:var(--home-glass-border-strong);
+  background:var(--home-glass-fill-strong);
+  transform:translateY(-2px);
+}
+.discover-hero-start span{
+  transition:transform .25s var(--home-ease);
+}
+.discover-hero-start:hover span{ transform:translateY(2px); }
+
+/* ----------------------------------------------------------------
+   WIZARD — shared chapter shell
+   ---------------------------------------------------------------- */
+.discover-wizard{ padding-bottom:100px; }
+
+.wizard-question{
+  padding:56px 0;
+  border-bottom:1px solid var(--home-glass-border);
+}
+.wizard-question:first-of-type{ padding-top:0; }
+
+.wizard-question.is-hidden{ display:none; }
+
+.wizard-step-label{
+  display:block;
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--home-accent); margin-bottom:14px;
+}
+.wizard-question-title{
+  font-family:var(--home-font-display); font-size:1.55rem; font-weight:600;
+  letter-spacing:-0.01em; line-height:1.3; margin-bottom:10px;
+  max-width:640px;
+}
+.wizard-question-hint{
+  font-size:.92rem; color:var(--home-text-muted); line-height:1.6;
+  max-width:520px; margin-bottom:32px;
+}
+
+/* ----------------------------------------------------------------
+   OPTION CARDS
+   ---------------------------------------------------------------- */
+.wizard-options{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:14px;
+}
+
+.wizard-option{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  text-align:left;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  padding:20px 20px 18px;
+  transition:border-color .3s var(--home-ease), transform .3s var(--home-ease), background .3s var(--home-ease), box-shadow .3s var(--home-ease);
+}
+.wizard-option:hover{
+  border-color:var(--home-glass-border-strong);
+  transform:translateY(-4px);
+  box-shadow:0 20px 38px -20px rgba(0,0,0,0.55);
+}
+.wizard-option.is-selected{
+  border-color:var(--home-accent);
+  background:rgba(59,130,246,0.1);
+  box-shadow:0 0 0 1px rgba(59,130,246,0.35);
+}
+
+.wizard-option-icon{
+  width:34px; height:34px; border-radius:10px; margin-bottom:6px;
+  background:var(--home-glass-fill-strong);
+  border:1px solid var(--home-glass-border);
+}
+
+.wizard-option-title{
+  font-family:var(--home-font-display); font-size:.98rem; font-weight:600;
+  letter-spacing:-0.005em;
+}
+
+.wizard-option-desc{
+  font-size:.8rem; color:var(--home-text-muted); line-height:1.5;
+}
+
+/* Questions with two-line text-only options (no icon) can sit at three
+   per row comfortably, but four columns collapses gracefully below. */
+#question-2 .wizard-options,
+#question-3 .wizard-options,
+#question-4 .wizard-options,
+#question-5 .wizard-options{
+  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* ----------------------------------------------------------------
+   SELECTED PREFERENCES
+   ---------------------------------------------------------------- */
+.selected-preferences{
+  margin-top:20px;
+  padding:32px;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+}
+.selected-preferences-title{
+  font-family:var(--home-font-display); font-size:1.15rem; font-weight:600;
+  letter-spacing:-0.005em; margin-bottom:8px;
+}
+.selected-preferences-hint{
+  font-size:.87rem; color:var(--home-text-muted); line-height:1.6;
+  max-width:520px; margin-bottom:18px;
+}
+.selected-preferences-chips{
+  display:flex; flex-wrap:wrap; gap:10px;
+  min-height:2px;
+}
+.selected-preferences-chips:empty{ margin-bottom:0; }
+
+/* Chip styling — for JS to apply once populated */
+.preference-chip{
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--home-font-mono); font-size:.8rem;
+  color:var(--home-text-primary);
+  background:var(--home-glass-fill-strong);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:999px;
+  padding:8px 8px 8px 14px;
+}
+.preference-chip-remove{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; border-radius:50%;
+  color:var(--home-text-muted);
+  transition:background .2s var(--home-ease), color .2s var(--home-ease);
+}
+.preference-chip-remove:hover{
+  background:rgba(255,255,255,0.1); color:var(--home-text-primary);
+}
+
+/* ----------------------------------------------------------------
+   FIND GAMES CTA
+   ---------------------------------------------------------------- */
+.wizard-cta{
+  text-align:center;
+  margin-top:56px;
+  padding:48px 32px;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+}
+.wizard-cta-title{
+  font-family:var(--home-font-display); font-size:1.3rem; font-weight:600;
+  letter-spacing:-0.01em; margin-bottom:22px;
+}
+.wizard-find-btn{
+  font-size:.95rem;
+}
+.wizard-find-btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  box-shadow:none;
+  transform:none !important;
+}
+.wizard-find-btn:disabled:hover{
+  transform:none; filter:none; box-shadow:none;
+}
+
+/* ----------------------------------------------------------------
+   RESULTS
+   ---------------------------------------------------------------- */
+.discover-results{ padding:100px 0 110px; }
+.discover-results-head{ max-width:620px; margin-bottom:32px; }
+.discover-results-subtitle{
+  font-size:.92rem; color:var(--home-text-muted); margin-top:10px; line-height:1.6;
+}
+.discover-results-grid{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0,1fr));
+  gap:20px;
+  min-height:2px;
+}
+
+/* ----------------------------------------------------------------
+   RESPONSIVE
+   ---------------------------------------------------------------- */
+@media (max-width:1100px){
+  .wizard-options{ grid-template-columns:repeat(2, 1fr); }
+  .discover-results-grid{ grid-template-columns:repeat(2, 1fr); }
+}
+
+@media (max-width:640px){
+  .discover-hero{ padding:64px 0 48px; }
+  .wizard-question{ padding:40px 0; }
+  .wizard-options{ grid-template-columns:1fr; }
+  #question-2 .wizard-options,
+  #question-3 .wizard-options,
+  #question-4 .wizard-options,
+  #question-5 .wizard-options{ grid-template-columns:1fr; }
+  .discover-results-grid{ grid-template-columns:1fr; }
+  .wizard-cta{ padding:36px 20px; }
+  .selected-preferences{ padding:24px 20px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .discover-page *{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
+}

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx — Discover</title>
+<meta name="description" content="Answer a few questions and Nimlyx will narrow thousands of Steam games into the ones that actually fit you.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
+</head>
+<body class="discover-page">
+
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover" aria-current="page">Discover</a>
+        <a href="/compare">Compare</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+        <div id="suggestions" class="suggestions-dropdown"></div>
+      </form>
+      <button type="button" class="home-btn-ghost">Sign In</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="discover-hero" aria-label="Discover introduction">
+  <div class="home-container">
+    <span class="discover-hero-eyebrow">Your personal game guide</span>
+    <h1 class="discover-hero-title">Discover Your Next Game</h1>
+    <p class="discover-hero-subtitle">Answer a few questions and we'll narrow thousands of games into the ones that actually fit you.</p>
+    <a href="#question-1" class="discover-hero-start" id="startDiscoveringBtn">
+      Start Discovering
+      <span aria-hidden="true">↓</span>
+    </a>
+  </div>
+</section>
+
+<section class="discover-wizard" id="discoverWizard" aria-label="Game discovery wizard">
+  <div class="home-container">
+
+    <div class="wizard-question is-active" id="question-1" data-question="1">
+      <span class="wizard-step-label">Step 01</span>
+      <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
+      <p class="wizard-question-hint">Genre shapes everything else we'll ask next.</p>
+      <div class="wizard-options" role="group" aria-label="Genre options">
+        <button type="button" class="wizard-option" data-value="action">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Action</span>
+          <span class="wizard-option-desc">Fast Combat • Shooter</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="fantasy">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Fantasy</span>
+          <span class="wizard-option-desc">Magic • Dragons • RPG</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="horror">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Horror</span>
+          <span class="wizard-option-desc">Survival • Psychological</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="rpg">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">RPG</span>
+          <span class="wizard-option-desc">Leveling • Story • Choices</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="racing">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Racing</span>
+          <span class="wizard-option-desc">Speed • Cars • Circuits</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="puzzle">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Puzzle</span>
+          <span class="wizard-option-desc">Logic • Mystery</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="simulation">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Simulation</span>
+          <span class="wizard-option-desc">Build • Manage</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="strategy">
+          <span class="wizard-option-icon" aria-hidden="true"></span>
+          <span class="wizard-option-title">Strategy</span>
+          <span class="wizard-option-desc">Plan • Command</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="wizard-question is-hidden" id="question-2" data-question="2">
+      <span class="wizard-step-label">Step 02</span>
+      <h2 class="wizard-question-title">Who are you playing with?</h2>
+      <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
+      <div class="wizard-options" role="group" aria-label="Playstyle options">
+        <button type="button" class="wizard-option" data-value="solo">
+          <span class="wizard-option-title">Solo</span>
+          <span class="wizard-option-desc">Play at your own pace.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="co-op">
+          <span class="wizard-option-title">Co-op</span>
+          <span class="wizard-option-desc">Enjoy together with friends.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="online-multiplayer">
+          <span class="wizard-option-title">Online Multiplayer</span>
+          <span class="wizard-option-desc">Compete with players worldwide.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="local-co-op">
+          <span class="wizard-option-title">Local Co-op</span>
+          <span class="wizard-option-desc">Share the screen, side by side.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="wizard-question is-hidden" id="question-3" data-question="3">
+      <span class="wizard-step-label">Step 03</span>
+      <h2 class="wizard-question-title">What's your budget?</h2>
+      <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
+      <div class="wizard-options" role="group" aria-label="Budget options">
+        <button type="button" class="wizard-option" data-value="free">
+          <span class="wizard-option-title">Free</span>
+          <span class="wizard-option-desc">No cost, no catch.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="under-10">
+          <span class="wizard-option-title">Under $10</span>
+          <span class="wizard-option-desc">Great value picks.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="under-20">
+          <span class="wizard-option-title">Under $20</span>
+          <span class="wizard-option-desc">A wider range of titles.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="under-40">
+          <span class="wizard-option-title">Under $40</span>
+          <span class="wizard-option-desc">Bigger productions, still reasonable.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="any-price">
+          <span class="wizard-option-title">Any Price</span>
+          <span class="wizard-option-desc">Show me everything.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="wizard-question is-hidden" id="question-4" data-question="4">
+      <span class="wizard-step-label">Step 04</span>
+      <h2 class="wizard-question-title">Minimum Review Score</h2>
+      <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
+      <div class="wizard-options" role="group" aria-label="Review score options">
+        <button type="button" class="wizard-option" data-value="any">
+          <span class="wizard-option-title">Any</span>
+          <span class="wizard-option-desc">Don't filter by reviews.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="positive">
+          <span class="wizard-option-title">Positive</span>
+          <span class="wizard-option-desc">Generally well liked.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="very-positive">
+          <span class="wizard-option-title">Very Positive</span>
+          <span class="wizard-option-desc">Consistently praised by players.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="overwhelmingly-positive">
+          <span class="wizard-option-title">Overwhelmingly Positive</span>
+          <span class="wizard-option-desc">Among the best reviewed on Steam.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="wizard-question is-hidden" id="question-5" data-question="5">
+      <span class="wizard-step-label">Step 05</span>
+      <h2 class="wizard-question-title">Platform</h2>
+      <p class="wizard-question-hint">Last step — tell us where you'll be playing.</p>
+      <div class="wizard-options" role="group" aria-label="Platform options">
+        <button type="button" class="wizard-option" data-value="windows">
+          <span class="wizard-option-title">Windows</span>
+          <span class="wizard-option-desc">The most widely supported platform.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="linux">
+          <span class="wizard-option-title">Linux</span>
+          <span class="wizard-option-desc">Native or Proton-compatible titles.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="macos">
+          <span class="wizard-option-title">macOS</span>
+          <span class="wizard-option-desc">Built to run on your Mac.</span>
+        </button>
+        <button type="button" class="wizard-option" data-value="steam-deck">
+          <span class="wizard-option-title">Steam Deck</span>
+          <span class="wizard-option-desc">Verified for handheld play.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="selected-preferences" id="selectedPreferences" aria-label="Selected preferences">
+      <h2 class="selected-preferences-title">Your Journey So Far</h2>
+      <p class="selected-preferences-hint">Everything you choose above will appear here, so you can review or remove it before we search.</p>
+      <div class="selected-preferences-chips" id="selectedPreferencesChips"></div>
+    </div>
+
+    <div class="wizard-cta">
+      <h2 class="wizard-cta-title">Ready to discover something amazing?</h2>
+      <button type="button" class="home-btn home-btn-primary wizard-find-btn" id="findGamesBtn" disabled>
+        ✨ Find Games
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<section class="discover-results" id="discoverResults" aria-label="Game results">
+  <div class="home-container">
+    <div class="discover-results-head">
+      <h2 class="home-section-title">Games For You</h2>
+      <p class="discover-results-subtitle">We'll show games here once you've completed your discovery journey.</p>
+    </div>
+    <div class="discover-results-grid" id="discoverResultsGrid"></div>
+  </div>
+</section>
+
+</main>
+
+<footer class="home-footer">
+  <div class="home-container home-footer-inner">
+    <div class="home-footer-brand">
+      <div class="home-footer-logo">
+        <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+          <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+        </svg>
+        Nimlyx
+      </div>
+      <span class="home-footer-tag">Nimlyx analyzes Steam so you don't have to guess.</span>
+    </div>
+    <div class="home-footer-links">
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+      <a href="/contact">Contact</a>
+    </div>
+  </div>
+  <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+</footer>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/discover.js') }}"></script>
+</body>
+</html>
