@@ -22,7 +22,18 @@
     const state = {};
     let isFetching = false;
 
+    /* Pagination — offset-based infinite scroll. currentSearchParams
+       holds the wizard's answers as sent on the last "Find Games"
+       click; loadMoreGames() reuses it with a bumped offset so
+       scrolling further never re-asks the person anything. */
+    let currentSearchParams = null;
+    let currentOffset = 0;
+    let hasMoreResults = false;
+    let isLoadingMore = false;
+    let loadMoreObserver = null;
+
     let wizardEl, chipsContainer, findGamesBtn, resultsGrid, resultsSubtitle;
+    let resultsSection, resultsCount, resultsLoaderEl;
 
     /* ------------------------------------------------------------
        INIT
@@ -33,6 +44,9 @@
         findGamesBtn = document.getElementById("findGamesBtn");
         resultsGrid = document.getElementById("discoverResultsGrid");
         resultsSubtitle = document.querySelector(".discover-results-subtitle");
+        resultsSection = document.getElementById("discoverResults");
+        resultsCount = document.getElementById("discoverResultsCount");
+        resultsLoaderEl = document.querySelector(".discover-results-loader");
 
         if (!wizardEl) return;
 
@@ -187,16 +201,34 @@
         findGamesBtn.disabled = true;
         findGamesBtn.textContent = "Searching…";
 
+        teardownInfiniteScroll();
+        currentOffset = 0;
+        hasMoreResults = false;
+
         const params = new URLSearchParams();
         QUESTIONS.forEach((question) => {
             const answer = state[question.key];
             if (answer) params.set(question.key, answer.value);
         });
+        currentSearchParams = params;
 
         try {
             const response = await fetch(`/api/discover?${params.toString()}`);
             const data = await response.json();
-            renderResults(Array.isArray(data.games) ? data.games : []);
+            const games = Array.isArray(data.games) ? data.games : [];
+
+            renderResults(games);
+
+            currentOffset = typeof data.next_offset === "number" ? data.next_offset : games.length;
+            hasMoreResults = Boolean(data.has_more);
+
+            if (resultsCount && typeof data.total_matches === "number") {
+                resultsCount.textContent = `${data.total_matches} game${data.total_matches === 1 ? "" : "s"} matched your play style.`;
+            }
+
+            if (hasMoreResults) {
+                setupInfiniteScroll();
+            }
         } catch (error) {
             console.error("Error fetching discover results:", error);
             renderResults([]);
@@ -210,34 +242,105 @@
         }
     }
 
+    /* ------------------------------------------------------------
+       LOAD MORE — infinite scroll
+       Triggered by an IntersectionObserver watching the loader
+       element already sitting in the markup right after the grid
+       (see .discover-results-loader in discover.html/discover.css).
+       Reuses currentSearchParams so it never re-asks the wizard
+       questions; only the offset changes between pages.
+    ------------------------------------------------------------ */
+    async function loadMoreGames() {
+        if (isLoadingMore || !hasMoreResults || !currentSearchParams) return;
+
+        isLoadingMore = true;
+        if (resultsSection) resultsSection.classList.add("is-loading");
+
+        const params = new URLSearchParams(currentSearchParams);
+        params.set("offset", String(currentOffset));
+
+        try {
+            const response = await fetch(`/api/discover?${params.toString()}`);
+            const data = await response.json();
+            const games = Array.isArray(data.games) ? data.games : [];
+
+            games.forEach((game) => {
+                resultsGrid.appendChild(createGameCard(game));
+            });
+
+            currentOffset = typeof data.next_offset === "number" ? data.next_offset : currentOffset + games.length;
+            hasMoreResults = Boolean(data.has_more);
+
+            if (!hasMoreResults) {
+                teardownInfiniteScroll();
+                if (resultsSubtitle) {
+                    resultsSubtitle.textContent = "You've reached the end of your matches.";
+                }
+            }
+        } catch (error) {
+            console.error("Error loading more games:", error);
+            // Leave hasMoreResults untouched — the observer stays attached
+            // so scrolling can simply retry rather than getting stuck.
+        } finally {
+            isLoadingMore = false;
+            if (resultsSection) resultsSection.classList.remove("is-loading");
+        }
+    }
+
+    function setupInfiniteScroll() {
+        teardownInfiniteScroll();
+        if (!resultsLoaderEl || !("IntersectionObserver" in window)) return;
+
+        loadMoreObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) loadMoreGames();
+            });
+        }, { root: null, rootMargin: "400px 0px", threshold: 0 });
+
+        loadMoreObserver.observe(resultsLoaderEl);
+    }
+
+    function teardownInfiniteScroll() {
+        if (loadMoreObserver) {
+            loadMoreObserver.disconnect();
+            loadMoreObserver = null;
+        }
+    }
+
     const FALLBACK_IMAGE = "/static/images/game-placeholder.png";
 
     function createGameCard(game) {
-        const card = document.createElement("a");
-        card.className = "home-card";
-        card.href = game.analyze_url || "#";
+    const card = document.createElement("a");
+    card.className = "home-card";
+    card.href = game.analyze_url || "#";
 
-        card.innerHTML = `
-            <div class="home-card-media">
-                <img src="${game.header_image || FALLBACK_IMAGE}" alt="${game.name || ""}" loading="lazy">
+    card.innerHTML = `
+        <div class="home-card-media">
+            <img src="${game.best_image || game.header_default || game.large_image || game.image || FALLBACK_IMAGE}" alt="${game.name || ""}" loading="lazy">
+        </div>
+        <div class="home-card-body">
+            <h3 class="home-card-title">${game.name || ""}</h3>
+            <div class="home-card-divider"></div>
+            <div class="home-card-footer">
+                <span class="home-card-footer-left">${game.footer_left || ""}</span>
+                <span class="home-card-footer-right">${game.footer_right || ""}</span>
             </div>
-            <div class="home-card-body">
-                <h3 class="home-card-title">${game.name || ""}</h3>
-                <div class="home-card-divider"></div>
-                <div class="home-card-footer">
-                    <span class="home-card-footer-left">${game.footer_left || ""}</span>
-                    <span class="home-card-footer-right">${game.footer_right || ""}</span>
-                </div>
-            </div>
-        `;
+        </div>
+    `;
 
-        const img = card.querySelector(".home-card-media img");
-        img.addEventListener("error", () => {
-            img.src = FALLBACK_IMAGE;
-        }, { once: true });
+    const img = card.querySelector(".home-card-media img");
+    const fallbackChain = [game.best_image, game.header_default, game.large_image, game.image, FALLBACK_IMAGE].filter(Boolean);
+    let step = 0;
+    img.addEventListener("error", () => {
+        step += 1;
+        while (step < fallbackChain.length && fallbackChain[step] === img.src) step += 1;
+        if (step < fallbackChain.length) {
+            img.src = fallbackChain[step];
+        }
+    }, { once: false });
 
-        return card;
-    }
+    return card;
+}
 
     function renderEmptyState() {
         resultsGrid.innerHTML = "";

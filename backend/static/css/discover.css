@@ -1,786 +1,578 @@
 /* ================================================================
-   NIMLYX — HOMEPAGE STYLES
-   Namespaced under .home-page / .home-* so nothing here can leak
-   into or collide with the rest of your site (e.g. the Search page).
-
-   -- TOKENS --
-   These are placeholders. If your Search page already has an
-   established palette/type scale, replace the values in :root
-   below with the real ones and every homepage component updates
-   automatically.
-   ================================================================ */
-
-:root{
-  --home-bg-base:#0a0e14;
-  --home-bg-elevated:#0d1220;
-  --home-glass-fill: rgba(255,255,255,0.045);
-  --home-glass-fill-strong: rgba(255,255,255,0.075);
-  --home-glass-border: rgba(255,255,255,0.09);
-  --home-glass-border-strong: rgba(255,255,255,0.16);
-  --home-accent:#3b82f6;
-  --home-accent-deep:#1d4ed8;
-  --home-text-primary:#e8ecf3;
-  --home-text-muted:#8b94a7;
-  --home-text-faint:#5b6478;
-  --home-radius-lg:18px;
-  --home-radius-md:14px;
-  --home-radius-sm:10px;
-  --home-font-display:'Space Grotesk',sans-serif;
-  --home-font-body:'Inter',sans-serif;
-  --home-font-mono:'JetBrains Mono',monospace;
-  --home-ease: cubic-bezier(.2,.7,.3,1);
-}
-
-/* ================================================================
-   PAGE-LEVEL BASE
-   Scoped to .home-page (set on <body>) rather than the bare `body`
-   selector, so this never affects other pages in the project.
-   ================================================================ */
-.home-page,
-.home-page *{ box-sizing:border-box; }
-
-.home-page{
-  margin:0;
-  background: radial-gradient(circle at 50% -10%, rgba(59,130,246,0.10), transparent 55%), var(--home-bg-base);
-  color:var(--home-text-primary);
-  font-family:var(--home-font-body);
-  line-height:1.5;
-  -webkit-font-smoothing:antialiased;
-}
-
-/* Minimal required resets — scoped, not global */
-.home-page a{ color:inherit; text-decoration:none; }
-.home-page button{ font-family:inherit; border:none; background:none; color:inherit; cursor:pointer; }
-.home-page img{ display:block; max-width:100%; }
-.home-page a:focus-visible,
-.home-page button:focus-visible,
-.home-page input:focus-visible{
-  outline:2px solid var(--home-accent);
-  outline-offset:3px;
-  border-radius:4px;
-}
-
-.home-container{ max-width:1280px; margin:0 auto; padding:0 40px; }
-
-/* ================================================================
-   HEADER
-   ================================================================ */
-.home-header{
-  position:sticky; top:0; z-index:60;
-  background:rgba(9,12,18,0.7);
-  backdrop-filter:blur(20px) saturate(150%);
-  -webkit-backdrop-filter:blur(20px) saturate(150%);
-  border-bottom:1px solid var(--home-glass-border);
-}
-.home-header-inner{
-  position:relative;
-  display:flex; align-items:center; gap:28px;
-  padding:14px 40px;
-}
-.home-logo{
-  display:flex; align-items:center; gap:9px;
-  font-family:var(--home-font-display); font-weight:600; font-size:1.15rem;
-  letter-spacing:-0.01em; flex-shrink:0;
-}
-
-/* mobile nav toggle (CSS-only, no JS) — checkbox stays keyboard-focusable
-   (visually hidden, not display:none) so Space still toggles it natively. */
-.home-nav-checkbox{
-  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
-}
-.home-nav-burger{
-  display:none; flex-direction:column; gap:5px; margin-left:auto;
-  padding:8px; cursor:pointer; border-radius:8px;
-}
-.home-nav-checkbox:focus-visible + .home-nav-burger{
-  outline:2px solid var(--home-accent); outline-offset:2px;
-}
-.home-nav-burger span{ width:20px; height:2px; background:var(--home-text-primary); border-radius:1px; }
-
-.home-nav-panel{
-  display:flex; align-items:center; gap:26px;
-  margin-left:auto; flex:1; justify-content:flex-end;
-}
-
-.home-nav{ display:flex; gap:24px; }
-.home-nav a{
-  font-size:.9rem; color:var(--home-text-muted); position:relative; padding:4px 0;
-  transition:color .2s var(--home-ease);
-}
-.home-nav a::after{
-  content:''; position:absolute; left:0; right:0; bottom:-2px; height:1px;
-  background:var(--home-accent); transform:scaleX(0); transform-origin:left;
-  transition:transform .25s var(--home-ease);
-}
-.home-nav a:hover{ color:var(--home-text-primary); }
-.home-nav a:hover::after{ transform:scaleX(1); }
-
-.home-search{
-  display:flex; align-items:center; gap:9px;
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:999px;
-  padding:9px 16px;
-  width:260px;
-  transition:border-color .25s var(--home-ease), background .25s var(--home-ease);
-}
-.home-search:focus-within{
-  border-color:var(--home-glass-border-strong);
-  background:var(--home-glass-fill-strong);
-}
-.home-search svg{ flex-shrink:0; color:var(--home-text-faint); }
-.home-search input{
-  background:none; border:none; color:var(--home-text-primary); font-size:.85rem; width:100%;
-}
-.home-search input::placeholder{ color:var(--home-text-faint); }
-.home-search input:focus{ outline:none; }
-
-.home-btn-ghost{
-  font-size:.86rem; color:var(--home-text-muted); padding:9px 18px; border-radius:999px;
-  border:1px solid var(--home-glass-border); white-space:nowrap;
-  transition:border-color .25s var(--home-ease), color .25s var(--home-ease), background .25s var(--home-ease);
-}
-.home-btn-ghost:hover{
-  color:var(--home-text-primary); border-color:var(--home-glass-border-strong); background:var(--home-glass-fill);
-}
-
-/* ================================================================
-   BUTTONS (shared)
-   ================================================================ */
-.home-btn{
-  display:inline-flex; align-items:center; gap:8px;
-  font-weight:600; font-size:.92rem; border-radius:999px;
-  padding:13px 24px;
-  transition:transform .3s var(--home-ease), box-shadow .3s var(--home-ease), filter .3s var(--home-ease);
-}
-.home-btn-primary{
-  background:linear-gradient(155deg, var(--home-accent), var(--home-accent-deep));
-  color:#fff;
-  box-shadow:0 12px 28px -10px rgba(59,130,246,0.5);
-}
-.home-btn-primary:hover{ transform:translateY(-2px); filter:brightness(1.08); box-shadow:0 16px 34px -10px rgba(59,130,246,0.6); }
-.home-btn-primary:active{ transform:translateY(0); }
-
-/* ================================================================
-   HERO
-   ================================================================ */
-.home-hero{
-  position:relative;
-  height:66vh; min-height:560px;
-  overflow:hidden;
-  cursor:pointer;
-}
-.home-hero-track{ position:absolute; inset:0; }
-.home-hero-slide{
-  position:absolute; inset:0;
-  background-color:var(--home-bg-elevated);
-  background-size:cover; background-position:center;
-  opacity:0;
-  transition:opacity 1.4s ease;
-}
-.home-hero-slide.is-active{ opacity:1; }
-
-.home-hero-overlay{
-  position:absolute; inset:0;
-  background:
-    linear-gradient(180deg, rgba(6,8,13,0.15) 0%, rgba(6,8,13,0.45) 48%, rgba(7,9,14,0.94) 100%),
-    linear-gradient(90deg, rgba(6,8,13,0.55) 0%, rgba(6,8,13,0.05) 45%);
-}
-
-.home-hero-content{
-  position:absolute; left:0; right:0; bottom:0; z-index:2;
-  padding-bottom:56px;
-}
-.home-hero-kicker{
-  display:inline-block;
-  font-family:var(--home-font-mono); font-size:.76rem; letter-spacing:.1em;
-  color:var(--home-text-muted); margin-bottom:16px;
-}
-.home-hero-title{
-  font-family:var(--home-font-display); font-weight:700;
-  font-size:clamp(2.2rem, 4.4vw, 3.6rem);
-  letter-spacing:-0.02em; line-height:1.05;
-  margin-bottom:16px; max-width:760px;
-  transition:opacity .3s ease;
-}
-.home-hero-desc{
-  font-size:1.05rem; color:var(--home-text-muted); max-width:520px; line-height:1.65;
-  margin-bottom:28px;
-  transition:opacity .3s ease;
-}
-.home-hero-indicators{ display:flex; gap:8px; margin-top:30px; }
-.home-hero-dot{
-  width:26px; height:4px; border-radius:2px; 
-  background:rgba(255,255,255,0.15);
-  position:relative; overflow:hidden; padding:0;
-  cursor: pointer;
-  transition:width .3s var(--home-ease), background .3s var(--home-ease);
-}
-.home-hero-dot:hover{ background:rgba(255,255,255,0.3); }
-.home-hero-dot.is-active{ width:32px; background:rgba(255,255,255,0.1); }
-.home-hero-dot.is-active::after{
-  content:''; position:absolute; inset:0; 
-  background: linear-gradient(90deg, var(--home-accent), #60A5FA);
-  border-radius: 2px;
-  transform-origin:left; 
-  animation:homeDotFill 3.5s linear forwards;
-  box-shadow: 0 0 8px rgba(59,130,246,0.5);
-}
-@keyframes homeDotFill{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
-
-/* ================================================================
-   SECTIONS (generic)
-   ================================================================ */
-.home-section{ padding-top:100px; }
-.home-section-head{
-  display:flex; justify-content:space-between; align-items:flex-end; gap:24px;
-  margin-bottom:32px; flex-wrap:wrap;
-}
-.home-eyebrow{
-  display:block; font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--home-accent); margin-bottom:10px;
-}
-.home-section-title{
-  font-family:var(--home-font-display); font-size:1.75rem; font-weight:600; letter-spacing:-0.01em;
-}
-.home-view-all{
-  display:inline-flex; align-items:center; gap:7px;
-  font-size:.87rem; color:var(--home-text-muted);
-  padding:10px 18px; border-radius:999px; border:1px solid var(--home-glass-border);
-  transition:color .25s var(--home-ease), border-color .25s var(--home-ease);
-  flex-shrink:0;
-}
-.home-view-all svg{ transition:transform .25s var(--home-ease); }
-.home-view-all:hover{ color:var(--home-text-primary); border-color:var(--home-glass-border-strong); }
-.home-view-all:hover svg{ transform:translateX(3px); }
-
-/* ================================================================
-   CARD — one reusable component, four sections
-   ================================================================ */
-.home-card-grid{
-  display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:20px;
-}
-.home-card{
-  display:block;
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
-  overflow:hidden;
-  transition:transform .35s var(--home-ease), border-color .35s var(--home-ease), box-shadow .35s var(--home-ease);
-}
-.home-card:hover{
-  transform:translateY(-6px);
-  border-color:var(--home-glass-border-strong);
-  box-shadow:0 24px 46px -22px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.15);
-}
-.home-card-media{
-  position:relative; height:140px; overflow:hidden;
-  background:var(--home-bg-elevated);
-}
-.home-card-media img{
-  width:100%; height:100%; object-fit:cover;
-  transition:transform .5s var(--home-ease);
-}
-.home-card:hover .home-card-media img{ transform:scale(1.06); }
-.home-card-badge{
-  position:absolute; top:12px; left:12px;
-  font-family:var(--home-font-mono); font-size:.72rem;
-  background:rgba(8,10,16,0.6); border:1px solid rgba(255,255,255,0.14);
-  color:var(--home-text-primary);
-  padding:5px 10px; border-radius:999px; backdrop-filter:blur(6px);
-}
-.home-card-body{ padding:16px 18px 18px; }
-.home-card-title{
-  font-family:var(--home-font-display); font-size:1rem; font-weight:600;
-  letter-spacing:-0.005em; margin-bottom:12px;
-}
-.home-card-meta{ display:flex; flex-direction:column; gap:3px; }
-.home-card-stat{ display:flex; align-items:baseline; gap:7px; }
-.home-card-value{ font-family:var(--home-font-mono); font-size:1rem; font-weight:600; color:var(--home-text-primary); }
-.home-card-price-was{
-  font-family:var(--home-font-mono); font-size:.78rem; color:var(--home-text-faint);
-  text-decoration:line-through;
-}
-.home-card-label{ font-size:.76rem; color:var(--home-text-muted); }
-
-/* ================================================================
-   WHY NIMLYX
-   ================================================================ */
-.home-why{ padding-bottom:110px; }
-.home-why-head{ max-width:620px; margin-bottom:8px; }
-.home-why-grid{
-  display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;
-  margin-top:40px;
-}
-.home-feature-card{
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
-  padding:30px 26px;
-  transition:border-color .3s var(--home-ease), transform .3s var(--home-ease);
-}
-.home-feature-card:hover{ border-color:var(--home-glass-border-strong); transform:translateY(-4px); }
-.home-feature-mark{ color:var(--home-accent); margin-bottom:20px; }
-.home-feature-title{
-  font-family:var(--home-font-display); font-size:1.05rem; font-weight:600; margin-bottom:10px;
-  letter-spacing:-0.005em;
-}
-.home-feature-text{ color:var(--home-text-muted); font-size:.9rem; line-height:1.65; }
-
-/* ================================================================
-   FOOTER
-   ================================================================ */
-.home-footer{ border-top:1px solid var(--home-glass-border); padding:40px 0 36px; }
-.home-footer-inner{ display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
-.home-footer-brand{ display:flex; flex-direction:column; gap:8px; }
-.home-footer-logo{ display:flex; align-items:center; gap:9px; font-family:var(--home-font-display); font-weight:600; font-size:1rem; }
-.home-footer-tag{ font-size:.83rem; color:var(--home-text-faint); }
-.home-footer-links{ display:flex; gap:20px; }
-.home-footer-links a{ font-size:.83rem; color:var(--home-text-muted); transition:color .2s var(--home-ease); }
-.home-footer-links a:hover{ color:var(--home-text-primary); }
-.home-footer-copy{ font-size:.78rem; color:var(--home-text-faint); margin-top:18px; }
-
-/* ================================================================
-   RESPONSIVE
-   ================================================================ */
-@media (max-width:1100px){
-  .home-container{ padding:0 28px; }
-  .home-header-inner{ padding:14px 28px; }
-  .home-card-grid{ grid-template-columns:repeat(2, 1fr); }
-  .home-why-grid{ grid-template-columns:1fr; }
-}
-
-@media (max-width:900px){
-  .home-nav-burger{ display:flex; }
-  .home-nav-panel{
-    display:none;
-    position:absolute; top:100%; left:0; right:0;
-    flex-direction:column; align-items:stretch; gap:16px;
-    background:rgba(9,12,18,0.97);
-    border-bottom:1px solid var(--home-glass-border);
-    padding:20px 24px 26px;
-  }
-  .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
-  .home-nav{ flex-direction:column; gap:14px; }
-  .home-search{ width:100%; }
-}
-
-@media (max-width:640px){
-  .home-hero{ height:auto; min-height:0; padding-top:56px; padding-bottom:40px; }
-  /* position:relative (not static) keeps this in normal flow for height
-     purposes, but still lets it paint above the absolutely-positioned
-     background/overlay layers instead of falling behind them. */
-  .home-hero-content{ position:relative; padding-bottom:0; margin-top:24px; }
-  .home-hero-title{ font-size:2rem; }
-  .home-card-grid{ grid-template-columns:1fr; }
-  .home-section{ padding-top:64px; }
-  .home-why{ padding-bottom:64px; }
-  .home-section-head{ align-items:flex-start; }
-  .home-footer-inner{ flex-direction:column; align-items:flex-start; }
-}
-
-/* ================================================================
-   REDUCED MOTION
-   ================================================================ */
-@media (prefers-reduced-motion: reduce){
-  .home-page *{
-    animation-duration:.01ms !important;
-    animation-iteration-count:1 !important;
-    transition-duration:.01ms !important;
-  }
-}
-.home-search {
-    position: relative;
-}
-/* ================================================================
-   SEARCH SUGGESTIONS DROPDOWN
-   ================================================================ */
-.suggestions-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    width: 280px;
-
-    background: rgba(9, 12, 18, 0.96);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-
-    border: 1px solid var(--home-glass-border-strong);
-    border-radius: var(--home-radius-md);
-    overflow: hidden;
-    box-shadow: 0 24px 46px -22px rgba(0,0,0,0.6);
-    z-index: 999;
-}
-
-.suggestions-dropdown:empty { display: none; }
-
-.suggestion-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--home-glass-border);
-    transition: background .2s var(--home-ease);
-}
-
-.suggestion-item:last-child { border-bottom: none; }
-
-.suggestion-item:hover,
-.suggestion-item.active-suggestion {
-    background: rgba(59, 130, 246, 0.12);
-}
-
-.suggestion-item img {
-    width: 64px;
-    height: 30px;
-    object-fit: cover;
-    border-radius: 5px;
-    flex-shrink: 0;
-}
-
-.suggestion-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.suggestion-name {
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--home-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.suggestion-dev {
-    font-size: 12px;
-    color: var(--home-text-muted);
-}
-/* ================================================================
-   CARD FOOTER — replaces the old single stat_value/stat_label
-   with a two-column left/right layout + divider. Each section
-   passes different meaning into the same two slots, so cards stay
-   visually consistent while the *information* changes per section.
-   ================================================================ */
-.home-card-divider {
-  height: 1px;
-  background: var(--home-glass-border);
-  margin: 12px 0 10px;
-}
-
-.home-card-footer {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.home-card-footer-left {
-  font-family: var(--home-font-mono);
-  font-size: .88rem;
-  font-weight: 600;
-  color: var(--home-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.home-card-footer-right {
-  font-family: var(--home-font-mono);
-  font-size: .88rem;
-  font-weight: 600;
-  color: var(--home-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Discount rows ("-75%") get a positive/green treatment on the left */
-#deals .home-card-footer-left {
-  color: #34D399;
-}
-
-/* Free to Play rows get the same green treatment */
-#free-to-play .home-card-footer-left {
-  color: #34D399;
-}
-
-/* New releases "New" tag in accent blue */
-#new-releases .home-card-footer-left {
-  color: var(--home-accent);
-}
-/* ================================================================
    NIMLYX — DISCOVER PAGE STYLES
-   Namespaced under .discover-page / .discover-* — reuses the same
-   design tokens declared in :root above, so both pages stay visually
-   consistent without duplicating values.
+   Extends style.css. Defines NO new color tokens — every value here
+   pulls from the :root custom properties already declared in
+   style.css (--home-accent, --home-glass-*, --home-text-*, --home-
+   radius-*, --home-font-*, --home-ease). This file only adds layout
+   and components that style.css doesn't already cover.
+
+   Load order: style.css, then discover.css (as in discover.html).
    ================================================================ */
 
-.discover-page,
-.discover-page *{ box-sizing:border-box; }
-
-.discover-page{
-  margin:0;
-  background: radial-gradient(circle at 50% -10%, rgba(59,130,246,0.10), transparent 55%), var(--home-bg-base);
-  color:var(--home-text-primary);
-  font-family:var(--home-font-body);
-  line-height:1.5;
-  -webkit-font-smoothing:antialiased;
-}
-
-.discover-page a{ color:inherit; text-decoration:none; }
-.discover-page button{ font-family:inherit; border:none; background:none; color:inherit; cursor:pointer; }
-.discover-page img{ display:block; max-width:100%; }
-.discover-page a:focus-visible,
-.discover-page button:focus-visible,
-.discover-page input:focus-visible{
-  outline:2px solid var(--home-accent);
-  outline-offset:3px;
-  border-radius:4px;
-}
-
-/* ----------------------------------------------------------------
-   HERO
-   ---------------------------------------------------------------- */
-.discover-hero{
-  padding:88px 0 64px;
-  text-align:center;
-}
-.discover-hero .home-container{
-  max-width:680px;
+/* ================================================================
+   PAGE INTRO
+   ================================================================ */
+.discover-intro{
+  padding:72px 0 44px;
 }
 .discover-hero-eyebrow{
-  display:inline-block;
-  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--home-accent); margin-bottom:18px;
-}
-.discover-hero-title{
-  font-family:var(--home-font-display); font-weight:700;
-  font-size:clamp(2rem, 4vw, 3.1rem);
-  letter-spacing:-0.02em; line-height:1.1;
-  margin-bottom:18px;
-}
-.discover-hero-subtitle{
-  font-size:1.02rem; color:var(--home-text-muted); line-height:1.65;
-  max-width:520px; margin:0 auto 32px;
-}
-.discover-hero-start{
-  display:inline-flex; align-items:center; gap:8px;
-  font-size:.88rem; font-weight:600; color:var(--home-text-primary);
-  padding:12px 22px; border-radius:999px;
-  border:1px solid var(--home-glass-border);
-  background:var(--home-glass-fill);
-  transition:border-color .25s var(--home-ease), background .25s var(--home-ease), transform .25s var(--home-ease);
-}
-.discover-hero-start:hover{
-  border-color:var(--home-glass-border-strong);
-  background:var(--home-glass-fill-strong);
-  transform:translateY(-2px);
-}
-.discover-hero-start span{
-  transition:transform .25s var(--home-ease);
-}
-.discover-hero-start:hover span{ transform:translateY(2px); }
-
-/* ----------------------------------------------------------------
-   WIZARD — shared chapter shell
-   ---------------------------------------------------------------- */
-.discover-wizard{ padding-bottom:100px; }
-
-.wizard-question{
-  padding:56px 0;
-  border-bottom:1px solid var(--home-glass-border);
-}
-.wizard-question:first-of-type{ padding-top:0; }
-
-.wizard-question.is-hidden{ display:none; }
-
-.wizard-step-label{
   display:block;
   font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
   text-transform:uppercase; color:var(--home-accent); margin-bottom:14px;
 }
-.wizard-question-title{
-  font-family:var(--home-font-display); font-size:1.55rem; font-weight:600;
-  letter-spacing:-0.01em; line-height:1.3; margin-bottom:10px;
-  max-width:640px;
+.discover-page-title{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:clamp(1.9rem, 3.2vw, 2.6rem);
+  letter-spacing:-0.02em; line-height:1.1;
+  margin:0 0 14px;
 }
-.wizard-question-hint{
-  font-size:.92rem; color:var(--home-text-muted); line-height:1.6;
-  max-width:520px; margin-bottom:32px;
+.discover-page-subtitle{
+  font-size:1rem; color:var(--home-text-muted); max-width:560px; line-height:1.65; margin:0;
 }
 
-/* ----------------------------------------------------------------
-   OPTION CARDS
-   ---------------------------------------------------------------- */
+/* ================================================================
+   TWO-COLUMN SHELL
+   ================================================================ */
+.discover-shell{ padding-bottom:120px; }
+
+.discover-columns{
+  display:grid;
+  grid-template-columns:300px minmax(0,1fr);
+  /* align-items intentionally left at its default (stretch), NOT
+     "start". Stretch makes .discover-sidebar's own box match the
+     full height of .discover-main (whichever column is taller), so
+     the sticky panel inside it has real room to travel for the
+     entire page instead of running out of box at its own content
+     height. This is the two-layer sticky pattern Notion/Linear/
+     GitHub sidebars use — see .discover-sidebar-panel below. */
+  gap:40px;
+}
+
+/* ================================================================
+   SIDEBAR
+   ================================================================ */
+/* .discover-sidebar (the grid item) deliberately carries NO
+   position/height rules — it just stretches to fill the row via
+   the grid's default align-items:stretch above, becoming an
+   invisible "track" the same height as the main column. */
+
+.discover-sidebar-panel{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+  padding:28px;
+  transition:border-color .3s var(--home-ease);
+  /* Sticky lives on this INNER wrapper, not on .discover-sidebar
+     itself. Because the outer .discover-sidebar is now tall (see
+     above), this panel — which is only as tall as its own content —
+     has room to stay pinned at top:96px for the full scroll, and
+     only detaches at the true bottom of the row, i.e. exactly when
+     .discover-main ends. */
+  position:sticky;
+  top:96px; /* clears the sticky home-header */
+}
+
+.discover-sidebar-head{ margin-bottom:20px; }
+.discover-sidebar-title{
+  font-family:var(--home-font-display); font-size:1.05rem; font-weight:600;
+  letter-spacing:-0.005em; margin:0 0 8px;
+}
+.discover-sidebar-hint{
+  font-size:.82rem; color:var(--home-text-muted); line-height:1.55; margin:0;
+}
+
+/* Selections / preference chips ---------------------------------- */
+.selected-preferences-chips{
+  display:flex; flex-wrap:wrap; gap:8px;
+  margin-bottom:24px;
+}
+
+.discover-sidebar-empty{
+  width:100%;
+  font-size:.82rem; color:var(--home-text-faint); line-height:1.6;
+  text-align:center;
+  padding:22px 16px;
+  border:1px dashed var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  margin:0;
+}
+
+/* .preference-chip is rendered dynamically by discover.js into
+   #selectedPreferencesChips — styled here so each chip matches the
+   rest of the glass-pill language used in the header search / nav. */
+.preference-chip{
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--home-glass-fill-strong);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:999px;
+  padding:7px 8px 7px 14px;
+  font-size:.8rem; color:var(--home-text-primary);
+  line-height:1.2;
+  transition:border-color .25s var(--home-ease), background .25s var(--home-ease);
+}
+.preference-chip:hover{ border-color:rgba(59,130,246,0.4); }
+
+.preference-chip .chip-remove,
+.preference-chip button{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; flex-shrink:0;
+  border-radius:50%;
+  color:var(--home-text-faint);
+  font-size:.75rem; line-height:1;
+  background:rgba(255,255,255,0.06);
+  transition:background .2s var(--home-ease), color .2s var(--home-ease);
+}
+.preference-chip .chip-remove:hover,
+.preference-chip button:hover{
+  background:rgba(239,68,68,0.16);
+  color:#f87171;
+}
+
+/* Sort ------------------------------------------------------------ */
+.discover-sidebar-sort{
+  padding-top:20px;
+  border-top:1px solid var(--home-glass-border);
+}
+.discover-sidebar-subtitle{
+  font-family:var(--home-font-display); font-size:.86rem; font-weight:600;
+  letter-spacing:.02em; text-transform:uppercase; color:var(--home-text-muted);
+  margin:0 0 14px;
+}
+.discover-sort-options{
+  display:flex; flex-direction:column; gap:2px;
+}
+.discover-sort-options[aria-disabled="true"] .discover-sort-option{
+  cursor:not-allowed;
+}
+.discover-sort-option{
+  display:block;
+  font-size:.86rem; color:var(--home-text-muted);
+  padding:9px 12px;
+  border-radius:var(--home-radius-sm);
+  transition:background .2s var(--home-ease), color .2s var(--home-ease);
+}
+.discover-sort-option:hover{ background:var(--home-glass-fill); }
+.discover-sort-option.is-active{
+  color:var(--home-text-primary); font-weight:600;
+  background:rgba(59,130,246,0.1);
+}
+.discover-sort-note{
+  font-family:var(--home-font-mono); font-size:.72rem; color:var(--home-text-faint);
+  margin:12px 2px 0;
+}
+
+/* ================================================================
+   WIZARD
+   ================================================================ */
+.discover-wizard{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+  padding:44px;
+  position:relative;
+  overflow:hidden;
+}
+
+.wizard-question.is-hidden{ display:none; }
+.wizard-question.is-active{
+  display:block;
+  animation:discoverFadeUp .45s var(--home-ease);
+}
+
+.wizard-step-label{
+  display:inline-block;
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--home-accent); margin-bottom:14px;
+}
+.wizard-question-title{
+  font-family:var(--home-font-display); font-weight:600;
+  font-size:1.5rem; letter-spacing:-0.01em; line-height:1.25;
+  margin:0 0 10px;
+}
+.wizard-question-hint{
+  font-size:.92rem; color:var(--home-text-muted); margin:0 0 28px;
+}
+
 .wizard-options{
   display:grid;
-  grid-template-columns:repeat(4, minmax(0,1fr));
+  grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
   gap:14px;
 }
 
 .wizard-option{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:6px;
+  display:flex; flex-direction:column; gap:6px;
   text-align:left;
   background:var(--home-glass-fill);
   border:1px solid var(--home-glass-border);
   border-radius:var(--home-radius-md);
-  padding:20px 20px 18px;
-  transition:border-color .3s var(--home-ease), transform .3s var(--home-ease), background .3s var(--home-ease), box-shadow .3s var(--home-ease);
+  padding:18px 20px;
+  transition:transform .3s var(--home-ease), border-color .3s var(--home-ease),
+             background .3s var(--home-ease), box-shadow .3s var(--home-ease);
 }
 .wizard-option:hover{
+  transform:translateY(-3px);
   border-color:var(--home-glass-border-strong);
-  transform:translateY(-4px);
-  box-shadow:0 20px 38px -20px rgba(0,0,0,0.55);
+  background:var(--home-glass-fill-strong);
 }
-.wizard-option.is-selected{
+
+/* Selected-state — covers whichever selected/active class discover.js
+   applies to a chosen option (is-selected / selected / aria-pressed),
+   so the option reads clearly picked once the user clicks it. */
+.wizard-option.is-selected,
+.wizard-option.selected,
+.wizard-option[aria-pressed="true"]{
   border-color:var(--home-accent);
   background:rgba(59,130,246,0.1);
   box-shadow:0 0 0 1px rgba(59,130,246,0.35);
 }
-
-.wizard-option-icon{
-  width:34px; height:34px; border-radius:10px; margin-bottom:6px;
-  background:var(--home-glass-fill-strong);
-  border:1px solid var(--home-glass-border);
+.wizard-option.is-selected .wizard-option-title,
+.wizard-option.selected .wizard-option-title,
+.wizard-option[aria-pressed="true"] .wizard-option-title{
+  color:var(--home-text-primary);
 }
 
 .wizard-option-title{
-  font-family:var(--home-font-display); font-size:.98rem; font-weight:600;
-  letter-spacing:-0.005em;
+  font-family:var(--home-font-display); font-size:.95rem; font-weight:600;
+  letter-spacing:-0.005em; color:var(--home-text-primary);
 }
-
 .wizard-option-desc{
   font-size:.8rem; color:var(--home-text-muted); line-height:1.5;
 }
 
-/* Questions with two-line text-only options (no icon) can sit at three
-   per row comfortably, but four columns collapses gracefully below. */
-#question-2 .wizard-options,
-#question-3 .wizard-options,
-#question-4 .wizard-options,
-#question-5 .wizard-options{
-  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
-}
-
-/* ----------------------------------------------------------------
-   SELECTED PREFERENCES
-   ---------------------------------------------------------------- */
-.selected-preferences{
-  margin-top:20px;
-  padding:32px;
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
-}
-.selected-preferences-title{
-  font-family:var(--home-font-display); font-size:1.15rem; font-weight:600;
-  letter-spacing:-0.005em; margin-bottom:8px;
-}
-.selected-preferences-hint{
-  font-size:.87rem; color:var(--home-text-muted); line-height:1.6;
-  max-width:520px; margin-bottom:18px;
-}
-.selected-preferences-chips{
-  display:flex; flex-wrap:wrap; gap:10px;
-  min-height:2px;
-}
-.selected-preferences-chips:empty{ margin-bottom:0; }
-
-/* Chip styling — for JS to apply once populated */
-.preference-chip{
-  display:inline-flex; align-items:center; gap:8px;
-  font-family:var(--home-font-mono); font-size:.8rem;
-  color:var(--home-text-primary);
-  background:var(--home-glass-fill-strong);
-  border:1px solid var(--home-glass-border-strong);
-  border-radius:999px;
-  padding:8px 8px 8px 14px;
-}
-.preference-chip-remove{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:18px; height:18px; border-radius:50%;
-  color:var(--home-text-muted);
-  transition:background .2s var(--home-ease), color .2s var(--home-ease);
-}
-.preference-chip-remove:hover{
-  background:rgba(255,255,255,0.1); color:var(--home-text-primary);
-}
-
-/* ----------------------------------------------------------------
-   FIND GAMES CTA
-   ---------------------------------------------------------------- */
 .wizard-cta{
+  display:flex; flex-direction:column; align-items:center; gap:18px;
   text-align:center;
-  margin-top:56px;
-  padding:48px 32px;
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
+  margin-top:40px; padding-top:32px;
+  border-top:1px solid var(--home-glass-border);
 }
 .wizard-cta-title{
-  font-family:var(--home-font-display); font-size:1.3rem; font-weight:600;
-  letter-spacing:-0.01em; margin-bottom:22px;
+  font-family:var(--home-font-display); font-size:1.1rem; font-weight:600;
+  letter-spacing:-0.005em; margin:0;
 }
 .wizard-find-btn{
-  font-size:.95rem;
+  padding:15px 36px; font-size:.96rem;
 }
 .wizard-find-btn:disabled{
-  opacity:.45;
-  cursor:not-allowed;
+  opacity:.4;
+  pointer-events:none;
   box-shadow:none;
-  transform:none !important;
-}
-.wizard-find-btn:disabled:hover{
-  transform:none; filter:none; box-shadow:none;
 }
 
-/* ----------------------------------------------------------------
-   RESULTS
-   ---------------------------------------------------------------- */
-.discover-results{ padding:100px 0 110px; }
-.discover-results-head{ max-width:620px; margin-bottom:32px; }
-.discover-results-subtitle{
-  font-size:.92rem; color:var(--home-text-muted); margin-top:10px; line-height:1.6;
+@keyframes discoverFadeUp{
+  from{ opacity:0; transform:translateY(10px); }
+  to{ opacity:1; transform:translateY(0); }
 }
+
+/* ================================================================
+   RESULTS — cinematic recommendation grid
+   Every card below is still the shared .home-card component that
+   discover.js already renders (media > img, optional badge, body >
+   title, meta > stat > value/price-was/label, divider, footer >
+   footer-left/footer-right). Nothing here depends on new elements
+   or new classes discover.js would need to emit — the cinematic
+   look is achieved entirely by re-layering those existing children
+   with position/aspect-ratio, so the render function needs zero
+   changes.
+   ================================================================ */
+.discover-results{
+  margin-top:64px;
+}
+
+.discover-results-head{
+  max-width:640px;
+  margin-bottom:36px;
+}
+.discover-results-eyebrow{
+  display:block;
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--home-accent); margin-bottom:12px;
+}
+/* discover.js hook (not wired here): set #discoverResultsCount's
+   textContent to `${totalMatchCount} games matched your play style.`
+   using the TOTAL match count from the API response — not
+   discoverResultsGrid.children.length, which only reflects the cards
+   currently rendered on screen. Left as static, number-free copy
+   until that one line is added, per "don't hardcode numbers." */
+.discover-results-count{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:clamp(1.5rem, 2.4vw, 2rem);
+  letter-spacing:-0.02em; line-height:1.2;
+  margin:0 0 10px;
+}
+.discover-results-subtitle{
+  font-size:.95rem; color:var(--home-text-muted); margin:0; line-height:1.6;
+}
+
 .discover-results-grid{
   display:grid;
-  grid-template-columns:repeat(4, minmax(0,1fr));
-  gap:20px;
-  min-height:2px;
+  grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));
+  gap:30px;
 }
 
 /* ----------------------------------------------------------------
-   RESPONSIVE
+   CARD — poster-style tile. The card itself carries the 3:4 frame;
+   media and body are both absolutely positioned inside it so the
+   artwork fills the whole tile and the copy floats on top of it,
+   on top of a bottom scrim, rather than living underneath the image
+   in its own boxed-off area.
    ---------------------------------------------------------------- */
+.discover-results-grid .home-card{
+  position:relative;
+  aspect-ratio:3/4;
+  display:block;
+  border-radius:20px;
+  border:1px solid var(--home-glass-border);
+  background:var(--home-bg-elevated);
+  overflow:hidden;
+  box-shadow:0 20px 40px -26px rgba(0,0,0,.7);
+  transition:transform .5s var(--home-ease), box-shadow .5s var(--home-ease),
+             border-color .5s var(--home-ease);
+  animation:discoverCardIn .6s var(--home-ease) both;
+}
+.discover-results-grid .home-card:hover{
+  transform:translateY(-10px);
+  border-color:rgba(59,130,246,.45);
+  box-shadow:0 36px 64px -26px rgba(0,0,0,.75),
+             0 0 0 1px rgba(59,130,246,.28),
+             0 0 46px -14px rgba(59,130,246,.4);
+}
+.discover-results-grid .home-card:focus-visible{
+  outline:2px solid var(--home-accent);
+  outline-offset:3px;
+}
+
+@keyframes discoverCardIn{
+  from{ opacity:0; transform:translateY(16px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* Artwork fills the entire tile */
+.discover-results-grid .home-card-media{
+  position:absolute; inset:0; height:auto;
+  border-radius:inherit;
+  background:var(--home-bg-elevated);
+}
+.discover-results-grid .home-card-media img{
+  width:100%; height:100%;
+  object-fit:cover; object-position:center 35%;
+  transition:transform 1s var(--home-ease);
+}
+.discover-results-grid .home-card:hover .home-card-media img{
+  transform:scale(1.08);
+}
+/* Bottom scrim so overlaid text stays legible over any artwork,
+   without a hard divider line anywhere on the card */
+.discover-results-grid .home-card-media::after{
+  content:"";
+  position:absolute; inset:0;
+  background:linear-gradient(to top,
+    rgba(6,9,16,.95) 0%,
+    rgba(6,9,16,.82) 20%,
+    rgba(6,9,16,.38) 46%,
+    rgba(6,9,16,0) 68%);
+  pointer-events:none;
+}
+.discover-results-grid .home-card-badge{
+  top:16px; left:16px;
+  background:rgba(6,9,16,.55);
+  border-color:var(--home-glass-border-strong);
+  backdrop-filter:blur(10px) saturate(160%);
+  -webkit-backdrop-filter:blur(10px) saturate(160%);
+}
+
+/* Copy floats over the scrim at the bottom of the tile */
+.discover-results-grid .home-card-body{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:20px 20px 22px;
+  background:none;
+  transition:transform .5s var(--home-ease);
+}
+.discover-results-grid .home-card:hover .home-card-body{
+  transform:translateY(-6px);
+}
+.discover-results-grid .home-card-title{
+  font-size:1.1rem; margin-bottom:10px;
+  text-shadow:0 2px 16px rgba(0,0,0,.55);
+}
+
+/* No divider line — replaced with spacing */
+.discover-results-grid .home-card-divider{ display:none; }
+
+.discover-results-grid .home-card-meta{ margin-bottom:2px; }
+.discover-results-grid .home-card-stat{ flex-wrap:wrap; gap:0; }
+.discover-results-grid .home-card-value{ font-size:1rem; }
+.discover-results-grid .home-card-price-was,
+.discover-results-grid .home-card-label{
+  display:inline-flex; align-items:center; gap:8px;
+}
+.discover-results-grid .home-card-price-was::before,
+.discover-results-grid .home-card-label::before{
+  content:"•";
+  color:var(--home-text-faint);
+}
+.discover-results-grid .home-card-label{
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.02em;
+}
+
+.discover-results-grid .home-card-footer{
+  margin-top:12px;
+}
+.discover-results-grid .home-card-footer-left,
+.discover-results-grid .home-card-footer-right{
+  font-size:.82rem;
+}
+
+/* "Analyze" affordance — a hover cue layered on top of the card via
+   generated content, since the card itself is already the click
+   target discover.js wires up. Nothing here hides or replaces real
+   rendered data (price/discount/review still show above it); it's a
+   purely decorative label that eases upward into view on hover. */
+.discover-results-grid .home-card-body::after{
+  content:"Analyze →";
+  display:block;
+  margin-top:14px;
+  font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
+  letter-spacing:.02em; color:var(--home-accent);
+  opacity:0; transform:translateY(8px);
+  transition:opacity .4s var(--home-ease), transform .4s var(--home-ease);
+}
+.discover-results-grid .home-card:hover .home-card-body::after{
+  opacity:1; transform:translateY(0);
+}
+
+/* Infinite-scroll loading indicator — hidden until discover.js's
+   pagination logic adds an `.is-loading` class to #discoverResults
+   while the next batch of matches is being fetched. Purely visual;
+   no scroll-listening or fetch behavior is implied or wired here. */
+.discover-results-loader{
+  display:flex; justify-content:center; align-items:center; gap:8px;
+  height:0; overflow:hidden; opacity:0;
+  transition:opacity .3s var(--home-ease), height .3s var(--home-ease);
+}
+.discover-results.is-loading .discover-results-loader{
+  height:60px; opacity:1; margin-top:12px;
+}
+.discover-results-loader span{
+  width:7px; height:7px; border-radius:50%;
+  background:var(--home-accent);
+  animation:discoverLoaderPulse 1.1s ease-in-out infinite;
+}
+.discover-results-loader span:nth-child(2){ animation-delay:.15s; }
+.discover-results-loader span:nth-child(3){ animation-delay:.3s; }
+@keyframes discoverLoaderPulse{
+  0%, 80%, 100%{ opacity:.25; transform:scale(.8); }
+  40%{ opacity:1; transform:scale(1); }
+}
+
+/* ================================================================
+   SKELETON LOADING (shimmer, no spinner)
+   Same 3:4 tile shape as the real card above, with its own bottom
+   overlay bars standing in for title/meta, so the grid never jumps
+   when discover.js swaps skeletons for real cards.
+   ---------------------------------------------------------------- */
+.discover-skeleton-card{
+  position:relative;
+  aspect-ratio:3/4;
+  border-radius:20px;
+  border:1px solid var(--home-glass-border);
+  overflow:hidden;
+}
+.discover-skeleton-shimmer{
+  position:absolute; inset:0;
+  background:linear-gradient(100deg,
+    var(--home-bg-elevated) 30%,
+    rgba(255,255,255,0.06) 50%,
+    var(--home-bg-elevated) 70%);
+  background-size:200% 100%;
+  animation:discoverShimmer 1.6s ease-in-out infinite;
+}
+.discover-skeleton-overlay{
+  position:absolute; left:0; right:0; bottom:0;
+  padding:20px 20px 22px;
+}
+.discover-skeleton-line{
+  height:12px;
+  border-radius:var(--home-radius-sm);
+  background:linear-gradient(100deg,
+    var(--home-glass-fill-strong) 30%,
+    rgba(255,255,255,0.14) 50%,
+    var(--home-glass-fill-strong) 70%);
+  background-size:200% 100%;
+  animation:discoverShimmer 1.6s ease-in-out infinite;
+}
+.discover-skeleton-line--title{ width:70%; height:16px; margin-bottom:12px; }
+.discover-skeleton-line--meta{ width:45%; }
+
+@keyframes discoverShimmer{
+  0%{ background-position:200% 0; }
+  100%{ background-position:-200% 0; }
+}
+
+/* ----------------------------------------------------------------
+   EMPTY STATE — not present in the current markup (no "no games
+   found" element exists yet), but provided so that whenever the
+   results grid needs one, dropping a `.discover-empty-state` block
+   into #discoverResultsGrid picks up matching styling with no
+   further CSS work.
+   ---------------------------------------------------------------- */
+.discover-empty-state{
+  grid-column:1 / -1;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  gap:10px;
+  background:var(--home-glass-fill);
+  border:1px dashed var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+  padding:64px 24px;
+  color:var(--home-text-muted);
+}
+.discover-empty-state-icon{
+  font-size:1.6rem; color:var(--home-text-faint); margin-bottom:4px;
+}
+.discover-empty-state-title{
+  font-family:var(--home-font-display); font-size:1.05rem; font-weight:600;
+  color:var(--home-text-primary); margin:0;
+}
+.discover-empty-state-text{
+  font-size:.86rem; max-width:360px; line-height:1.6; margin:0;
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
 @media (max-width:1100px){
-  .wizard-options{ grid-template-columns:repeat(2, 1fr); }
-  .discover-results-grid{ grid-template-columns:repeat(2, 1fr); }
+  .discover-columns{ grid-template-columns:260px minmax(0,1fr); gap:28px; }
+  .discover-wizard{ padding:32px; }
+  .discover-results-grid{ grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; }
 }
 
-@media (max-width:640px){
-  .discover-hero{ padding:64px 0 48px; }
-  .wizard-question{ padding:40px 0; }
+@media (max-width:900px){
+  .discover-columns{ grid-template-columns:1fr; }
+  .discover-sidebar-panel{ position:static; top:auto; }
+  .discover-intro{ padding:56px 0 32px; }
+}
+
+@media (max-width:700px){
+  .discover-wizard{ padding:24px; }
+  .discover-sidebar-panel{ padding:22px; }
+  .wizard-options{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); }
+  .wizard-question-title{ font-size:1.3rem; }
+  .discover-results-grid{ grid-template-columns:repeat(2, 1fr); gap:16px; }
+  .discover-results-grid .home-card,
+  .discover-skeleton-card{ aspect-ratio:4/5; border-radius:16px; }
+}
+
+@media (max-width:480px){
   .wizard-options{ grid-template-columns:1fr; }
-  #question-2 .wizard-options,
-  #question-3 .wizard-options,
-  #question-4 .wizard-options,
-  #question-5 .wizard-options{ grid-template-columns:1fr; }
   .discover-results-grid{ grid-template-columns:1fr; }
-  .wizard-cta{ padding:36px 20px; }
-  .selected-preferences{ padding:24px 20px; }
+  .discover-results-grid .home-card,
+  .discover-skeleton-card{ aspect-ratio:3/4; }
+  .wizard-cta{ margin-top:32px; padding-top:24px; }
 }
 
-@media (prefers-reduced-motion: reduce){
-  .discover-page *{
-    animation-duration:.01ms !important;
-    animation-iteration-count:1 !important;
-    transition-duration:.01ms !important;
-  }
-}
+/* ================================================================
+   REDUCED MOTION
+   Global .home-page * rule in style.css already collapses all
+   animation/transition durations site-wide, which covers the
+   shimmer, card-in, loader-pulse and hover keyframes above with no
+   extra rule needed.
+   ================================================================ */

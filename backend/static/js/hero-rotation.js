@@ -6,7 +6,7 @@
 ========================================================== */
 
 (function () {
-    const ROTATE_MS = 3500;
+    const ROTATE_MS = 4000;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const heroSection = document.getElementById("homeHero");

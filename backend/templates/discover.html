@@ -8,10 +8,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
 </head>
-<body class="discover-page">
+<body class="home-page discover-page">
 
+<!-- ============================================
+     HEADER — identical to homepage, unchanged
+     ============================================ -->
 <header class="home-header">
   <div class="home-container home-header-inner">
     <a href="/" class="home-logo" aria-label="Nimlyx home">
@@ -45,196 +49,279 @@
   </div>
 </header>
 
-<main>
+<main class="discover-shell">
 
-<section class="discover-hero" aria-label="Discover introduction">
-  <div class="home-container">
-    <span class="discover-hero-eyebrow">Your personal game guide</span>
-    <h1 class="discover-hero-title">Discover Your Next Game</h1>
-    <p class="discover-hero-subtitle">Answer a few questions and we'll narrow thousands of games into the ones that actually fit you.</p>
-    <a href="#question-1" class="discover-hero-start" id="startDiscoveringBtn">
-      Start Discovering
-      <span aria-hidden="true">↓</span>
-    </a>
+  <!-- ============================================
+       PAGE INTRO
+       ============================================ -->
+  <section class="discover-intro">
+    <div class="home-container">
+      <span class="discover-hero-eyebrow">Your personal game guide</span>
+      <h1 class="discover-page-title">Discover Your Next Game</h1>
+      <p class="discover-page-subtitle">Answer a few questions on the right your picks build up on the left as you go.</p>
+    </div>
+  </section>
+
+  <!-- ============================================
+       TWO COLUMN LAYOUT
+       ============================================ -->
+  <div class="home-container discover-columns">
+
+    <!-- ---------------- LEFT: FILTERS SIDEBAR ---------------- -->
+    <aside class="discover-sidebar">
+      <div class="discover-sidebar-panel">
+
+        <div class="discover-sidebar-head">
+          <h2 class="discover-sidebar-title">Your Selections</h2>
+          <p class="discover-sidebar-hint">Everything you choose will appear here. Remove any answer to revisit that step.</p>
+        </div>
+
+        <!-- JS renders .preference-chip items into this exact element -->
+        <div class="selected-preferences-chips" id="selectedPreferencesChips">
+          <p class="discover-sidebar-empty" id="sidebarEmptyState">No preferences selected yet start with Genre on the right.</p>
+        </div>
+
+        <!-- Sort menu — visual only for now. No JS hook exists to make
+             these functional yet; wiring them up would mean adding a
+             sort param to discover.js's fetch call and /api/discover,
+             which is out of scope for this HTML/CSS-only pass. -->
+        <div class="discover-sidebar-sort">
+          <h3 class="discover-sidebar-subtitle">Sort By</h3>
+          <div class="discover-sort-options" aria-disabled="true">
+            <span class="discover-sort-option is-active">Recommended</span>
+            <span class="discover-sort-option">Highest Rated</span>
+            <span class="discover-sort-option">Most Discounted</span>
+            <span class="discover-sort-option">Newest</span>
+            <span class="discover-sort-option">Price: Low → High</span>
+            <span class="discover-sort-option">Price: High → Low</span>
+          </div>
+          <p class="discover-sort-note">Sorting is coming soon.</p>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ---------------- RIGHT: WIZARD + RESULTS ---------------- -->
+    <div class="discover-main">
+
+      <section class="discover-wizard" id="discoverWizard" aria-label="Game discovery wizard">
+
+        <div class="wizard-question is-active" id="question-1" data-question="1">
+          <span class="wizard-step-label">Step 01</span>
+          <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
+          <p class="wizard-question-hint">Genre shapes everything else we'll ask next.</p>
+          <div class="wizard-options" role="group" aria-label="Genre options">
+            <button type="button" class="wizard-option" data-value="action">
+              <span class="wizard-option-title">Action</span>
+              <span class="wizard-option-desc">Fast Combat • Shooter</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="fantasy">
+              <span class="wizard-option-title">Fantasy</span>
+              <span class="wizard-option-desc">Magic • Dragons • RPG</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="horror">
+              <span class="wizard-option-title">Horror</span>
+              <span class="wizard-option-desc">Survival • Psychological</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="rpg">
+              <span class="wizard-option-title">RPG</span>
+              <span class="wizard-option-desc">Leveling • Story • Choices</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="racing">
+              <span class="wizard-option-title">Racing</span>
+              <span class="wizard-option-desc">Speed • Cars • Circuits</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="puzzle">
+              <span class="wizard-option-title">Puzzle</span>
+              <span class="wizard-option-desc">Logic • Mystery</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="simulation">
+              <span class="wizard-option-title">Simulation</span>
+              <span class="wizard-option-desc">Build • Manage</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="strategy">
+              <span class="wizard-option-title">Strategy</span>
+              <span class="wizard-option-desc">Plan • Command</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="wizard-question is-hidden" id="question-2" data-question="2">
+          <span class="wizard-step-label">Step 02</span>
+          <h2 class="wizard-question-title">Who are you playing with?</h2>
+          <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
+          <div class="wizard-options" role="group" aria-label="Playstyle options">
+            <button type="button" class="wizard-option" data-value="solo">
+              <span class="wizard-option-title">Solo</span>
+              <span class="wizard-option-desc">Play at your own pace.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="co-op">
+              <span class="wizard-option-title">Co-op</span>
+              <span class="wizard-option-desc">Enjoy together with friends.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="online-multiplayer">
+              <span class="wizard-option-title">Online Multiplayer</span>
+              <span class="wizard-option-desc">Compete with players worldwide.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="local-co-op">
+              <span class="wizard-option-title">Local Co-op</span>
+              <span class="wizard-option-desc">Share the screen, side by side.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="wizard-question is-hidden" id="question-3" data-question="3">
+          <span class="wizard-step-label">Step 03</span>
+          <h2 class="wizard-question-title">What's your budget?</h2>
+          <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
+          <div class="wizard-options" role="group" aria-label="Budget options">
+            <button type="button" class="wizard-option" data-value="free">
+              <span class="wizard-option-title">Free</span>
+              <span class="wizard-option-desc">No cost, no catch.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="under-10">
+              <span class="wizard-option-title">Under $10</span>
+              <span class="wizard-option-desc">Great value picks.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="under-20">
+              <span class="wizard-option-title">Under $20</span>
+              <span class="wizard-option-desc">A wider range of titles.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="under-40">
+              <span class="wizard-option-title">Under $40</span>
+              <span class="wizard-option-desc">Bigger productions, still reasonable.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="any-price">
+              <span class="wizard-option-title">Any Price</span>
+              <span class="wizard-option-desc">Show me everything.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="wizard-question is-hidden" id="question-4" data-question="4">
+          <span class="wizard-step-label">Step 04</span>
+          <h2 class="wizard-question-title">Minimum Review Score</h2>
+          <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
+          <div class="wizard-options" role="group" aria-label="Review score options">
+            <button type="button" class="wizard-option" data-value="any">
+              <span class="wizard-option-title">Any</span>
+              <span class="wizard-option-desc">Don't filter by reviews.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="positive">
+              <span class="wizard-option-title">Positive</span>
+              <span class="wizard-option-desc">Generally well liked.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="very-positive">
+              <span class="wizard-option-title">Very Positive</span>
+              <span class="wizard-option-desc">Consistently praised by players.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="overwhelmingly-positive">
+              <span class="wizard-option-title">Overwhelmingly Positive</span>
+              <span class="wizard-option-desc">Among the best reviewed on Steam.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="wizard-question is-hidden" id="question-5" data-question="5">
+          <span class="wizard-step-label">Step 05</span>
+          <h2 class="wizard-question-title">Platform</h2>
+          <p class="wizard-question-hint">Last step tell us where you'll be playing.</p>
+          <div class="wizard-options" role="group" aria-label="Platform options">
+            <button type="button" class="wizard-option" data-value="windows">
+              <span class="wizard-option-title">Windows</span>
+              <span class="wizard-option-desc">The most widely supported platform.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="linux">
+              <span class="wizard-option-title">Linux</span>
+              <span class="wizard-option-desc">Native or Proton-compatible titles.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="macos">
+              <span class="wizard-option-title">macOS</span>
+              <span class="wizard-option-desc">Built to run on your Mac.</span>
+            </button>
+            <button type="button" class="wizard-option" data-value="steam-deck">
+              <span class="wizard-option-title">Steam Deck</span>
+              <span class="wizard-option-desc">Verified for handheld play.</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="wizard-cta">
+          <h2 class="wizard-cta-title">Ready to discover something amazing?</h2>
+          <button type="button" class="home-btn home-btn-primary wizard-find-btn" id="findGamesBtn" disabled>
+            ✨ Find Games
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ============================================
+           RESULTS — cinematic recommendation grid
+           ============================================ -->
+      <section class="discover-results" id="discoverResults" aria-label="Game results">
+
+        <div class="discover-results-head">
+          <span class="discover-results-eyebrow">Curated for you</span>
+          <!-- discover.js hook (not wired here): set this element's
+               textContent to `${totalMatchCount} games matched your
+               play style.`, using the TOTAL match count from the API
+               response — not discoverResultsGrid.children.length,
+               which only reflects the cards currently on screen.
+               Left as static, number-free copy until that line is
+               added. -->
+          <h2 class="discover-results-count" id="discoverResultsCount">Recommendations, ranked for you</h2>
+          <p class="discover-results-subtitle" id="discoverResultsSubtitle">Showing your best matches first.</p>
+        </div>
+
+        <!-- Skeleton placeholders — purely decorative markup. discover.js
+             already does resultsGrid.innerHTML = "" the first time it
+             renders real results, so these are automatically cleared
+             without any JS changes. Shaped to match the real poster
+             cards 1:1 so nothing shifts when they swap in. -->
+        <div class="discover-results-grid" id="discoverResultsGrid">
+          <div class="discover-skeleton-card" aria-hidden="true">
+            <div class="discover-skeleton-shimmer"></div>
+            <div class="discover-skeleton-overlay">
+              <div class="discover-skeleton-line discover-skeleton-line--title"></div>
+              <div class="discover-skeleton-line discover-skeleton-line--meta"></div>
+            </div>
+          </div>
+          <div class="discover-skeleton-card" aria-hidden="true">
+            <div class="discover-skeleton-shimmer"></div>
+            <div class="discover-skeleton-overlay">
+              <div class="discover-skeleton-line discover-skeleton-line--title"></div>
+              <div class="discover-skeleton-line discover-skeleton-line--meta"></div>
+            </div>
+          </div>
+          <div class="discover-skeleton-card" aria-hidden="true">
+            <div class="discover-skeleton-shimmer"></div>
+            <div class="discover-skeleton-overlay">
+              <div class="discover-skeleton-line discover-skeleton-line--title"></div>
+              <div class="discover-skeleton-line discover-skeleton-line--meta"></div>
+            </div>
+          </div>
+          <div class="discover-skeleton-card" aria-hidden="true">
+            <div class="discover-skeleton-shimmer"></div>
+            <div class="discover-skeleton-overlay">
+              <div class="discover-skeleton-line discover-skeleton-line--title"></div>
+              <div class="discover-skeleton-line discover-skeleton-line--meta"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Infinite-scroll loading indicator — hidden until discover.js's
+             pagination logic adds an `.is-loading` class to #discoverResults
+             while the next batch of matches is being fetched. Purely
+             visual; no scroll-listening or fetch behavior is implied. -->
+        <div class="discover-results-loader" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+
+      </section>
+
+    </div>
+
   </div>
-</section>
-
-<section class="discover-wizard" id="discoverWizard" aria-label="Game discovery wizard">
-  <div class="home-container">
-
-    <div class="wizard-question is-active" id="question-1" data-question="1">
-      <span class="wizard-step-label">Step 01</span>
-      <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
-      <p class="wizard-question-hint">Genre shapes everything else we'll ask next.</p>
-      <div class="wizard-options" role="group" aria-label="Genre options">
-        <button type="button" class="wizard-option" data-value="action">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Action</span>
-          <span class="wizard-option-desc">Fast Combat • Shooter</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="fantasy">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Fantasy</span>
-          <span class="wizard-option-desc">Magic • Dragons • RPG</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="horror">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Horror</span>
-          <span class="wizard-option-desc">Survival • Psychological</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="rpg">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">RPG</span>
-          <span class="wizard-option-desc">Leveling • Story • Choices</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="racing">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Racing</span>
-          <span class="wizard-option-desc">Speed • Cars • Circuits</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="puzzle">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Puzzle</span>
-          <span class="wizard-option-desc">Logic • Mystery</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="simulation">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Simulation</span>
-          <span class="wizard-option-desc">Build • Manage</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="strategy">
-          <span class="wizard-option-icon" aria-hidden="true"></span>
-          <span class="wizard-option-title">Strategy</span>
-          <span class="wizard-option-desc">Plan • Command</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="wizard-question is-hidden" id="question-2" data-question="2">
-      <span class="wizard-step-label">Step 02</span>
-      <h2 class="wizard-question-title">Who are you playing with?</h2>
-      <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
-      <div class="wizard-options" role="group" aria-label="Playstyle options">
-        <button type="button" class="wizard-option" data-value="solo">
-          <span class="wizard-option-title">Solo</span>
-          <span class="wizard-option-desc">Play at your own pace.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="co-op">
-          <span class="wizard-option-title">Co-op</span>
-          <span class="wizard-option-desc">Enjoy together with friends.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="online-multiplayer">
-          <span class="wizard-option-title">Online Multiplayer</span>
-          <span class="wizard-option-desc">Compete with players worldwide.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="local-co-op">
-          <span class="wizard-option-title">Local Co-op</span>
-          <span class="wizard-option-desc">Share the screen, side by side.</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="wizard-question is-hidden" id="question-3" data-question="3">
-      <span class="wizard-step-label">Step 03</span>
-      <h2 class="wizard-question-title">What's your budget?</h2>
-      <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
-      <div class="wizard-options" role="group" aria-label="Budget options">
-        <button type="button" class="wizard-option" data-value="free">
-          <span class="wizard-option-title">Free</span>
-          <span class="wizard-option-desc">No cost, no catch.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="under-10">
-          <span class="wizard-option-title">Under $10</span>
-          <span class="wizard-option-desc">Great value picks.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="under-20">
-          <span class="wizard-option-title">Under $20</span>
-          <span class="wizard-option-desc">A wider range of titles.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="under-40">
-          <span class="wizard-option-title">Under $40</span>
-          <span class="wizard-option-desc">Bigger productions, still reasonable.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="any-price">
-          <span class="wizard-option-title">Any Price</span>
-          <span class="wizard-option-desc">Show me everything.</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="wizard-question is-hidden" id="question-4" data-question="4">
-      <span class="wizard-step-label">Step 04</span>
-      <h2 class="wizard-question-title">Minimum Review Score</h2>
-      <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
-      <div class="wizard-options" role="group" aria-label="Review score options">
-        <button type="button" class="wizard-option" data-value="any">
-          <span class="wizard-option-title">Any</span>
-          <span class="wizard-option-desc">Don't filter by reviews.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="positive">
-          <span class="wizard-option-title">Positive</span>
-          <span class="wizard-option-desc">Generally well liked.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="very-positive">
-          <span class="wizard-option-title">Very Positive</span>
-          <span class="wizard-option-desc">Consistently praised by players.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="overwhelmingly-positive">
-          <span class="wizard-option-title">Overwhelmingly Positive</span>
-          <span class="wizard-option-desc">Among the best reviewed on Steam.</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="wizard-question is-hidden" id="question-5" data-question="5">
-      <span class="wizard-step-label">Step 05</span>
-      <h2 class="wizard-question-title">Platform</h2>
-      <p class="wizard-question-hint">Last step — tell us where you'll be playing.</p>
-      <div class="wizard-options" role="group" aria-label="Platform options">
-        <button type="button" class="wizard-option" data-value="windows">
-          <span class="wizard-option-title">Windows</span>
-          <span class="wizard-option-desc">The most widely supported platform.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="linux">
-          <span class="wizard-option-title">Linux</span>
-          <span class="wizard-option-desc">Native or Proton-compatible titles.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="macos">
-          <span class="wizard-option-title">macOS</span>
-          <span class="wizard-option-desc">Built to run on your Mac.</span>
-        </button>
-        <button type="button" class="wizard-option" data-value="steam-deck">
-          <span class="wizard-option-title">Steam Deck</span>
-          <span class="wizard-option-desc">Verified for handheld play.</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="selected-preferences" id="selectedPreferences" aria-label="Selected preferences">
-      <h2 class="selected-preferences-title">Your Journey So Far</h2>
-      <p class="selected-preferences-hint">Everything you choose above will appear here, so you can review or remove it before we search.</p>
-      <div class="selected-preferences-chips" id="selectedPreferencesChips"></div>
-    </div>
-
-    <div class="wizard-cta">
-      <h2 class="wizard-cta-title">Ready to discover something amazing?</h2>
-      <button type="button" class="home-btn home-btn-primary wizard-find-btn" id="findGamesBtn" disabled>
-        ✨ Find Games
-      </button>
-    </div>
-
-  </div>
-</section>
-
-<section class="discover-results" id="discoverResults" aria-label="Game results">
-  <div class="home-container">
-    <div class="discover-results-head">
-      <h2 class="home-section-title">Games For You</h2>
-      <p class="discover-results-subtitle">We'll show games here once you've completed your discovery journey.</p>
-    </div>
-    <div class="discover-results-grid" id="discoverResultsGrid"></div>
-  </div>
-</section>
 
 </main>
 

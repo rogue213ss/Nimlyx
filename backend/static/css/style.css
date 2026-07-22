@@ -224,7 +224,7 @@
   background: linear-gradient(90deg, var(--home-accent), #60A5FA);
   border-radius: 2px;
   transform-origin:left; 
-  animation:homeDotFill 3.5s linear forwards;
+  animation:homeDotFill 4s linear forwards;
   box-shadow: 0 0 8px rgba(59,130,246,0.5);
 }
 @keyframes homeDotFill{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }

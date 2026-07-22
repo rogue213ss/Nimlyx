@@ -3,7 +3,7 @@ from flask_cors import CORS
 import re
 import requests
 from bs4 import BeautifulSoup
-
+from steam_images import get_cached_artwork, default_header_image
 app = Flask(__name__)
 CORS(app)
 
@@ -197,10 +197,25 @@ def parse_review_percent(game_anchor):
     return int(match.group(1)) if match else None
 
 
-def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=30):
+def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=100):
     """Scrapes Steam's search results using tag/price/os filters built
     from the discover wizard's answers. Review score isn't filterable
-    server-side, so it's applied afterwards in the /api/discover route."""
+    server-side, so it's applied afterwards in the /api/discover route.
+
+    count defaults to 100 (Steam's search page tops out comfortably
+    there in one request) instead of the old 30, so a single scrape can
+    back several pages of infinite scroll (12 → 24 → 36...) without
+    re-hitting Steam's search endpoint on every "load more". This is a
+    fixed-size buffer, not true unlimited pagination — if a filter
+    combination has fewer than `count` raw matches, scrolling will
+    eventually hit the real end of what's available rather than an
+    artificial page boundary. Good enough for the wizard's five filters;
+    would need Steam's own `start` paging to go further.
+
+    NOTE: this function only scrapes and returns raw candidates — no
+    per-game appdetails calls happen here anymore. Live price and
+    artwork lookups happen later in discover_api, and only for the 12
+    games on the page actually being shown, not the whole buffer."""
 
     tag_ids = []
     if genre in GENRE_TAG_IDS:
@@ -257,6 +272,11 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
 
         img = row.find("img")
         image = img["src"] if img else None
+        small_image = image
+        large_image = (
+            image.replace("capsule_231x87", "capsule_616x353")
+            if image else None
+        )
 
         price_div = row.find("div", class_="search_price_discount_combined")
         final_price_el = row.find("div", class_="discount_final_price")
@@ -268,18 +288,19 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
 
         discount_span = row.find("div", class_="discount_pct")
         discount_percent = discount_span.text.strip() if discount_span else None
-
         games.append({
             "id": app_id,
             "name": name,
-            "image": image,
-            "final_price": final_price,
+            "image": small_image,
+            "large_image": large_image,
+           "final_price": final_price,
             "original_price": original_price,
             "discount_percent": discount_percent,
             "review_percent": parse_review_percent(row),
         })
 
     return games
+
 
 
 def fetch_authoritative_price(app_id):
@@ -347,16 +368,18 @@ def fetch_authoritative_price(app_id):
             return None
 
         price_overview = game_data.get("price_overview")
-        if price_overview and "final" in price_overview:
-            return price_overview["final"]
+        if price_overview:
+            return {
+                "final": price_overview.get("final", 0),
+                "discount_percent": price_overview.get("discount_percent", 0),
+            }
 
         # No price_overview at all means the game is free (or has no
-        # listed price), matching how format_price() treats None/"0".
-        return 0
+        # listed price) — no discount to speak of either.
+        return {"final": 0, "discount_percent": 0}
 
     except (requests.exceptions.RequestException, ValueError):
         return None
-
 def to_discover_card(game):
     """Shapes a scraped game into the {name, header_image, analyze_url,
     footer_left, footer_right} card fields discover.js renders."""
@@ -370,18 +393,33 @@ def to_discover_card(game):
         n = int(s)
         return "Free" if n == 0 else f"${n / 100:.2f}"
 
+    def parse_discount(value):
+        if value is None:
+            return 0
+        if isinstance(value, int):
+            return value
+        digits = re.sub(r"[^\d]", "", str(value))
+        return int(digits) if digits else 0
+
     review_percent = game.get("review_percent")
     review_label = f"{review_percent}% Positive" if review_percent is not None else "No reviews yet"
+
+    discount_percent = parse_discount(game.get("discount_percent"))
+    price_label = format_price(game.get("final_price"))
+    footer_left = f"-{discount_percent}% · {price_label}" if discount_percent > 0 else price_label
 
     return {
         "id": game.get("id"),
         "name": game.get("name"),
         "header_image": game.get("image"),
+        "best_image": game.get("best_image"),
+        "header_default": game.get("header_default"),
+        "large_image": game.get("large_image"),
+        "image": game.get("image"),
         "analyze_url": f"/search?q={game.get('name', '')}",
-        "footer_left": format_price(game.get("final_price")),
+        "footer_left": footer_left,
         "footer_right": review_label,
     }
-
 
 # ==========================================================
 # HOMEPAGE — server-side rendered
@@ -708,6 +746,15 @@ def discover_api():
     platform = request.args.get("platform")
 
     try:
+        offset = int(request.args.get("offset", 0))
+    except (TypeError, ValueError):
+        offset = 0
+    if offset < 0:
+        offset = 0
+
+    PAGE_SIZE = 12
+
+    try:
         games = fetch_discover_games(
             genre=genre,
             play_with=play_with,
@@ -758,66 +805,67 @@ def discover_api():
         if budget == "free":
             games = [g for g in games if g.get("final_price") in ("0", 0)]
 
-        games = games[:12]
+        # ==========================================================
+        # NIMLYX TRADITION #007
+        #
+        # "Load more" needed more than a frontend trick.
+        #
+        # The button used to just render games[:12] — always the
+        # same 12, no matter how many times you clicked it.
+        #
+        # Turning that into real infinite scroll meant the backend
+        # had to know WHERE the user already was (offset), not just
+        # WHAT they asked for (genre/budget/etc). And since 100 raw
+        # candidates now come back per search instead of 30, doing
+        # a live price + artwork lookup on all of them up front
+        # would have undone the concurrency fix from Tradition #006.
+        #
+        # The fix: keep the full filtered list in memory, slice out
+        # only the 12 being shown *this request*, and only pay for
+        # live enrichment on that slice — not the other 88 games
+        # sitting in the buffer for later pages.
+        #
+        # Lesson:
+        # Pagination isn't "fetch less" — it's "fetch the same,
+        # but only enrich what's on screen."
+        #
+        # Battle Status:
+        # Victory.
+        # ==========================================================
 
-       # ==========================================================
-# NIMLYX TRADITION #006
-#
-# The Discover page felt... slow.
-#
-# We blamed Flask.
-# We blamed the internet.
-# We even blamed Steam.
-#
-# Turns out...
-#
-# We were politely waiting for 12 HTTP requests
-# to finish one after another.
-#
-# Request 1...
-# "After you."
-#
-# Request 2...
-# "No, after you."
-#
-# ...
-#
-# Request 12...
-#
-# Meanwhile, the user was wondering if Nimlyx had crashed.
-#
-# The solution:
-# Stop waiting.
-#
-# Ask everyone at once.
-#
-# Lesson:
-# Sequential code is simple.
-# Concurrent code is fast.
-#
-# Battle Status:
-# Victory.
-# ==========================================================
+        total_matches = len(games)
+        page_games = games[offset:offset + PAGE_SIZE]
+        has_more = offset + PAGE_SIZE < total_matches
 
-# Fetch live prices concurrently instead of sequentially.
-# This reduces the total wait time to roughly the duration
-# of the slowest request instead of the sum of all requests.
+        def enrich(g):
+            app_id = g.get("id")
+            return (
+                fetch_authoritative_price(app_id),
+                get_cached_artwork(app_id, use_case="discover"),
+                default_header_image(app_id),
+            )
+
         with ThreadPoolExecutor(max_workers=8) as executor:
-            live_prices = list(executor.map(
-                lambda g: fetch_authoritative_price(g.get("id")),
-                games
-            ))
+            enrichment = list(executor.map(enrich, page_games))
 
-        for g, live_price in zip(games, live_prices):
+        for g, (live_price, artwork, guaranteed_header) in zip(page_games, enrichment):
             if live_price is not None:
-                g["final_price"] = live_price
+                g["final_price"] = live_price["final"]
+                g["discount_percent"] = live_price["discount_percent"]
+            g["header_default"] = guaranteed_header
+            g["best_image"] = artwork["best_image"] if artwork else guaranteed_header
 
-        cards = [to_discover_card(g) for g in games]
+        cards = [to_discover_card(g) for g in page_games]
 
-        return jsonify({"games": cards})
+        return jsonify({
+            "games": cards,
+            "has_more": has_more,
+            "next_offset": offset + len(page_games),
+            "total_matches": total_matches,
+        })
 
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e), "games": []}), 500
+        return jsonify({"error": str(e), "games": [], "has_more": False}), 500
 @app.route("/search")
 def search_page():
     return render_template("search.html")
