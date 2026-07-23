@@ -1,4 +1,92 @@
 /* ==========================================================
+   REGION / CURRENCY PICKER
+   Auto-detected via IP on the backend; this lets the user override
+   it. "Auto" always maps back to whatever the backend detects.
+========================================================== */
+
+async function initRegionPicker() {
+    const picker = document.getElementById("regionPicker");
+    const trigger = document.getElementById("regionTrigger");
+    const triggerLabel = document.getElementById("regionTriggerLabel");
+    const menu = document.getElementById("regionMenu");
+    if (!picker || !trigger || !menu) return;
+
+    let currentValue = "auto";
+
+    async function applyChoice(choice) {
+        try {
+            if (choice === "auto") {
+                await fetch("/api/region/reset", { method: "POST" });
+            } else {
+                await fetch(`/api/region/${choice}`, { method: "POST" });
+            }
+            location.reload();
+        } catch (error) {
+            console.error("Error setting region:", error);
+        }
+    }
+
+    function renderMenu(data) {
+        currentValue = data.is_manual ? data.active : "auto";
+
+        const autoItem = {
+            value: "auto",
+            label: `Auto-detect (${data.detected})`
+        };
+        const items = [autoItem, ...(data.options || [])];
+
+        menu.innerHTML = items.map((opt, i) => `
+            ${i === 1 ? '<div class="region-picker__divider"></div>' : ""}
+            <div class="region-picker__item ${opt.value === currentValue || opt.code === currentValue ? "is-active" : ""}"
+                 role="option" data-value="${opt.value || opt.code}">
+                ${opt.label}
+            </div>
+        `).join("");
+
+        const activeItem = items.find(o => (o.value || o.code) === currentValue);
+        triggerLabel.textContent = activeItem ? activeItem.label : "Region";
+
+        menu.querySelectorAll(".region-picker__item").forEach(item => {
+            item.addEventListener("click", () => {
+                closeMenu();
+                applyChoice(item.dataset.value);
+            });
+        });
+    }
+
+    function openMenu() {
+        picker.classList.add("is-open");
+        trigger.setAttribute("aria-expanded", "true");
+    }
+    function closeMenu() {
+        picker.classList.remove("is-open");
+        trigger.setAttribute("aria-expanded", "false");
+    }
+
+    trigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        picker.classList.contains("is-open") ? closeMenu() : openMenu();
+    });
+    document.addEventListener("click", (e) => {
+        if (!picker.contains(e.target)) closeMenu();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeMenu();
+    });
+
+    try {
+        const res = await fetch("/api/region");
+        const data = await res.json();
+        renderMenu(data);
+    } catch (error) {
+        console.error("Error loading region options:", error);
+        triggerLabel.textContent = "Region";
+    }
+}
+
+initRegionPicker();
+
+/* ==========================================================
    SEARCH BAR + SUGGESTIONS (reused Nimlyx logic)
 ========================================================== */
 
@@ -337,12 +425,8 @@ function renderStats(game) {
             <span class="info-row__value">${platformNames.map(p => `<span class="mini-badge">${p}</span>`).join("")}</span>
         </div>
         <div class="info-row">
-            <span class="info-row__label"><i class="fa-solid fa-code"></i>Developer</span>
-            <span class="info-row__value">${(game.developers || []).join(", ") || "Unknown"}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-row__label"><i class="fa-solid fa-building"></i>Publisher</span>
-            <span class="info-row__value">${(game.publishers || []).join(", ") || "Unknown"}</span>
+            <span class="info-row__label"><i class="fa-solid fa-tags"></i>Genres</span>
+            <span class="info-row__value">${(game.genres || []).map(g => `<span class="mini-badge">${g}</span>`).join("") || "—"}</span>
         </div>
         <div class="info-row">
             <span class="info-row__label"><i class="fa-regular fa-calendar"></i>Release</span>

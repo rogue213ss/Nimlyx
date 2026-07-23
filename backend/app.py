@@ -9,13 +9,118 @@ CORS(app)
 
 
 # ==========================================================
+# REGION / CURRENCY — resolves which Steam "cc" (country code)
+# to use for a given request. Priority:
+#   1. Manual override cookie (set via the region picker in the UI)
+#   2. IP geolocation (best-effort, cached per IP for this process)
+#   3. "US" fallback
+# Steam prices/formats everything server-side once you pass the
+# right cc — no currency-symbol logic needed on our end.
+# ==========================================================
+
+REGION_OPTIONS = [
+    {"code": "US", "label": "United States (USD)"},
+    {"code": "PK", "label": "Pakistan (PKR)"},
+    {"code": "GB", "label": "United Kingdom (GBP)"},
+    {"code": "IN", "label": "India (INR)"},
+    {"code": "DE", "label": "Germany (EUR)"},
+    {"code": "CA", "label": "Canada (CAD)"},
+    {"code": "AU", "label": "Australia (AUD)"},
+    {"code": "AE", "label": "UAE (AED)"},
+    {"code": "TR", "label": "Turkey (TRY)"},
+    {"code": "JP", "label": "Japan (JPY)"},
+    {"code": "BR", "label": "Brazil (BRL)"},
+]
+REGION_CODES = {opt["code"] for opt in REGION_OPTIONS}
+
+_geoip_cache = {}
+
+
+def get_client_ip():
+    """Devtunnels/reverse proxies put the real client IP in
+    X-Forwarded-For; fall back to the raw socket address."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr
+
+
+def geo_lookup_cc(ip):
+    """Best-effort IP -> ISO country code lookup via ip-api.com's free
+    tier (no key required). Returns None on any failure — callers fall
+    back to 'US' rather than blocking the page on a flaky lookup."""
+    if not ip or ip in ("127.0.0.1", "localhost", "::1"):
+        return None
+    if ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("172."):
+        return None
+
+    if ip in _geoip_cache:
+        return _geoip_cache[ip]
+
+    cc = None
+    try:
+        resp = requests.get(
+            f"http://ip-api.com/json/{ip}?fields=status,countryCode",
+            timeout=3,
+        )
+        data = resp.json()
+        if data.get("status") == "success":
+            cc = data.get("countryCode")
+    except (requests.exceptions.RequestException, ValueError):
+        cc = None
+
+    _geoip_cache[ip] = cc
+    return cc
+
+
+def get_region_code():
+    """The cc to use for this request: manual cookie override first,
+    otherwise IP geolocation, otherwise 'US'."""
+    cookie_cc = (request.cookies.get("nimlyx_cc") or "").upper()
+    if cookie_cc in REGION_CODES:
+        return cookie_cc
+
+    detected = geo_lookup_cc(get_client_ip())
+    return (detected or "US").upper()
+
+
+@app.route("/api/region")
+def get_region():
+    cookie_cc = (request.cookies.get("nimlyx_cc") or "").upper()
+    detected = (geo_lookup_cc(get_client_ip()) or "US").upper()
+    return jsonify({
+        "active": cookie_cc if cookie_cc in REGION_CODES else detected,
+        "detected": detected,
+        "is_manual": cookie_cc in REGION_CODES,
+        "options": REGION_OPTIONS,
+    })
+
+
+@app.route("/api/region/<code>", methods=["POST"])
+def set_region(code):
+    code = code.strip().upper()
+    if code not in REGION_CODES:
+        return jsonify({"error": "Unsupported region code"}), 400
+    resp = jsonify({"region": code})
+    resp.set_cookie("nimlyx_cc", code, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return resp
+
+
+@app.route("/api/region/reset", methods=["POST"])
+def reset_region():
+    resp = jsonify({"region": "auto"})
+    resp.delete_cookie("nimlyx_cc")
+    return resp
+
+
+# ==========================================================
 # SHARED SCRAPER — used by /api/browse, /api/verdicts, and home()
 # ==========================================================
 
-def fetch_browse_category(category, count=25):
+def fetch_browse_category(category, count=25, cc="US"):
     url = (
         f"https://store.steampowered.com/search/results/"
-        f"?query=&start=0&count={count}&filter={category}&cc=US&l=english"
+        f"?query=&start=0&count={count}&filter={category}&cc={cc}&l=english"
     )
 
     response = requests.get(url, timeout=10)
@@ -197,7 +302,7 @@ def parse_review_percent(game_anchor):
     return int(match.group(1)) if match else None
 
 
-def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=100):
+def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=100, cc="US"):
     """Scrapes Steam's search results using tag/price/os filters built
     from the discover wizard's answers. Review score isn't filterable
     server-side, so it's applied afterwards in the /api/discover route.
@@ -228,7 +333,7 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
         "start": 0,
         "count": count,
         "category1": 998,  # Games only — excludes DLC, soundtracks, software
-        "cc": "US",
+        "cc": cc,
         "l": "english",
     }
     if tag_ids:
@@ -303,7 +408,7 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
 
 
 
-def fetch_authoritative_price(app_id):
+def fetch_authoritative_price(app_id, cc="US"):
     """The /search/results/ listing (used by fetch_discover_games) caches
     its prices and can lag behind a game's real store-page price by hours
     or days after a change. This fetches the live price straight from
@@ -353,7 +458,7 @@ def fetch_authoritative_price(app_id):
 # Match the exact request used by /api/find and /api/game.
 # Even small query parameter differences create a different
 # Steam CDN cache key and may return stale pricing.
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
         response = requests.get(url, timeout=8)
         response.raise_for_status()
         data = response.json()
@@ -442,9 +547,10 @@ def home():
         return ", ".join(labels) if labels else "—"
 
     try:
-        top_sellers_raw = fetch_browse_category("topsellers")
-        specials_raw = fetch_browse_category("specials")
-        new_releases_raw = fetch_browse_category("popularnew")
+        cc = get_region_code()
+        top_sellers_raw = fetch_browse_category("topsellers", cc=cc)
+        specials_raw = fetch_browse_category("specials", cc=cc)
+        new_releases_raw = fetch_browse_category("popularnew", cc=cc)
 
         def hero_image_url(appid, fallback):
           # ==========================================================
@@ -573,7 +679,8 @@ def hello():
 @app.route("/api/game/<app_id>")
 def get_game(app_id):
     try:
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+        cc = get_region_code()
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
@@ -590,9 +697,10 @@ def get_game(app_id):
 @app.route("/api/verdicts")
 def verdicts():
     try:
-        top_sellers = fetch_browse_category("topsellers")
-        specials = fetch_browse_category("specials")
-        new_releases = fetch_browse_category("popularnew")
+        cc = get_region_code()
+        top_sellers = fetch_browse_category("topsellers", cc=cc)
+        specials = fetch_browse_category("specials", cc=cc)
+        new_releases = fetch_browse_category("popularnew", cc=cc)
 
         def discount_num(g):
             d = g.get("discount_percent")
@@ -619,7 +727,8 @@ def verdicts():
 @app.route("/api/search/<game_name>")
 def search_game(game_name):
     try:
-        url = f"https://store.steampowered.com/api/storesearch/?term={game_name}&l=english&cc=US"
+        cc = get_region_code()
+        url = f"https://store.steampowered.com/api/storesearch/?term={game_name}&l=english&cc={cc}"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         return jsonify(response.json())
@@ -630,7 +739,8 @@ def search_game(game_name):
 
 @app.route("/api/find/<game_name>")
 def find_game(game_name):
-    search_url = f"https://store.steampowered.com/api/storesearch/?term={game_name}&l=english&cc=US"
+    cc = get_region_code()
+    search_url = f"https://store.steampowered.com/api/storesearch/?term={game_name}&l=english&cc={cc}"
     search_response = requests.get(search_url)
     search_data = search_response.json()
 
@@ -639,7 +749,7 @@ def find_game(game_name):
 
     app_id = search_data["items"][0]["id"]
 
-    details_url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+    details_url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
     details_response = requests.get(details_url)
     details_data = details_response.json()
 
@@ -686,7 +796,8 @@ def find_game(game_name):
 
 @app.route("/api/featured")
 def featured_games_api():
-    url = "https://store.steampowered.com/api/featuredcategories?l=english&cc=US"
+    cc = get_region_code()
+    url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
     response = requests.get(url)
     data = response.json()
 
@@ -755,11 +866,13 @@ def discover_api():
     PAGE_SIZE = 12
 
     try:
+        cc = get_region_code()
         games = fetch_discover_games(
             genre=genre,
             play_with=play_with,
             budget=budget,
             platform=platform,
+            cc=cc,
         )
 
         min_percent = REVIEW_SCORE_MIN_PERCENT.get(review_score, 0)
@@ -840,7 +953,7 @@ def discover_api():
         def enrich(g):
             app_id = g.get("id")
             return (
-                fetch_authoritative_price(app_id),
+                fetch_authoritative_price(app_id, cc=cc),
                 get_cached_artwork(app_id, use_case="discover"),
                 default_header_image(app_id),
             )
