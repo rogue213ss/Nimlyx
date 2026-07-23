@@ -735,28 +735,42 @@ def search_game(game_name):
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+def get_appdetails(app_id, cc):
+    url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
+    data = requests.get(url).json()
+    if data.get(str(app_id), {}).get("success"):
+        return data[str(app_id)]["data"]
+    return None
+import re
 
+def clean_search_term(name):
+    # Strip punctuation that breaks Steam's storesearch matching,
+    # collapse whitespace
+    cleaned = re.sub(r"[^\w\s]", " ", name)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 @app.route("/api/find/<game_name>")
 def find_game(game_name):
     cc = get_region_code()
-    search_url = f"https://store.steampowered.com/api/storesearch/?term={game_name}&l=english&cc={cc}"
-    search_response = requests.get(search_url)
-    search_data = search_response.json()
+    term = clean_search_term(game_name)
+    print("RESOLVED CC:", cc)
+    search_url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
+    search_data = requests.get(search_url).json()
+    print("SEARCH ITEMS:", search_data.get("items"))
 
-    if not search_data["items"]:
+    if not search_data.get("items"):
         return jsonify({"error": "No game found"}), 404
 
     app_id = search_data["items"][0]["id"]
-
-    details_url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
-    details_response = requests.get(details_url)
-    details_data = details_response.json()
-
-    if not details_data[str(app_id)]["success"]:
+    print("APP ID:", app_id)
+    raw = get_appdetails(app_id, cc)
+    print("APPDETAILS WITH cc=", cc, "-> success:", raw is not None)
+    if raw is None:
+        raw = get_appdetails(app_id, "US")  # fallback for region-unavailable titles
+        print("APPDETAILS WITH cc=US -> success:", raw is not None)
+    if raw is None:
         return jsonify({"error": "Details not found"}), 404
-
-    raw = details_data[str(app_id)]["data"]
 
     clean_data = {
         "name": raw.get("name"),

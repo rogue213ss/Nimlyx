@@ -1,20 +1,19 @@
 /* ================================================================
-   NIMLYX — ANALYZE / SEARCH PAGE
+   NIMLYX — ANALYZE / SEARCH PAGE (BASE / DESKTOP)
    Rebuilt on the same design system as the homepage — same variable
    names, same fonts, same glass/blue language — so this page reads
    as the SAME product, not a separate project bolted on.
 
-   Every id/class that search.js reads or writes to is preserved:
-   #gameInput #searchBtn #suggestions #heroBg #heroKicker #heroTitle
-   #heroMeta #steamLink #watchTrailerBtn #aboutText #featuredImg
-   #thumbStrip #stripPrev #stripNext .featured-wrap #trailerSection
-   #trailerFrame #genreList #devValue #pubValue #scoreProgress
-   #scoreVerdict #scoreNote #scoreValue #statsRows .reveal/.in-view
-   .thumb/.is-active .meta-chip* .is-good/.is-mid/.is-low .genre-pill
-   .info-row* .mini-badge .trailer__player/.trailer__empty
-   .suggestion-item .suggestion-info .suggestion-name .suggestion-dev
-   .active-suggestion
-   ================================================================ */
+   The header is now the literal .home-header / .home-nav /
+   .home-search component from index.html (copied verbatim, see the
+   HEADER section below) instead of a bespoke .topbar/.brand/
+   .search-bar system, so the nav bar is pixel-identical across
+   Home, Discover, and this page. Two page-specific additions ride
+   alongside it: the #searchBtn button (this page's search is
+   JS-driven, not a submitting <form>) and the region picker.
+
+  
+================================= */
 
 /* ================================================================
    TOKENS — identical names/values to the homepage's :root, so both
@@ -91,47 +90,146 @@ a:focus-visible, button:focus-visible, input:focus-visible{
 }
 
 /* ================================================================
-   TOPBAR
+   CONTAINER — same centering rule as style.css's .home-container,
+   copied here since this page doesn't load style.css directly.
    ================================================================ */
-.topbar{
-  position:sticky; top:0; z-index:40;
-  display:flex; align-items:center; justify-content:space-between;
-  gap:24px;
-  padding:16px clamp(20px,4vw,48px);
-  background:rgba(10,14,20,.72);
-  backdrop-filter:blur(18px) saturate(160%);
-  -webkit-backdrop-filter:blur(18px) saturate(160%);
-  border-bottom:none;
-  box-shadow:0 24px 40px -28px rgba(0,0,0,.7);
+.home-container{ max-width:1280px; margin:0 auto; padding:0 40px; }
+
+/* ================================================================
+   HEADER — copied verbatim from index.html's .home-header system.
+   ================================================================ */
+.home-header{
+  position:sticky; top:0; z-index:60;
+  background:rgba(9,12,18,0.7);
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border-bottom:1px solid var(--home-glass-border);
 }
-.brand{
-  display:flex; align-items:center; gap:10px;
-  font-family:var(--home-font-display); font-weight:700; font-size:1.15rem;
-  letter-spacing:-0.01em;
-  flex-shrink:0;
-}
-.search-bar{
+.home-header-inner{
   position:relative;
-  display:flex; align-items:center; gap:8px;
-  width:100%; max-width:480px;
+  display:flex; align-items:center; gap:28px;
+  padding:14px 40px;
+}
+.home-logo{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--home-font-display); font-weight:600; font-size:1.15rem;
+  letter-spacing:-0.01em; flex-shrink:0;
+}
+
+.home-nav-checkbox{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+.home-nav-burger{
+  display:none; flex-direction:column; gap:5px; margin-left:auto;
+  padding:8px; cursor:pointer; border-radius:8px;
+}
+.home-nav-checkbox:focus-visible + .home-nav-burger{
+  outline:2px solid var(--home-accent); outline-offset:2px;
+}
+.home-nav-burger span{ width:20px; height:2px; background:var(--home-text-primary); border-radius:1px; }
+
+.home-nav-panel{
+  display:flex; align-items:center; gap:26px;
+  margin-left:auto; flex:1; justify-content:flex-end;
+}
+
+.home-nav{ display:flex; gap:24px; }
+.home-nav a{
+  font-size:.9rem; color:var(--home-text-muted); position:relative; padding:4px 0;
+  transition:color .2s var(--home-ease);
+}
+.home-nav a::after{
+  content:''; position:absolute; left:0; right:0; bottom:-2px; height:1px;
+  background:var(--home-accent); transform:scaleX(0); transform-origin:left;
+  transition:transform .25s var(--home-ease);
+}
+.home-nav a:hover{ color:var(--home-text-primary); }
+.home-nav a:hover::after{ transform:scaleX(1); }
+
+.home-search{
+  position:relative;
+  display:flex; align-items:center; gap:9px;
   background:var(--home-glass-fill);
   border:1px solid var(--home-glass-border);
   border-radius:999px;
-  padding:10px 8px 10px 18px;
+  padding:9px 9px 9px 16px;
+  width:260px;
   transition:border-color .25s var(--home-ease), background .25s var(--home-ease);
 }
-.search-bar:focus-within{
+.home-search:focus-within{
   border-color:var(--home-glass-border-strong);
   background:var(--home-glass-fill-strong);
 }
-.search-bar input{
-  flex:1; min-width:0;
-  background:none; border:none; color:var(--home-text-primary);
-  font-family:var(--home-font-body); font-size:.92rem;
+.home-search svg{ flex-shrink:0; color:var(--home-text-faint); }
+.home-search input{
+  background:none; border:none; color:var(--home-text-primary); font-size:.85rem; width:100%;
 }
-.search-bar input::placeholder{ color:var(--home-text-faint); }
-.search-bar input:focus{ outline:none; }
+.home-search input::placeholder{ color:var(--home-text-faint); }
+.home-search input:focus{ outline:none; }
 
+/* Functional search-submit button — page-specific addition. Home's
+   nav search has no button (its icon is decorative, Enter submits
+   the <form>); this page's search is JS-driven via #searchBtn, so
+   it's folded into the same pill. */
+.home-search button{
+  display:flex; align-items:center; justify-content:center;
+  width:28px; height:28px; flex-shrink:0;
+  border-radius:50%;
+  background:var(--home-accent);
+  color:#fff; font-size:.78rem;
+  transition:background .2s var(--home-ease), transform .2s var(--home-ease);
+}
+.home-search button:hover{ background:var(--home-accent-deep); transform:translateY(-1px); }
+
+.home-btn-ghost{
+  font-size:.86rem; color:var(--home-text-muted); padding:9px 18px; border-radius:999px;
+  border:1px solid var(--home-glass-border); white-space:nowrap;
+  transition:border-color .25s var(--home-ease), color .25s var(--home-ease), background .25s var(--home-ease);
+}
+.home-btn-ghost:hover{
+  color:var(--home-text-primary); border-color:var(--home-glass-border-strong); background:var(--home-glass-fill);
+}
+
+/* ---- Search suggestions dropdown — positioned relative to
+   .home-search (position:relative, set above). Kept as this page's
+   own richer version (larger thumbnails, blurred panel) rather than
+   the plainer homepage one, since this page's suggestions carry
+   more visual weight (game art + dev name). ---- */
+.suggestions-dropdown{
+  position:absolute; top:calc(100% + 10px); left:0; right:0;
+  background:var(--home-bg-elevated);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:var(--home-radius-md);
+  box-shadow:var(--home-shadow-lg);
+  overflow:hidden;
+  z-index:50;
+}
+.suggestions-dropdown:empty{ display:none; border:none; box-shadow:none; }
+.suggestion-item{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--home-glass-border);
+  transition:background .15s var(--home-ease);
+  cursor:pointer;
+}
+.suggestion-item:last-child{ border-bottom:none; }
+.suggestion-item:hover,
+.suggestion-item.active-suggestion{ background:var(--home-glass-fill-strong); }
+.suggestion-item img{
+  width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0;
+  background:var(--home-bg-elevated);
+}
+.suggestion-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.suggestion-name{
+  font-size:.88rem; font-weight:600; color:var(--home-text-primary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.suggestion-dev{ font-size:.78rem; color:var(--home-text-muted); }
+
+/* ---- Region picker — page-specific, no equivalent on Home/
+   Discover, but built from the same glass/blue tokens so it reads
+   as part of the same system. ---- */
 .region-picker{
   position:relative;
   flex-shrink:0;
@@ -193,46 +291,6 @@ a:focus-visible, button:focus-visible, input:focus-visible{
   height:1px; margin:6px 4px;
   background:var(--home-glass-border);
 }
-.search-bar button{
-  display:flex; align-items:center; justify-content:center;
-  width:34px; height:34px; flex-shrink:0;
-  border-radius:50%;
-  background:var(--home-accent);
-  color:#fff; font-size:.85rem;
-  transition:background .2s var(--home-ease), transform .2s var(--home-ease);
-}
-.search-bar button:hover{ background:var(--home-accent-deep); transform:translateY(-1px); }
-
-.suggestions-dropdown{
-  position:absolute; top:calc(100% + 10px); left:0; right:0;
-  background:var(--home-bg-elevated);
-  border:1px solid var(--home-glass-border-strong);
-  border-radius:var(--home-radius-md);
-  box-shadow:var(--home-shadow-lg);
-  overflow:hidden;
-  z-index:50;
-}
-.suggestions-dropdown:empty{ display:none; border:none; box-shadow:none; }
-.suggestion-item{
-  display:flex; align-items:center; gap:12px;
-  padding:10px 14px;
-  border-bottom:1px solid var(--home-glass-border);
-  transition:background .15s var(--home-ease);
-  cursor:pointer;
-}
-.suggestion-item:last-child{ border-bottom:none; }
-.suggestion-item:hover,
-.suggestion-item.active-suggestion{ background:var(--home-glass-fill-strong); }
-.suggestion-item img{
-  width:40px; height:40px; border-radius:8px; object-fit:cover; flex-shrink:0;
-  background:var(--home-bg-elevated);
-}
-.suggestion-info{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-.suggestion-name{
-  font-size:.88rem; font-weight:600; color:var(--home-text-primary);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.suggestion-dev{ font-size:.78rem; color:var(--home-text-muted); }
 
 /* ================================================================
    HERO — single full-bleed image (search.js only ever sets .src on
@@ -627,49 +685,3 @@ a:focus-visible, button:focus-visible, input:focus-visible{
   background:var(--home-accent); flex-shrink:0;
 }
 .genre-pill:hover{ border-color:rgba(59,130,246,.4); transform:translateY(-2px); }
-
-/* ================================================================
-   RESPONSIVE
-   ================================================================ */
-@media (max-width:980px){
-  .stats-spotlight{ grid-template-columns:1fr; }
-  .hero{ height:clamp(420px, 70vh, 620px); }
-  .hero__panel{ max-width:100%; }
-}
-
-@media (max-width:700px){
-  .topbar{ flex-wrap:wrap; gap:14px; padding:14px 20px; }
-  .search-bar{ max-width:100%; order:3; flex-basis:100%; }
-
-  .hero{ height:clamp(380px, 62vh, 520px); }
-  .hero__content{ padding:0 20px 36px; }
-  .hero__panel{ padding:22px 20px; border-radius:var(--home-radius-lg); }
-  .hero__title{ font-size:1.7rem; }
-  .hero__ctas{ flex-direction:column; }
-  .hero__ctas .btn{ width:100%; justify-content:center; }
-
-  .page{ gap:44px; padding-bottom:80px; }
-  .panel:first-of-type{ margin-top:44px; }
-  .panel{ padding:22px; border-radius:var(--home-radius-lg); }
-  .panel__title{ font-size:1.25rem; }
-  .ai-tag{ margin-left:0; }
-
-  .thumb{ width:110px; height:64px; }
-  .strip-nav{ display:none; }
-
-  .stats-grid{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
-}
-
-@media (max-width:480px){
-  .hero{ height:clamp(340px, 58vh, 460px); }
-  .hero__content{ padding:0 16px 24px; }
-  .hero__panel{ padding:18px 16px; }
-  .hero__title{ font-size:1.4rem; }
-  .hero__meta{ gap:8px; margin-bottom:20px; }
-  .meta-chip{ font-size:.78rem; padding:6px 12px; }
-  .hero__ctas{ gap:10px; }
-
-  .page{ gap:32px; }
-  .panel:first-of-type{ margin-top:28px; }
-  .panel{ padding:18px; }
-}

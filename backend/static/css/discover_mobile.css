@@ -1,0 +1,41 @@
+/* ================================================================
+   NIMLYX — DISCOVER PAGE STYLES (MOBILE / RESPONSIVE OVERRIDES)
+   Load this file AFTER discover.css (which itself loads after
+   style.css). Contains every viewport-size media query pulled out
+   of the base discover stylesheet.
+
+   Note: the reduced-motion rule was left out entirely here (and out
+   of discover.css) since the global .home-page * rule in style.css
+   already covers it site-wide — see the comment at the bottom of
+   discover.css.
+   ================================================================ */
+
+@media (max-width:1100px){
+  .discover-columns{ grid-template-columns:260px minmax(0,1fr); gap:28px; }
+  .discover-wizard{ padding:32px; }
+  .discover-results-grid{ grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; }
+}
+
+@media (max-width:900px){
+  .discover-columns{ grid-template-columns:1fr; }
+  .discover-sidebar-panel{ position:static; top:auto; }
+  .discover-intro{ padding:56px 0 32px; }
+}
+
+@media (max-width:700px){
+  .discover-wizard{ padding:24px; }
+  .discover-sidebar-panel{ padding:22px; }
+  .wizard-options{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); }
+  .wizard-question-title{ font-size:1.3rem; }
+  .discover-results-grid{ grid-template-columns:repeat(2, 1fr); gap:16px; }
+  .discover-results-grid .home-card,
+  .discover-skeleton-card{ aspect-ratio:4/5; border-radius:16px; }
+}
+
+@media (max-width:480px){
+  .wizard-options{ grid-template-columns:1fr; }
+  .discover-results-grid{ grid-template-columns:1fr; }
+  .discover-results-grid .home-card,
+  .discover-skeleton-card{ aspect-ratio:3/4; }
+  .wizard-cta{ margin-top:32px; padding-top:24px; }
+}

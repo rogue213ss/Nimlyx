@@ -1,0 +1,45 @@
+/* ================================================================
+   NIMLYX — HOMEPAGE STYLES (MOBILE / RESPONSIVE OVERRIDES)
+   Load this file AFTER nimlyx-home.css.
+
+   Contains every viewport-size media query pulled out of the base
+   stylesheet. The prefers-reduced-motion query was intentionally
+   left in the base file since it's an accessibility preference,
+   not a breakpoint.
+   ================================================================ */
+
+@media (max-width:1100px){
+  .home-container{ padding:0 28px; }
+  .home-header-inner{ padding:14px 28px; }
+  .home-card-grid{ grid-template-columns:repeat(2, 1fr); }
+  .home-why-grid{ grid-template-columns:1fr; }
+}
+
+@media (max-width:900px){
+  .home-nav-burger{ display:flex; }
+  .home-nav-panel{
+    display:none;
+    position:absolute; top:100%; left:0; right:0;
+    flex-direction:column; align-items:stretch; gap:16px;
+    background:rgba(9,12,18,0.97);
+    border-bottom:1px solid var(--home-glass-border);
+    padding:20px 24px 26px;
+  }
+  .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
+  .home-nav{ flex-direction:column; gap:14px; }
+  .home-search{ width:100%; }
+}
+
+@media (max-width:640px){
+  .home-hero{ height:auto; min-height:0; padding-top:56px; padding-bottom:40px; }
+  /* position:relative (not static) keeps this in normal flow for height
+     purposes, but still lets it paint above the absolutely-positioned
+     background/overlay layers instead of falling behind them. */
+  .home-hero-content{ position:relative; padding-bottom:0; margin-top:24px; }
+  .home-hero-title{ font-size:2rem; }
+  .home-card-grid{ grid-template-columns:1fr; }
+  .home-section{ padding-top:64px; }
+  .home-why{ padding-bottom:64px; }
+  .home-section-head{ align-items:flex-start; }
+  .home-footer-inner{ flex-direction:column; align-items:flex-start; }
+}

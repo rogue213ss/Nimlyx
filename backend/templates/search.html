@@ -8,31 +8,66 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search_mobile.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
 
-<!-- ================= TOPBAR ================= -->
-<header class="topbar">
-    <a href="/" class="brand">
-        <svg width="22" height="22" viewBox="0 0 26 26" fill="none">
-            <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
-        </svg>
-        Nimlyx
-    </a>
-    <div class="search-bar">
-        <input type="text" id="gameInput" placeholder="Search games, genres, developers…">
-        <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
-        <div id="suggestions" class="suggestions-dropdown"></div>
-    </div>
-    <div class="region-picker" id="regionPicker">
-        <button type="button" class="region-picker__trigger" id="regionTrigger" aria-haspopup="listbox" aria-expanded="false">
-            <i class="fa-solid fa-globe"></i>
-            <span id="regionTriggerLabel">Region</span>
-            <i class="fa-solid fa-chevron-down region-picker__chevron"></i>
-        </button>
-        <div class="region-picker__menu" id="regionMenu" role="listbox"></div>
+<!-- ================= HEADER =================
+     Same .home-header / .home-nav / .home-search markup as index.html
+     (Home page), copied verbatim so the nav bar is pixel-identical.
+     search.js's ids are all preserved: #gameInput #searchBtn
+     #suggestions #regionPicker #regionTrigger #regionTriggerLabel
+     #regionMenu. Two page-specific additions on top of the shared
+     markup: the #searchBtn button (this page's search is JS-driven,
+     not a submitting <form>, so search.js can own navigation) and
+     the region picker (no equivalent on Home/Discover). -->
+<header class="home-header">
+    <div class="home-container home-header-inner">
+        <a href="/" class="home-logo" aria-label="Nimlyx home">
+            <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+                <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+            </svg>
+            Nimlyx
+        </a>
+
+        <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+        <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+            <span></span><span></span><span></span>
+        </label>
+
+        <div class="home-nav-panel">
+            <nav class="home-nav" aria-label="Primary">
+                <a href="/">Home</a>
+                <a href="/discover">Discover</a>
+                <a href="/deals">Deals</a>
+                <a href="/top-rated">Top Rated</a>
+                <a href="/about">About</a>
+            </nav>
+
+            <!-- Not wrapped in a <form> like Home's — this page already
+                 has a working, JS-driven search (#searchBtn / search.js)
+                 that doesn't submit/reload, so no <form> was introduced
+                 here to avoid changing that behavior. -->
+            <div class="home-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="gameInput" placeholder="Search games, genres, developers…" autocomplete="off" aria-label="Search games">
+                <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <div id="suggestions" class="suggestions-dropdown"></div>
+            </div>
+
+            <div class="region-picker" id="regionPicker">
+                <button type="button" class="region-picker__trigger" id="regionTrigger" aria-haspopup="listbox" aria-expanded="false">
+                    <i class="fa-solid fa-globe"></i>
+                    <span id="regionTriggerLabel">Region</span>
+                    <i class="fa-solid fa-chevron-down region-picker__chevron"></i>
+                </button>
+                <div class="region-picker__menu" id="regionMenu" role="listbox"></div>
+            </div>
+
+            <button type="button" class="home-btn-ghost">Sign In</button>
+        </div>
     </div>
 </header>
 

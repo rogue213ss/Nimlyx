@@ -1,0 +1,77 @@
+/* ================================================================
+   NIMLYX — ANALYZE / SEARCH PAGE (MOBILE / RESPONSIVE OVERRIDES)
+   Load this file AFTER search.css.
+
+   The header rules in the first two breakpoints below are copied
+   verbatim from nimlyx-home.mobile.css so the nav bar collapses
+   identically to Home/Discover. Everything else is page-specific.
+   ================================================================ */
+
+@media (max-width:1100px){
+  /* ---- Header (same as Home/Discover) ---- */
+  .home-container{ padding:0 28px; }
+  .home-header-inner{ padding:14px 28px; }
+}
+
+@media (max-width:980px){
+  .stats-spotlight{ grid-template-columns:1fr; }
+  .hero{ height:clamp(420px, 70vh, 620px); }
+  .hero__panel{ max-width:100%; }
+}
+
+@media (max-width:900px){
+  /* ---- Header (same as Home/Discover) ---- */
+  .home-nav-burger{ display:flex; }
+  .home-nav-panel{
+    display:none;
+    position:absolute; top:100%; left:0; right:0;
+    flex-direction:column; align-items:stretch; gap:16px;
+    background:rgba(9,12,18,0.97);
+    border-bottom:1px solid var(--home-glass-border);
+    padding:20px 24px 26px;
+  }
+  .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
+  .home-nav{ flex-direction:column; gap:14px; }
+  .home-search{ width:100%; }
+
+  /* ---- Page-specific: region picker + sign-in stack full width
+     alongside the search bar in the collapsed nav panel ---- */
+  .region-picker{ width:100%; }
+  .region-picker__trigger{ width:100%; justify-content:space-between; }
+  .region-picker__menu{ left:0; right:0; }
+  .home-btn-ghost{ width:100%; text-align:center; }
+}
+
+@media (max-width:700px){
+  .hero{ height:clamp(380px, 62vh, 520px); }
+  .hero__content{ padding:0 20px 36px; }
+  .hero__panel{ padding:22px 20px; border-radius:var(--home-radius-lg); }
+  .hero__title{ font-size:1.7rem; }
+  .hero__ctas{ flex-direction:column; }
+  .hero__ctas .btn{ width:100%; justify-content:center; }
+
+  .page{ gap:44px; padding-bottom:80px; }
+  .panel:first-of-type{ margin-top:44px; }
+  .panel{ padding:22px; border-radius:var(--home-radius-lg); }
+  .panel__title{ font-size:1.25rem; }
+  .ai-tag{ margin-left:0; }
+
+  .thumb{ width:110px; height:64px; }
+  .strip-nav{ display:none; }
+
+  .stats-grid{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
+}
+
+@media (max-width:480px){
+  .hero{ height:clamp(340px, 58vh, 460px); }
+  .hero__content{ padding:0 16px 24px; }
+  .hero__panel{ padding:18px 16px; }
+  .hero__title{ font-size:1.4rem; }
+  .hero__meta{ gap:8px; margin-bottom:20px; }
+  .meta-chip{ font-size:.78rem; padding:6px 12px; }
+  .hero__ctas{ gap:10px; }
+
+  .page{ gap:32px; }
+  .panel:first-of-type{ margin-top:28px; }
+  .panel{ padding:18px; }
+}
