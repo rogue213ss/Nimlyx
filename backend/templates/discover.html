@@ -7,9 +7,11 @@
 <meta name="description" content="Answer a few questions and Nimlyx will narrow thousands of Steam games into the ones that actually fit you.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/discover_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 </head>
 <body class="home-page discover-page">
 
@@ -58,7 +60,7 @@
     <div class="home-container">
       <span class="discover-hero-eyebrow">Your personal game guide</span>
       <h1 class="discover-page-title">Discover Your Next Game</h1>
-      <p class="discover-page-subtitle">Answer a few questions on the right your picks build up on the left as you go.</p>
+      <p class="discover-page-subtitle">Pick any filters below, in any order — results update live on the right as you go.</p>
     </div>
   </section>
 
@@ -78,7 +80,7 @@
 
         <!-- JS renders .preference-chip items into this exact element -->
         <div class="selected-preferences-chips" id="selectedPreferencesChips">
-          <p class="discover-sidebar-empty" id="sidebarEmptyState">No preferences selected yet start with Genre on the right.</p>
+          <p class="discover-sidebar-empty" id="sidebarEmptyState">No preferences selected yet — pick any filter on the right, in any order.</p>
         </div>
 
         <!-- Sort menu — visual only for now. No JS hook exists to make
@@ -107,9 +109,9 @@
       <section class="discover-wizard" id="discoverWizard" aria-label="Game discovery wizard">
 
         <div class="wizard-question is-active" id="question-1" data-question="1">
-          <span class="wizard-step-label">Step 01</span>
+          <span class="wizard-step-label">Filter</span>
           <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
-          <p class="wizard-question-hint">Genre shapes everything else we'll ask next.</p>
+          <p class="wizard-question-hint">Optional — pick one, or skip it entirely.</p>
           <div class="wizard-options" role="group" aria-label="Genre options">
             <button type="button" class="wizard-option" data-value="action">
               <span class="wizard-option-title">Action</span>
@@ -146,8 +148,8 @@
           </div>
         </div>
 
-        <div class="wizard-question is-hidden" id="question-2" data-question="2">
-          <span class="wizard-step-label">Step 02</span>
+        <div class="wizard-question is-active" id="question-2" data-question="2">
+          <span class="wizard-step-label">Filter</span>
           <h2 class="wizard-question-title">Who are you playing with?</h2>
           <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
           <div class="wizard-options" role="group" aria-label="Playstyle options">
@@ -170,8 +172,8 @@
           </div>
         </div>
 
-        <div class="wizard-question is-hidden" id="question-3" data-question="3">
-          <span class="wizard-step-label">Step 03</span>
+        <div class="wizard-question is-active" id="question-3" data-question="3">
+          <span class="wizard-step-label">Filter</span>
           <h2 class="wizard-question-title">What's your budget?</h2>
           <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
           <div class="wizard-options" role="group" aria-label="Budget options">
@@ -198,8 +200,8 @@
           </div>
         </div>
 
-        <div class="wizard-question is-hidden" id="question-4" data-question="4">
-          <span class="wizard-step-label">Step 04</span>
+        <div class="wizard-question is-active" id="question-4" data-question="4">
+          <span class="wizard-step-label">Filter</span>
           <h2 class="wizard-question-title">Minimum Review Score</h2>
           <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
           <div class="wizard-options" role="group" aria-label="Review score options">
@@ -222,10 +224,10 @@
           </div>
         </div>
 
-        <div class="wizard-question is-hidden" id="question-5" data-question="5">
-          <span class="wizard-step-label">Step 05</span>
+        <div class="wizard-question is-active" id="question-5" data-question="5">
+          <span class="wizard-step-label">Filter</span>
           <h2 class="wizard-question-title">Platform</h2>
-          <p class="wizard-question-hint">Last step tell us where you'll be playing.</p>
+          <p class="wizard-question-hint">Optional — filter to where you'll actually be playing.</p>
           <div class="wizard-options" role="group" aria-label="Platform options">
             <button type="button" class="wizard-option" data-value="windows">
               <span class="wizard-option-title">Windows</span>
@@ -247,9 +249,9 @@
         </div>
 
         <div class="wizard-cta">
-          <h2 class="wizard-cta-title">Ready to discover something amazing?</h2>
+          <h2 class="wizard-cta-title">Not seeing what you want? Start over.</h2>
           <button type="button" class="home-btn home-btn-primary wizard-find-btn" id="findGamesBtn" disabled>
-            ✨ Find Games
+            ✨ Clear All Filters
           </button>
         </div>
 
@@ -262,13 +264,15 @@
 
         <div class="discover-results-head">
           <span class="discover-results-eyebrow">Curated for you</span>
-          <!-- discover.js hook (not wired here): set this element's
-               textContent to `${totalMatchCount} games matched your
-               play style.`, using the TOTAL match count from the API
-               response — not discoverResultsGrid.children.length,
+          <!-- discover.js sets this element's textContent to
+               `${totalMatchCount} games matched.` on every live
+               filter update, using the TOTAL match count from the
+               API response — not discoverResultsGrid.children.length,
                which only reflects the cards currently on screen.
-               Left as static, number-free copy until that line is
-               added. -->
+               Starts as static, number-free copy; runLiveSearch()
+               overwrites it as soon as the first fetch (which fires
+               immediately on page load, even with zero filters set)
+               resolves. -->
           <h2 class="discover-results-count" id="discoverResultsCount">Recommendations, ranked for you</h2>
           <p class="discover-results-subtitle" id="discoverResultsSubtitle">Showing your best matches first.</p>
         </div>

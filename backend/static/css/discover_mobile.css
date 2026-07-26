@@ -30,6 +30,23 @@
   .discover-results-grid{ grid-template-columns:repeat(2, 1fr); gap:16px; }
   .discover-results-grid .home-card,
   .discover-skeleton-card{ aspect-ratio:4/5; border-radius:16px; }
+
+  /* Same divider role as desktop's .wizard-question + .wizard-question
+     in discover.css, just tighter to match this breakpoint's smaller
+     .discover-wizard padding. */
+  .wizard-question + .wizard-question{
+    margin-top:28px;
+    padding-top:28px;
+  }
+
+  /* Five sections stacked on a small screen is already a long scroll
+     — a staggered entrance here just makes the ones further down feel
+     like they're lagging in as you scroll to them. Show everything
+     immediately instead. */
+  .wizard-question:nth-of-type(2),
+  .wizard-question:nth-of-type(3),
+  .wizard-question:nth-of-type(4),
+  .wizard-question:nth-of-type(5){ animation-delay:0s; }
 }
 
 @media (max-width:480px){

@@ -176,8 +176,28 @@
 .wizard-question.is-hidden{ display:none; }
 .wizard-question.is-active{
   display:block;
-  animation:discoverFadeUp .45s var(--home-ease);
+  animation:discoverFadeUp .45s var(--home-ease) both;
 }
+
+/* Every filter section renders at once now (Version 1: independent,
+   non-sequential filters — no more one-question-at-a-time reveal),
+   so consecutive sections need their own separator instead of relying
+   on the single .discover-wizard container padding that was enough
+   when only one was ever visible. Matches the same divider language
+   already used for .wizard-cta below. */
+.wizard-question + .wizard-question{
+  margin-top:40px;
+  padding-top:40px;
+  border-top:1px solid var(--home-glass-border);
+}
+
+/* Light stagger so the 5 sections cascade in on load rather than all
+   popping in on the same frame — kept short enough it never feels
+   like a wait. */
+.wizard-question:nth-of-type(2){ animation-delay:.05s; }
+.wizard-question:nth-of-type(3){ animation-delay:.1s; }
+.wizard-question:nth-of-type(4){ animation-delay:.15s; }
+.wizard-question:nth-of-type(5){ animation-delay:.2s; }
 
 .wizard-step-label{
   display:inline-block;
@@ -538,36 +558,11 @@
 
 /* ================================================================
    RESPONSIVE
+   Pulled out into discover_mobile.css (loaded after this file) —
+   see that file's header comment. Kept out of this file entirely
+   rather than duplicated here, so there's exactly one place to edit
+   a breakpoint instead of two that can silently drift apart.
    ================================================================ */
-@media (max-width:1100px){
-  .discover-columns{ grid-template-columns:260px minmax(0,1fr); gap:28px; }
-  .discover-wizard{ padding:32px; }
-  .discover-results-grid{ grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:24px; }
-}
-
-@media (max-width:900px){
-  .discover-columns{ grid-template-columns:1fr; }
-  .discover-sidebar-panel{ position:static; top:auto; }
-  .discover-intro{ padding:56px 0 32px; }
-}
-
-@media (max-width:700px){
-  .discover-wizard{ padding:24px; }
-  .discover-sidebar-panel{ padding:22px; }
-  .wizard-options{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); }
-  .wizard-question-title{ font-size:1.3rem; }
-  .discover-results-grid{ grid-template-columns:repeat(2, 1fr); gap:16px; }
-  .discover-results-grid .home-card,
-  .discover-skeleton-card{ aspect-ratio:4/5; border-radius:16px; }
-}
-
-@media (max-width:480px){
-  .wizard-options{ grid-template-columns:1fr; }
-  .discover-results-grid{ grid-template-columns:1fr; }
-  .discover-results-grid .home-card,
-  .discover-skeleton-card{ aspect-ratio:3/4; }
-  .wizard-cta{ margin-top:32px; padding-top:24px; }
-}
 
 /* ================================================================
    REDUCED MOTION
