@@ -1,18 +1,34 @@
 """
-steam_images.py — premium Steam artwork pipeline for Nimlyx.
+steam_images.py — Steam artwork helpers for Nimlyx.
 
-    App ID -> Steam App Details API -> every artwork asset
-           -> cached -> best one picked per placement -> sent to frontend
+Guaranteed vs. candidate, two different jobs:
 
-The backend decides which image wins: get_cached_artwork() returns
-every raw field PLUS a ready-to-use "best_image", so a template or
-discover.js never has to choose between large_image/header_image/
-library_capsule itself — it just reads game.best_image.
+    default_header_image() / a raw appdetails header_image  ->
+        the ONE thing guaranteed to load. Render this immediately,
+        server-side, every time. No verification needed or possible
+        to skip — Steam serves it for every listed app ID.
 
-Drop this file next to app.py. Nothing in app.py has to change for it
-to work — wire it in wherever the app is currently doing manual URL
-patching (search app.py for "capsule_231x87" and "library_hero.jpg";
-those are the two spots this replaces).
+    build_image_candidates()  ->
+        cheap, UNVERIFIED higher-res URLs (library hero, portrait
+        capsule, etc.), built from string formatting only — no HTTP
+        call, no guarantee any of them actually exist. These are
+        never sent straight to an <img src>. The frontend
+        (static/js/image-upgrade.js) tests each one with a real
+        Image() load and only swaps it in on a genuine onload,
+        falling back to the guaranteed image on onerror. See that
+        file for the client half of this contract.
+
+The functions below this point (fetch_app_artwork, get_cached_artwork,
+pick_best_artwork, get_artwork_by_name) are the OLDER approach this
+replaced: the backend guessing which asset "wins" and serving that
+guess directly, verified (if at all) with a server-side HEAD request.
+That pattern doubled request volume on card grids and still shipped
+unverified URLs to <img> tags whenever verify_library_hero was left
+off. Nothing in the app currently calls them — kept around only in
+case a genuinely low-volume, single-lookup context (e.g. one
+analyze-page fetch) ever wants a single richer appdetails call
+server-side. Prefer default_header_image() + build_image_candidates()
+for anything rendering more than one card.
 """
 
 import time
@@ -55,6 +71,28 @@ def _asset_exists(url, timeout=3):
         return resp.status_code == 200
     except requests.exceptions.RequestException:
         return False
+
+
+def build_image_candidates(app_id):
+    """Cheap, UNVERIFIED higher-resolution candidate URLs, built purely
+    from Steam's CDN naming convention -- zero HTTP calls made here.
+
+    None of these are guaranteed to exist (library_hero in particular
+    frequently 404s for games without custom library art). That's the
+    point: they're candidates, not a src. The frontend tries each one
+    with a real Image() load, and only swaps it in on a genuine
+    onload -- see static/js/image-upgrade.js. The guaranteed
+    header_image / default_header_image() stays on screen the whole
+    time these are being probed, so a card never shows broken art
+    while waiting, and never shows it at all if every candidate 404s.
+    """
+    if not app_id:
+        return []
+    return [
+        f"{STEAM_LIBRARY_CDN}/{app_id}/library_hero.jpg",
+        f"{STEAM_LIBRARY_CDN}/{app_id}/library_600x900.jpg",
+        f"{STEAM_CDN}/{app_id}/capsule_616x353.jpg",
+    ]
 
 
 def fetch_app_artwork(app_id, verify_library_hero=False):

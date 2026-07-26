@@ -1,8 +1,10 @@
 /* ==========================================================
    HOMEPAGE HERO — auto-rotating carousel
-   Slides are already server-rendered by Jinja (featured_games),
-   each holding data-name / data-description / data-analyze-url.
-   This just cycles which one is visible + updates the text.
+   Slides are server-rendered by Jinja (featured_games), each
+   holding data-name / data-analyze-url / data-insight / data-why.
+   This cycles which one is visible, updates the title + CTA, and
+   keeps the separate "Nimlyx Insight" callout bar below the hero
+   in sync with whichever game is currently showing.
 ========================================================== */
 
 (function () {
@@ -15,8 +17,9 @@
     const slides = Array.from(heroSection.querySelectorAll(".home-hero-slide"));
     const dots = Array.from(document.querySelectorAll(".home-hero-dot"));
     const titleEl = document.getElementById("homeHeroTitle");
-    const descEl = document.getElementById("homeHeroDesc");
     const ctaEl = document.getElementById("homeHeroCta");
+    const insightHeadlineEl = document.getElementById("homeInsightHeadline");
+    const insightWhyEl = document.getElementById("homeInsightWhy");
 
     if (slides.length <= 1) return;
 
@@ -29,8 +32,9 @@
 
         const slide = slides[index];
         if (titleEl) titleEl.textContent = slide.dataset.name || "";
-        if (descEl) descEl.textContent = slide.dataset.description || "";
         if (ctaEl) ctaEl.href = slide.dataset.analyzeUrl || "#";
+        if (insightHeadlineEl) insightHeadlineEl.textContent = slide.dataset.insight || "";
+        if (insightWhyEl) insightWhyEl.textContent = slide.dataset.why || "";
 
         currentIndex = index;
     }

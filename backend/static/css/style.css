@@ -1,54 +1,88 @@
 /* ================================================================
-   NIMLYX — HOMEPAGE STYLES
-   Namespaced under .home-page / .home-* so nothing here can leak
-   into or collide with the rest of your site (e.g. the Search page).
+   NIMLYX — HOMEPAGE STYLES (BASE / DESKTOP)
+   Editorial / terminal aesthetic: obsidian base, Fraunces display
+   serif, JetBrains Mono for labels/data, Inter for body copy.
 
-   -- TOKENS --
-   These are placeholders. If your Search page already has an
-   established palette/type scale, replace the values in :root
-   below with the real ones and every homepage component updates
-   automatically.
+   Each section on this page is intentionally styled differently —
+   Hero, Insight bar, Picks, Discover, Trending, New Releases each
+   have their own visual language rather than reusing one generic
+   card-grid shell. Color is reserved entirely for Nimlyx Picks;
+   Trending/New Releases stay neutral since they're raw Steam
+   ordering, not a Nimlyx verdict.
    ================================================================ */
 
 :root{
-  --home-bg-base:#0a0e14;
-  --home-bg-elevated:#0d1220;
-  --home-glass-fill: rgba(255,255,255,0.045);
-  --home-glass-fill-strong: rgba(255,255,255,0.075);
-  --home-glass-border: rgba(255,255,255,0.09);
+  --home-bg-base:#0a0a0d;
+  --home-bg-elevated:#131318;
+  --home-bg-card:#17171d;
+  --home-glass-fill: rgba(255,255,255,0.025);
+  --home-glass-fill-strong: rgba(255,255,255,0.05);
+  --home-glass-border: rgba(255,255,255,0.08);
   --home-glass-border-strong: rgba(255,255,255,0.16);
-  --home-accent:#3b82f6;
-  --home-accent-deep:#1d4ed8;
-  --home-text-primary:#e8ecf3;
-  --home-text-muted:#8b94a7;
-  --home-text-faint:#5b6478;
-  --home-radius-lg:18px;
-  --home-radius-md:14px;
-  --home-radius-sm:10px;
-  --home-font-display:'Space Grotesk',sans-serif;
+  --home-text-primary:#e8e7ec;
+  --home-text-muted:#9a99a3;
+  --home-text-faint:#5c5b64;
+
+  --home-accent:#c3d3d9;
+  --home-accent-deep:#7d8f95;
+
+  /* Primary CTA blue — matches the Nimlyx logo mark, used for the
+     one action per section that should visibly outrank everything
+     else on the page (Analyze Game, Read Full Analysis, Open
+     Discover). Distinct from --home-accent, which stays reserved
+     for quieter nav/focus-ring uses. */
+  --home-cta-blue:#3b82f6;
+  --home-cta-blue-hover:#579bff;
+  --home-cta-blue-active:#2f6fd9;
+
+  --home-radius-lg:10px;
+  --home-radius-md:6px;
+  --home-radius-sm:3px;
+  --home-font-display:'Fraunces',serif;
   --home-font-body:'Inter',sans-serif;
   --home-font-mono:'JetBrains Mono',monospace;
   --home-ease: cubic-bezier(.2,.7,.3,1);
+
+  --home-verdict-worth:#4d9a72;
+  --home-verdict-worth-bg:rgba(77,154,114,0.10);
+  --home-verdict-worth-line:rgba(77,154,114,0.32);
+
+  --home-verdict-hidden:#4f97a3;
+  --home-verdict-hidden-bg:rgba(79,151,163,0.10);
+  --home-verdict-hidden-line:rgba(79,151,163,0.32);
+
+  --home-verdict-fresh:#6b78c4;
+  --home-verdict-fresh-bg:rgba(107,120,196,0.10);
+  --home-verdict-fresh-line:rgba(107,120,196,0.32);
+
+  --home-verdict-critic:#c06a45;
+  --home-verdict-critic-bg:rgba(192,106,69,0.10);
+  --home-verdict-critic-line:rgba(192,106,69,0.32);
+
+  --home-verdict-split:#ab9256;
+  --home-verdict-split-bg:rgba(171,146,86,0.10);
+  --home-verdict-split-line:rgba(171,146,86,0.32);
+
+  --home-verdict-fallback:var(--home-text-muted);
+  --home-verdict-fallback-bg:var(--home-glass-fill);
+  --home-verdict-fallback-line:var(--home-glass-border);
 }
 
 /* ================================================================
    PAGE-LEVEL BASE
-   Scoped to .home-page (set on <body>) rather than the bare `body`
-   selector, so this never affects other pages in the project.
    ================================================================ */
 .home-page,
 .home-page *{ box-sizing:border-box; }
 
 .home-page{
   margin:0;
-  background: radial-gradient(circle at 50% -10%, rgba(59,130,246,0.10), transparent 55%), var(--home-bg-base);
+  background: var(--home-bg-base);
   color:var(--home-text-primary);
   font-family:var(--home-font-body);
   line-height:1.5;
   -webkit-font-smoothing:antialiased;
 }
 
-/* Minimal required resets — scoped, not global */
 .home-page a{ color:inherit; text-decoration:none; }
 .home-page button{ font-family:inherit; border:none; background:none; color:inherit; cursor:pointer; }
 .home-page img{ display:block; max-width:100%; }
@@ -57,41 +91,39 @@
 .home-page input:focus-visible{
   outline:2px solid var(--home-accent);
   outline-offset:3px;
-  border-radius:4px;
+  border-radius:2px;
 }
 
-.home-container{ max-width:1280px; margin:0 auto; padding:0 40px; }
+.home-container{ max-width:1240px; margin:0 auto; padding:0 32px; }
 
 /* ================================================================
    HEADER
    ================================================================ */
 .home-header{
   position:sticky; top:0; z-index:60;
-  background:rgba(9,12,18,0.7);
-  backdrop-filter:blur(20px) saturate(150%);
-  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  background:rgba(10,10,13,0.88);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
   border-bottom:1px solid var(--home-glass-border);
 }
 .home-header-inner{
   position:relative;
   display:flex; align-items:center; gap:28px;
-  padding:14px 40px;
+  padding:18px 32px;
 }
 .home-logo{
   display:flex; align-items:center; gap:9px;
-  font-family:var(--home-font-display); font-weight:600; font-size:1.15rem;
-  letter-spacing:-0.01em; flex-shrink:0;
+  font-family:var(--home-font-mono); font-weight:700; font-size:1rem;
+  letter-spacing:.02em; color:var(--home-accent); flex-shrink:0;
 }
 
-/* mobile nav toggle (CSS-only, no JS) — checkbox stays keyboard-focusable
-   (visually hidden, not display:none) so Space still toggles it natively. */
 .home-nav-checkbox{
   position:absolute; width:1px; height:1px; padding:0; margin:-1px;
   overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
 }
 .home-nav-burger{
   display:none; flex-direction:column; gap:5px; margin-left:auto;
-  padding:8px; cursor:pointer; border-radius:8px;
+  padding:8px; cursor:pointer; border-radius:var(--home-radius-sm);
 }
 .home-nav-checkbox:focus-visible + .home-nav-burger{
   outline:2px solid var(--home-accent); outline-offset:2px;
@@ -103,9 +135,9 @@
   margin-left:auto; flex:1; justify-content:flex-end;
 }
 
-.home-nav{ display:flex; gap:24px; }
+.home-nav{ display:flex; gap:26px; }
 .home-nav a{
-  font-size:.9rem; color:var(--home-text-muted); position:relative; padding:4px 0;
+  font-size:.87rem; color:var(--home-text-muted); position:relative; padding:4px 0;
   transition:color .2s var(--home-ease);
 }
 .home-nav a::after{
@@ -120,10 +152,11 @@
   display:flex; align-items:center; gap:9px;
   background:var(--home-glass-fill);
   border:1px solid var(--home-glass-border);
-  border-radius:999px;
-  padding:9px 16px;
-  width:260px;
+  border-radius:var(--home-radius-md);
+  padding:9px 14px;
+  width:250px;
   transition:border-color .25s var(--home-ease), background .25s var(--home-ease);
+  position:relative;
 }
 .home-search:focus-within{
   border-color:var(--home-glass-border-strong);
@@ -131,45 +164,48 @@
 }
 .home-search svg{ flex-shrink:0; color:var(--home-text-faint); }
 .home-search input{
-  background:none; border:none; color:var(--home-text-primary); font-size:.85rem; width:100%;
+  background:none; border:none; color:var(--home-text-primary); font-size:.83rem; width:100%;
+  font-family:var(--home-font-body);
 }
 .home-search input::placeholder{ color:var(--home-text-faint); }
 .home-search input:focus{ outline:none; }
-
-.home-btn-ghost{
-  font-size:.86rem; color:var(--home-text-muted); padding:9px 18px; border-radius:999px;
-  border:1px solid var(--home-glass-border); white-space:nowrap;
-  transition:border-color .25s var(--home-ease), color .25s var(--home-ease), background .25s var(--home-ease);
-}
-.home-btn-ghost:hover{
-  color:var(--home-text-primary); border-color:var(--home-glass-border-strong); background:var(--home-glass-fill);
-}
 
 /* ================================================================
    BUTTONS (shared)
    ================================================================ */
 .home-btn{
   display:inline-flex; align-items:center; gap:8px;
-  font-weight:600; font-size:.92rem; border-radius:999px;
-  padding:13px 24px;
-  transition:transform .3s var(--home-ease), box-shadow .3s var(--home-ease), filter .3s var(--home-ease);
+  font-weight:600; font-size:.9rem; border-radius:var(--home-radius-md);
+  padding:14px 30px;
+  transition:background .2s var(--home-ease), transform .2s var(--home-ease);
 }
 .home-btn-primary{
-  background:linear-gradient(155deg, var(--home-accent), var(--home-accent-deep));
-  color:#fff;
-  box-shadow:0 12px 28px -10px rgba(59,130,246,0.5);
+  background:var(--home-cta-blue);
+  color:#ffffff;
+  letter-spacing:.01em;
+  box-shadow:0 8px 20px -8px rgba(59,130,246,0.55);
 }
-.home-btn-primary:hover{ transform:translateY(-2px); filter:brightness(1.08); box-shadow:0 16px 34px -10px rgba(59,130,246,0.6); }
-.home-btn-primary:active{ transform:translateY(0); }
+.home-btn-primary:hover{
+  background:var(--home-cta-blue-hover);
+  transform:translateY(-2px);
+  box-shadow:0 12px 26px -8px rgba(59,130,246,0.7);
+}
+.home-btn-primary:active{
+  background:var(--home-cta-blue-active);
+  transform:translateY(0);
+  box-shadow:0 6px 14px -8px rgba(59,130,246,0.5);
+}
 
 /* ================================================================
-   HERO
+   HERO — cinematic slide, minimal text (title + CTA only). The
+   editorial "why this matters" content lives entirely in the
+   Insight bar directly below, not duplicated here.
    ================================================================ */
 .home-hero{
   position:relative;
-  height:66vh; min-height:560px;
+  height:56vh; min-height:460px;
   overflow:hidden;
-  cursor:pointer;
+  border-bottom:1px solid var(--home-glass-border);
 }
 .home-hero-track{ position:absolute; inset:0; }
 .home-hero-slide{
@@ -177,222 +213,160 @@
   background-color:var(--home-bg-elevated);
   background-size:cover; background-position:center;
   opacity:0;
-  transition:opacity 1.4s ease;
+  transition:opacity 1.2s ease;
 }
 .home-hero-slide.is-active{ opacity:1; }
 
 .home-hero-overlay{
   position:absolute; inset:0;
   background:
-    linear-gradient(180deg, rgba(6,8,13,0.15) 0%, rgba(6,8,13,0.45) 48%, rgba(7,9,14,0.94) 100%),
-    linear-gradient(90deg, rgba(6,8,13,0.55) 0%, rgba(6,8,13,0.05) 45%);
+    /* Cinematic left-to-right scrim — the text zone (left ~55%) sits
+       on a near-opaque field regardless of what's behind it; the
+       right side stays clear so the artwork still reads. */
+    linear-gradient(90deg,
+      rgba(6,6,8,0.97) 0%,
+      rgba(6,6,8,0.9) 30%,
+      rgba(6,6,8,0.55) 55%,
+      rgba(6,6,8,0.08) 78%,
+      rgba(6,6,8,0) 100%),
+    /* Light bottom fade so the hero still grounds into the section
+       below it, independent of the left-right text scrim. */
+    linear-gradient(180deg, rgba(10,10,13,0) 65%, rgba(10,10,13,0.9) 100%);
 }
 
 .home-hero-content{
   position:absolute; left:0; right:0; bottom:0; z-index:2;
-  padding-bottom:56px;
+  padding-bottom:44px;
 }
 .home-hero-kicker{
   display:inline-block;
-  font-family:var(--home-font-mono); font-size:.76rem; letter-spacing:.1em;
-  color:var(--home-text-muted); margin-bottom:16px;
+  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--home-cta-blue); margin-bottom:18px;
+  background:rgba(6,6,8,0.7);
+  border:1px solid rgba(59,130,246,0.45);
+  padding:6px 13px; border-radius:var(--home-radius-sm);
+  backdrop-filter:blur(3px);
 }
 .home-hero-title{
   font-family:var(--home-font-display); font-weight:700;
-  font-size:clamp(2.2rem, 4.4vw, 3.6rem);
-  letter-spacing:-0.02em; line-height:1.05;
-  margin-bottom:16px; max-width:760px;
+  font-size:clamp(2.3rem, 4.6vw, 3.7rem);
+  letter-spacing:-0.01em; line-height:1.06;
+  margin-bottom:24px; max-width:760px;
+  color:#ffffff;
+  text-shadow:0 2px 24px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.8);
   transition:opacity .3s ease;
 }
-.home-hero-desc{
-  font-size:1.05rem; color:var(--home-text-muted); max-width:520px; line-height:1.65;
-  margin-bottom:28px;
-  transition:opacity .3s ease;
-}
-.home-hero-indicators{ display:flex; gap:8px; margin-top:30px; }
+.home-hero-indicators{ display:flex; gap:8px; margin-top:26px; }
 .home-hero-dot{
-  width:26px; height:4px; border-radius:2px; 
-  background:rgba(255,255,255,0.15);
+  width:26px; height:3px; border-radius:2px;
+  background:rgba(255,255,255,0.14);
   position:relative; overflow:hidden; padding:0;
   cursor: pointer;
   transition:width .3s var(--home-ease), background .3s var(--home-ease);
 }
-.home-hero-dot:hover{ background:rgba(255,255,255,0.3); }
+.home-hero-dot:hover{ background:rgba(255,255,255,0.28); }
 .home-hero-dot.is-active{ width:32px; background:rgba(255,255,255,0.1); }
 .home-hero-dot.is-active::after{
-  content:''; position:absolute; inset:0; 
-  background: linear-gradient(90deg, var(--home-accent), #60A5FA);
+  content:''; position:absolute; inset:0;
+  background: var(--home-accent);
   border-radius: 2px;
-  transform-origin:left; 
+  transform-origin:left;
   animation:homeDotFill 4s linear forwards;
-  box-shadow: 0 0 8px rgba(59,130,246,0.5);
 }
 @keyframes homeDotFill{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
 
 /* ================================================================
-   SECTIONS (generic)
+   NIMLYX INSIGHT BAR — its own distinct block directly under the
+   hero. Framed like a highlighted editorial callout, NOT another
+   card — a lit-lamp icon, a headline line, a labeled "why this
+   matters" sub-block. This is the one place on the page that reads
+   like a note from an editor rather than a listing.
    ================================================================ */
-.home-section{ padding-top:100px; }
+.home-insight-bar{
+  background:var(--home-bg-elevated);
+  border-bottom:1px solid var(--home-glass-border);
+}
+.home-insight-inner{
+  padding:28px 32px;
+  display:grid;
+  grid-template-columns:auto 1fr;
+  column-gap:22px;
+  row-gap:6px;
+  align-items:start;
+}
+.home-insight-kicker{
+  grid-column:1;
+  grid-row:1 / span 2;
+  font-family:var(--home-font-mono);
+  font-size:.78rem;
+  letter-spacing:.04em;
+  color:var(--home-accent);
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border-strong);
+  padding:8px 14px;
+  border-radius:var(--home-radius-md);
+  align-self:center;
+  white-space:nowrap;
+}
+.home-insight-headline{
+  grid-column:2; grid-row:1;
+  font-family:var(--home-font-display);
+  font-size:1.15rem; font-weight:600;
+  color:var(--home-text-primary);
+  line-height:1.4;
+}
+.home-insight-why-label{
+  grid-column:2; grid-row:2;
+  font-family:var(--home-font-mono);
+  font-size:.68rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--home-text-faint);
+  margin-top:6px;
+}
+.home-insight-why{
+  grid-column:2; grid-row:3;
+  font-size:.87rem; color:var(--home-text-muted);
+  line-height:1.55; max-width:640px;
+  margin-top:2px;
+}
+
+/* ================================================================
+   SECTIONS (generic head — numbered marks via CSS counter)
+   ================================================================ */
+main{ counter-reset: nimlyx-section; }
+.home-section{ counter-increment: nimlyx-section; padding-top:76px; }
+.home-section + .home-section{ border-top:1px solid var(--home-glass-border); }
+
 .home-section-head{
-  display:flex; justify-content:space-between; align-items:flex-end; gap:24px;
-  margin-bottom:32px; flex-wrap:wrap;
+  display:flex; align-items:flex-end; gap:16px;
+  margin-bottom:30px; flex-wrap:wrap;
+}
+.home-section-head::before{
+  content: counter(nimlyx-section, decimal-leading-zero);
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.1em;
+  color:var(--home-text-faint);
+  border:1px solid var(--home-glass-border-strong);
+  padding:4px 9px; border-radius:var(--home-radius-sm);
+  align-self:flex-start; margin-top:4px;
+  order:-1;
 }
 .home-eyebrow{
-  display:block; font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--home-accent); margin-bottom:10px;
+  display:block; font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--home-text-faint); margin-bottom:8px;
 }
 .home-section-title{
-  font-family:var(--home-font-display); font-size:1.75rem; font-weight:600; letter-spacing:-0.01em;
+  font-family:var(--home-font-display); font-size:1.65rem; font-weight:600; letter-spacing:-0.01em;
 }
 .home-view-all{
   display:inline-flex; align-items:center; gap:7px;
-  font-size:.87rem; color:var(--home-text-muted);
-  padding:10px 18px; border-radius:999px; border:1px solid var(--home-glass-border);
+  font-size:.85rem; color:var(--home-text-muted);
+  padding:9px 16px; border-radius:var(--home-radius-md); border:1px solid var(--home-glass-border);
   transition:color .25s var(--home-ease), border-color .25s var(--home-ease);
-  flex-shrink:0;
+  flex-shrink:0; margin-left:auto;
 }
 .home-view-all svg{ transition:transform .25s var(--home-ease); }
 .home-view-all:hover{ color:var(--home-text-primary); border-color:var(--home-glass-border-strong); }
 .home-view-all:hover svg{ transform:translateX(3px); }
 
-/* ================================================================
-   CARD — one reusable component, four sections
-   ================================================================ */
-.home-card-grid{
-  display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:20px;
-}
-.home-card{
-  display:block;
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
-  overflow:hidden;
-  transition:transform .35s var(--home-ease), border-color .35s var(--home-ease), box-shadow .35s var(--home-ease);
-}
-.home-card:hover{
-  transform:translateY(-6px);
-  border-color:var(--home-glass-border-strong);
-  box-shadow:0 24px 46px -22px rgba(0,0,0,0.6), 0 0 0 1px rgba(59,130,246,0.15);
-}
-.home-card-media{
-  position:relative; height:140px; overflow:hidden;
-  background:var(--home-bg-elevated);
-}
-.home-card-media img{
-  width:100%; height:100%; object-fit:cover;
-  transition:transform .5s var(--home-ease);
-}
-.home-card:hover .home-card-media img{ transform:scale(1.06); }
-.home-card-badge{
-  position:absolute; top:12px; left:12px;
-  font-family:var(--home-font-mono); font-size:.72rem;
-  background:rgba(8,10,16,0.6); border:1px solid rgba(255,255,255,0.14);
-  color:var(--home-text-primary);
-  padding:5px 10px; border-radius:999px; backdrop-filter:blur(6px);
-}
-.home-card-body{ padding:16px 18px 18px; }
-.home-card-title{
-  font-family:var(--home-font-display); font-size:1rem; font-weight:600;
-  letter-spacing:-0.005em; margin-bottom:12px;
-}
-.home-card-meta{ display:flex; flex-direction:column; gap:3px; }
-.home-card-stat{ display:flex; align-items:baseline; gap:7px; }
-.home-card-value{ font-family:var(--home-font-mono); font-size:1rem; font-weight:600; color:var(--home-text-primary); }
-.home-card-price-was{
-  font-family:var(--home-font-mono); font-size:.78rem; color:var(--home-text-faint);
-  text-decoration:line-through;
-}
-.home-card-label{ font-size:.76rem; color:var(--home-text-muted); }
-
-/* ================================================================
-   WHY NIMLYX
-   ================================================================ */
-.home-why{ padding-bottom:110px; }
-.home-why-head{ max-width:620px; margin-bottom:8px; }
-.home-why-grid{
-  display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;
-  margin-top:40px;
-}
-.home-feature-card{
-  background:var(--home-glass-fill);
-  border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-lg);
-  padding:30px 26px;
-  transition:border-color .3s var(--home-ease), transform .3s var(--home-ease);
-}
-.home-feature-card:hover{ border-color:var(--home-glass-border-strong); transform:translateY(-4px); }
-.home-feature-mark{ color:var(--home-accent); margin-bottom:20px; }
-.home-feature-title{
-  font-family:var(--home-font-display); font-size:1.05rem; font-weight:600; margin-bottom:10px;
-  letter-spacing:-0.005em;
-}
-.home-feature-text{ color:var(--home-text-muted); font-size:.9rem; line-height:1.65; }
-
-/* ================================================================
-   FOOTER
-   ================================================================ */
-.home-footer{ border-top:1px solid var(--home-glass-border); padding:40px 0 36px; }
-.home-footer-inner{ display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
-.home-footer-brand{ display:flex; flex-direction:column; gap:8px; }
-.home-footer-logo{ display:flex; align-items:center; gap:9px; font-family:var(--home-font-display); font-weight:600; font-size:1rem; }
-.home-footer-tag{ font-size:.83rem; color:var(--home-text-faint); }
-.home-footer-links{ display:flex; gap:20px; }
-.home-footer-links a{ font-size:.83rem; color:var(--home-text-muted); transition:color .2s var(--home-ease); }
-.home-footer-links a:hover{ color:var(--home-text-primary); }
-.home-footer-copy{ font-size:.78rem; color:var(--home-text-faint); margin-top:18px; }
-
-/* ================================================================
-   RESPONSIVE
-   ================================================================ */
-@media (max-width:1100px){
-  .home-container{ padding:0 28px; }
-  .home-header-inner{ padding:14px 28px; }
-  .home-card-grid{ grid-template-columns:repeat(2, 1fr); }
-  .home-why-grid{ grid-template-columns:1fr; }
-}
-
-@media (max-width:900px){
-  .home-nav-burger{ display:flex; }
-  .home-nav-panel{
-    display:none;
-    position:absolute; top:100%; left:0; right:0;
-    flex-direction:column; align-items:stretch; gap:16px;
-    background:rgba(9,12,18,0.97);
-    border-bottom:1px solid var(--home-glass-border);
-    padding:20px 24px 26px;
-  }
-  .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
-  .home-nav{ flex-direction:column; gap:14px; }
-  .home-search{ width:100%; }
-}
-
-@media (max-width:640px){
-  .home-hero{ height:auto; min-height:0; padding-top:56px; padding-bottom:40px; }
-  /* position:relative (not static) keeps this in normal flow for height
-     purposes, but still lets it paint above the absolutely-positioned
-     background/overlay layers instead of falling behind them. */
-  .home-hero-content{ position:relative; padding-bottom:0; margin-top:24px; }
-  .home-hero-title{ font-size:2rem; }
-  .home-card-grid{ grid-template-columns:1fr; }
-  .home-section{ padding-top:64px; }
-  .home-why{ padding-bottom:64px; }
-  .home-section-head{ align-items:flex-start; }
-  .home-footer-inner{ flex-direction:column; align-items:flex-start; }
-}
-
-/* ================================================================
-   REDUCED MOTION
-   ================================================================ */
-@media (prefers-reduced-motion: reduce){
-  .home-page *{
-    animation-duration:.01ms !important;
-    animation-iteration-count:1 !important;
-    transition-duration:.01ms !important;
-  }
-}
-.home-search {
-    position: relative;
-}
 /* ================================================================
    SEARCH SUGGESTIONS DROPDOWN
    ================================================================ */
@@ -401,18 +375,15 @@
     top: calc(100% + 8px);
     left: 0;
     width: 280px;
-
-    background: rgba(9, 12, 18, 0.96);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
-
+    background: rgba(19, 19, 24, 0.98);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--home-glass-border-strong);
     border-radius: var(--home-radius-md);
     overflow: hidden;
-    box-shadow: 0 24px 46px -22px rgba(0,0,0,0.6);
+    box-shadow: 0 24px 46px -22px rgba(0,0,0,0.7);
     z-index: 999;
 }
-
 .suggestions-dropdown:empty { display: none; }
 
 .suggestion-item {
@@ -424,91 +395,285 @@
     border-bottom: 1px solid var(--home-glass-border);
     transition: background .2s var(--home-ease);
 }
-
 .suggestion-item:last-child { border-bottom: none; }
-
 .suggestion-item:hover,
-.suggestion-item.active-suggestion {
-    background: rgba(59, 130, 246, 0.12);
-}
-
+.suggestion-item.active-suggestion { background: var(--home-glass-fill-strong); }
 .suggestion-item img {
-    width: 64px;
-    height: 30px;
-    object-fit: cover;
-    border-radius: 5px;
-    flex-shrink: 0;
+    width: 64px; height: 30px; object-fit: cover;
+    border-radius: var(--home-radius-sm); flex-shrink: 0;
 }
-
-.suggestion-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
+.suggestion-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .suggestion-name {
-    font-size: 13.5px;
-    font-weight: 600;
-    color: var(--home-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 13.5px; font-weight: 600; color: var(--home-text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.suggestion-dev { font-size: 12px; color: var(--home-text-muted); }
 
-.suggestion-dev {
-    font-size: 12px;
-    color: var(--home-text-muted);
-}
 /* ================================================================
-   CARD FOOTER — replaces the old single stat_value/stat_label
-   with a two-column left/right layout + divider. Each section
-   passes different meaning into the same two slots, so cards stay
-   visually consistent while the *information* changes per section.
+   NIMLYX PICKS — the only section with color, since it's the only
+   section carrying a Nimlyx editorial verdict. Now interactive:
+   feed cards are <button>s that swap the lead panel in place
+   rather than navigating; the lead's own CTA is the only real link.
    ================================================================ */
-.home-card-divider {
-  height: 1px;
-  background: var(--home-glass-border);
-  margin: 12px 0 10px;
+.picks-grid{ display:grid; grid-template-columns:1.5fr 1fr; gap:22px; }
+
+.pick-badge{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--home-font-mono); font-size:.7rem; font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase;
+  padding:5px 11px; border-radius:var(--home-radius-sm);
+  margin-bottom:15px;
+}
+.badge-worth  { background:var(--home-verdict-worth-bg);  color:var(--home-verdict-worth);  border:1px solid var(--home-verdict-worth-line); }
+.badge-hidden { background:var(--home-verdict-hidden-bg); color:var(--home-verdict-hidden); border:1px solid var(--home-verdict-hidden-line); }
+.badge-fresh  { background:var(--home-verdict-fresh-bg);  color:var(--home-verdict-fresh);  border:1px solid var(--home-verdict-fresh-line); }
+.badge-critic { background:var(--home-verdict-critic-bg); color:var(--home-verdict-critic); border:1px solid var(--home-verdict-critic-line); }
+.badge-split  { background:var(--home-verdict-split-bg);  color:var(--home-verdict-split);  border:1px solid var(--home-verdict-split-line); }
+.badge-fallback{ background:var(--home-verdict-fallback-bg); color:var(--home-verdict-fallback); border:1px solid var(--home-verdict-fallback-line); }
+
+.pick-lead{
+  position:relative; display:block;
+  border-radius:var(--home-radius-lg);
+  overflow:hidden;
+  background:var(--home-bg-card);
+  border:1px solid var(--home-glass-border);
+  border-top:3px solid var(--home-glass-border-strong);
+  min-height:460px;
+  transition:border-top-color .3s var(--home-ease);
+}
+.pick-lead.badge-worth  { border-top-color: var(--home-verdict-worth); }
+.pick-lead.badge-hidden { border-top-color: var(--home-verdict-hidden); }
+.pick-lead.badge-fresh  { border-top-color: var(--home-verdict-fresh); }
+.pick-lead.badge-critic { border-top-color: var(--home-verdict-critic); }
+.pick-lead.badge-split  { border-top-color: var(--home-verdict-split); }
+
+.pick-lead-media{
+  position:absolute; inset:0;
+  background-size:cover; background-position:center;
+  transition:background-image .25s ease;
+}
+.pick-lead-overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(to top, var(--home-bg-base) 14%, rgba(10,10,13,0.6) 55%, rgba(10,10,13,0.1) 100%);
+}
+.pick-lead-content{
+  position:relative; z-index:2;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  height:100%; padding:34px;
+}
+.pick-lead-title{
+  font-family:var(--home-font-display); font-weight:700; font-size:1.85rem;
+  letter-spacing:-0.01em; line-height:1.1; margin-bottom:11px;
+  color:var(--home-text-primary);
+}
+.pick-lead-insight{ font-size:.94rem; line-height:1.55; max-width:460px; margin-bottom:7px; color:var(--home-text-primary); }
+.pick-lead-why{ font-size:.81rem; line-height:1.5; max-width:460px; color:var(--home-text-muted); margin-bottom:22px; }
+.pick-lead-cta{ align-self:flex-start; padding:11px 24px; font-size:.85rem; }
+
+.picks-feed{ display:flex; flex-direction:column; gap:14px; }
+.pick-card{
+  display:grid; grid-template-columns:80px 1fr; gap:14px;
+  background:var(--home-bg-card);
+  border:1px solid var(--home-glass-border);
+  border-left:3px solid var(--home-glass-border-strong);
+  border-radius:var(--home-radius-md);
+  padding:13px;
+  width:100%;
+  text-align:left;
+  cursor:pointer;
+  transition:border-color .25s var(--home-ease), background .25s var(--home-ease);
+}
+.pick-card.badge-worth  { border-left-color: var(--home-verdict-worth); }
+.pick-card.badge-hidden { border-left-color: var(--home-verdict-hidden); }
+.pick-card.badge-fresh  { border-left-color: var(--home-verdict-fresh); }
+.pick-card.badge-critic { border-left-color: var(--home-verdict-critic); }
+.pick-card.badge-split  { border-left-color: var(--home-verdict-split); }
+
+.pick-card:hover{ background:var(--home-glass-fill); }
+.pick-card.is-active{ background:var(--home-glass-fill-strong); border-color:var(--home-glass-border-strong); }
+
+.pick-card-media{ width:80px; height:80px; border-radius:var(--home-radius-sm); overflow:hidden; flex-shrink:0; background:var(--home-bg-elevated); }
+.pick-card-media img{ width:100%; height:100%; object-fit:cover; }
+.pick-card-body{ min-width:0; }
+.pick-card-body .pick-badge{ margin-bottom:6px; padding:3px 8px; font-size:.6rem; }
+.pick-card-title{
+  font-family:var(--home-font-display); font-weight:600; font-size:.93rem;
+  margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  color:var(--home-text-primary);
+}
+.pick-card-insight{
+  font-size:.77rem; line-height:1.4; color:var(--home-text-muted);
+  display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 
-.home-card-footer {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+/* ================================================================
+   DISCOVER PROMO — full-width flat banner, brand-anchor CTA only.
+   No verdict colors, no cards — the section reads as navigation,
+   not a listing or a judgment, so it's built completely differently
+   from everything around it: centered, quiet, one button.
+   ================================================================ */
+.discover-banner{
+  text-align:center;
+  padding:56px 40px;
+  border-radius:var(--home-radius-lg);
+  background:var(--home-bg-elevated);
+  border:1px solid var(--home-glass-border);
+}
+.discover-eyebrow{
+  display:inline-block;
+  font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--home-text-faint); margin-bottom:14px;
+}
+.discover-title{
+  font-family:var(--home-font-display); font-weight:700; font-size:1.9rem;
+  letter-spacing:-0.01em; margin-bottom:10px;
+}
+.discover-sub{
+  color:var(--home-text-muted); font-size:.92rem; margin-bottom:26px;
+  font-family:var(--home-font-mono); letter-spacing:.02em;
 }
 
-.home-card-footer-left {
-  font-family: var(--home-font-mono);
-  font-size: .88rem;
-  font-weight: 600;
-  color: var(--home-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* ================================================================
+   TRENDING TODAY — large landscape cards, horizontal scroll.
+   Wide 16:9-ish images with a floating rank number and a bottom
+   text overlay, distinct from every other card shape on the page.
+   Deliberately colorless: raw Steam ranking, not a Nimlyx verdict.
+   ================================================================ */
+.trending-wrap{ position:relative; }
+.trending-scroll{
+  display:flex; gap:18px; overflow-x:auto;
+  scroll-behavior:smooth;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.trending-scroll::-webkit-scrollbar{ display:none; }
+
+.trending-arrow{
+  position:absolute; top:50%; z-index:3;
+  transform:translateY(-50%);
+  width:42px; height:42px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(10,10,13,0.82);
+  border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  box-shadow:0 8px 22px -8px rgba(0,0,0,0.6);
+  transition:background .2s var(--home-ease), border-color .2s var(--home-ease),
+             color .2s var(--home-ease), opacity .2s var(--home-ease), transform .2s var(--home-ease);
+}
+.trending-arrow:hover{
+  background:var(--home-cta-blue);
+  border-color:var(--home-cta-blue);
+  color:#ffffff;
+  transform:translateY(-50%) scale(1.06);
+}
+.trending-arrow:disabled{
+  opacity:0; pointer-events:none;
+}
+.trending-arrow-left{ left:-14px; }
+.trending-arrow-right{ right:-14px; }
+@media (max-width:1240px){
+  .trending-arrow-left{ left:4px; }
+  .trending-arrow-right{ right:4px; }
 }
 
-.home-card-footer-right {
-  font-family: var(--home-font-mono);
-  font-size: .88rem;
-  font-weight: 600;
-  color: var(--home-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
+.trending-card{
+  position:relative;
+  flex:0 0 340px;
+  border-radius:var(--home-radius-lg);
+  overflow:hidden;
+  border:1px solid var(--home-glass-border);
+  background:var(--home-bg-card);
+  transition:border-color .25s var(--home-ease), transform .25s var(--home-ease);
+}
+.trending-card:hover{ border-color:var(--home-glass-border-strong); transform:translateY(-2px); }
+.trending-rank{
+  position:absolute; top:12px; left:12px; z-index:2;
+  font-family:var(--home-font-mono); font-weight:700; font-size:.8rem;
+  width:28px; height:28px; border-radius:50%;
+  background:rgba(10,10,13,0.75); border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  display:flex; align-items:center; justify-content:center;
+}
+.trending-media{ position:relative; width:100%; aspect-ratio:16/8; overflow:hidden; }
+.trending-media img{ width:100%; height:100%; object-fit:cover; transition:transform .5s var(--home-ease); }
+.trending-card:hover .trending-media img{ transform:scale(1.04); }
+.trending-media-overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(10,10,13,0.9) 0%, rgba(10,10,13,0) 55%);
+}
+.trending-info{ padding:14px 16px 16px; display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.trending-title{
+  font-family:var(--home-font-display); font-size:.98rem; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.trending-price{ font-family:var(--home-font-mono); font-size:.83rem; color:var(--home-text-muted); flex-shrink:0; }
+
+/* ================================================================
+   NEW RELEASES — dense numbered list, no imagery emphasis. Reads
+   like a ledger, not a gallery — the opposite visual weight from
+   Trending's big landscape imagery, on purpose.
+   ================================================================ */
+.release-list{ display:flex; flex-direction:column; }
+.release-row{
+  display:grid;
+  grid-template-columns:34px 46px 1fr auto;
+  align-items:center; gap:16px;
+  padding:15px 8px;
+  border-bottom:1px solid var(--home-glass-border);
+  transition:background .2s var(--home-ease);
+}
+.release-row:first-child{ border-top:1px solid var(--home-glass-border); }
+.release-row:hover{ background:var(--home-glass-fill); }
+.release-num{
+  font-family:var(--home-font-mono); font-size:.85rem; font-weight:700;
+  color:var(--home-text-faint); text-align:center;
+}
+.release-art{ width:46px; height:46px; border-radius:var(--home-radius-sm); overflow:hidden; background:var(--home-bg-elevated); }
+.release-art img{ width:100%; height:100%; object-fit:cover; }
+.release-info{ min-width:0; display:flex; flex-direction:column; gap:2px; }
+.release-name{
+  font-weight:500; font-size:.92rem; color:var(--home-text-primary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.release-meta{ font-family:var(--home-font-mono); font-size:.7rem; color:var(--home-text-faint); letter-spacing:.02em; }
+.release-price{ font-family:var(--home-font-mono); font-size:.85rem; color:var(--home-text-muted); flex-shrink:0; }
+
+/* ================================================================
+   FOOTER
+   ================================================================ */
+.home-footer{ border-top:1px solid var(--home-glass-border); padding:36px 0 32px; }
+.home-footer-inner{ display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+.home-footer-brand{ display:flex; flex-direction:column; gap:8px; }
+.home-footer-logo{ display:flex; align-items:center; gap:9px; font-family:var(--home-font-mono); font-weight:700; font-size:.92rem; color:var(--home-accent); }
+.home-footer-tag{ font-size:.82rem; color:var(--home-text-faint); }
+.home-footer-links{ display:flex; gap:20px; }
+.home-footer-links a{ font-size:.82rem; color:var(--home-text-muted); transition:color .2s var(--home-ease); }
+.home-footer-links a:hover{ color:var(--home-text-primary); }
+.home-footer-copy{ font-family:var(--home-font-mono); font-size:.72rem; color:var(--home-text-faint); margin-top:18px; letter-spacing:.02em; }
+
+/* ================================================================
+   REDUCED MOTION
+   ================================================================ */
+@media (prefers-reduced-motion: reduce){
+  .home-page *{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+  }
 }
 
-/* Discount rows ("-75%") get a positive/green treatment on the left */
-#deals .home-card-footer-left {
-  color: #34D399;
-}
-
-/* Free to Play rows get the same green treatment */
-#free-to-play .home-card-footer-left {
-  color: #34D399;
-}
-
-/* New releases "New" tag in accent blue */
-#new-releases .home-card-footer-left {
-  color: var(--home-accent);
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 860px){
+  .picks-grid{ grid-template-columns:1fr; }
+  .pick-lead{ min-height:340px; }
+  .home-insight-inner{ grid-template-columns:1fr; }
+  .home-insight-kicker{ grid-row:1; justify-self:start; }
+  .home-insight-headline{ grid-row:2; }
+  .home-insight-why-label{ grid-row:3; }
+  .home-insight-why{ grid-row:4; }
+  .trending-card{ flex-basis:270px; }
+  .release-row{ grid-template-columns:26px 40px 1fr auto; gap:12px; }
 }

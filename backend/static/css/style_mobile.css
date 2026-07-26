@@ -1,18 +1,11 @@
 /* ================================================================
    NIMLYX — HOMEPAGE STYLES (MOBILE / RESPONSIVE OVERRIDES)
-   Load this file AFTER nimlyx-home.css.
-
-   Contains every viewport-size media query pulled out of the base
-   stylesheet. The prefers-reduced-motion query was intentionally
-   left in the base file since it's an accessibility preference,
-   not a breakpoint.
+   Load this file AFTER style.css.
    ================================================================ */
 
 @media (max-width:1100px){
   .home-container{ padding:0 28px; }
   .home-header-inner{ padding:14px 28px; }
-  .home-card-grid{ grid-template-columns:repeat(2, 1fr); }
-  .home-why-grid{ grid-template-columns:1fr; }
 }
 
 @media (max-width:900px){
@@ -30,16 +23,32 @@
   .home-search{ width:100%; }
 }
 
+@media (max-width:860px){
+  .picks-grid{ grid-template-columns:1fr; }
+  .pick-lead{ min-height:340px; }
+}
+
 @media (max-width:640px){
+  .home-section-head{ gap:10px; }
+  .home-section-head::before{ margin-top:2px; }
+
   .home-hero{ height:auto; min-height:0; padding-top:56px; padding-bottom:40px; }
   /* position:relative (not static) keeps this in normal flow for height
      purposes, but still lets it paint above the absolutely-positioned
      background/overlay layers instead of falling behind them. */
   .home-hero-content{ position:relative; padding-bottom:0; margin-top:24px; }
   .home-hero-title{ font-size:2rem; }
-  .home-card-grid{ grid-template-columns:1fr; }
+
+  .home-insight-inner{ grid-template-columns:1fr; padding:22px 24px; }
+  .home-insight-kicker{ grid-row:1; justify-self:start; margin-bottom:6px; }
+  .home-insight-headline{ grid-row:2; }
+  .home-insight-why-label{ grid-row:3; }
+  .home-insight-why{ grid-row:4; }
+
+  .trending-card{ flex-basis:250px; }
+  .release-row{ grid-template-columns:24px 38px 1fr auto; gap:10px; padding:13px 6px; }
+
   .home-section{ padding-top:64px; }
-  .home-why{ padding-bottom:64px; }
   .home-section-head{ align-items:flex-start; }
   .home-footer-inner{ flex-direction:column; align-items:flex-start; }
 }

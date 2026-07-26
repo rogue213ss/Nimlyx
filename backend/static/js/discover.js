@@ -314,9 +314,14 @@
     card.className = "home-card";
     card.href = game.analyze_url || "#";
 
+    // header_image is guaranteed by the backend (Steam's own scraped
+    // thumbnail or the CDN-convention header.jpg — never a guessed
+    // URL that might 404). It renders immediately. Anything sharper
+    // (game.image_candidates) is only ever swapped in client-side,
+    // after a real successful Image() load — see image-upgrade.js.
     card.innerHTML = `
         <div class="home-card-media">
-            <img src="${game.best_image || game.header_default || game.large_image || game.image || FALLBACK_IMAGE}" alt="${game.name || ""}" loading="lazy">
+            <img src="${game.header_image || FALLBACK_IMAGE}" alt="${game.name || ""}" loading="lazy">
         </div>
         <div class="home-card-body">
             <h3 class="home-card-title">${game.name || ""}</h3>
@@ -329,15 +334,18 @@
     `;
 
     const img = card.querySelector(".home-card-media img");
-    const fallbackChain = [game.best_image, game.header_default, game.large_image, game.image, FALLBACK_IMAGE].filter(Boolean);
-    let step = 0;
+
+    // Last-resort safety net only — the guaranteed header_image
+    // should always load. If it somehow doesn't (network hiccup,
+    // ad-blocker, etc.), fall back once to the static placeholder
+    // rather than showing a broken image icon.
     img.addEventListener("error", () => {
-        step += 1;
-        while (step < fallbackChain.length && fallbackChain[step] === img.src) step += 1;
-        if (step < fallbackChain.length) {
-            img.src = fallbackChain[step];
-        }
-    }, { once: false });
+        if (img.src !== FALLBACK_IMAGE) img.src = FALLBACK_IMAGE;
+    }, { once: true });
+
+    if (window.NimlyxImageUpgrade && Array.isArray(game.image_candidates) && game.image_candidates.length) {
+        window.NimlyxImageUpgrade.upgradeImg(img, game.image_candidates);
+    }
 
     return card;
 }
