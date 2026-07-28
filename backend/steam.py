@@ -5,6 +5,8 @@ Used by the /api/browse, /api/verdicts, /api/discover, /api/game,
 /api/find, /api/search routes and the homepage.
 """
 import re
+import time
+import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -12,6 +14,37 @@ import requests
 from bs4 import BeautifulSoup
 
 HARDWARE_KEYWORDS = ["steam deck", "steam controller", "steam machine", "steam link"]
+
+
+# ==========================================================
+# SHORT-LIVED RESPONSE CACHE — real data only, never a substitute
+# for it.
+#
+# This does NOT fabricate, guess, or serve placeholder data. It
+# stores the exact real response Steam returned, keyed by the exact
+# request that was made, for a few minutes. Two callers asking for
+# the same thing seconds apart (e.g. the homepage's Trending section
+# and the hero engine's candidate pool both scraping "topsellers" on
+# the SAME request) get the SAME real answer instead of two identical
+# live Steam round-trips -- the truthfulness of the data is unchanged,
+# only the redundant network cost is removed.
+# ==========================================================
+
+_response_cache = {}
+_response_cache_lock = threading.Lock()
+
+
+def _cache_get(key, ttl_seconds):
+    with _response_cache_lock:
+        entry = _response_cache.get(key)
+        if entry and (time.time() - entry["at"]) < ttl_seconds:
+            return entry["value"]
+        return None
+
+
+def _cache_set(key, value):
+    with _response_cache_lock:
+        _response_cache[key] = {"value": value, "at": time.time()}
 
 
 # ==========================================================
@@ -117,6 +150,17 @@ PLATFORM_OS_PARAM = {
 # ==========================================================
 
 def fetch_browse_category(category, count=25, cc="US"):
+    # Short-lived cache keyed by the exact request. Trending (in
+    # routes/pages.py) and the hero engine's candidate pool (in
+    # services/hero/pool.py) both independently call this for
+    # "topsellers" on the SAME homepage request -- this makes the
+    # second caller reuse the first's real, already-fetched result
+    # instead of scraping Steam twice for identical data.
+    cache_key = ("browse_category", category, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=180)
+    if cached is not None:
+        return cached
+
     # category1=998 restricts results to base games only — excludes
     # DLC, soundtracks, and software. Without this, DLC entries (e.g.
     # remaster/"resync" bundles) slip into Trending, Top Sellers, and
@@ -150,7 +194,15 @@ def fetch_browse_category(category, count=25, cc="US"):
             continue
 
         img = game.find("img")
-        image = img["src"] if img else None
+        image = img["src"] if img and img.get("src") else None
+
+        # Same fix as fetch_discover_games (see NIMLYX TRADITION #009
+        # above) — a row without a real app_id or image isn't a card
+        # this app can honestly render, so it's skipped here rather
+        # than passed downstream with fields that silently resolve to
+        # a broken image later.
+        if not app_id or not image:
+            continue
 
         price_div = game.find("div", class_="search_price_discount_combined")
         final_price_el = game.find("div", class_="discount_final_price")
@@ -183,6 +235,7 @@ def fetch_browse_category(category, count=25, cc="US"):
             "platforms": platforms
         })
 
+    _cache_set(cache_key, cleaned)
     return cleaned
 
 
@@ -219,6 +272,21 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
     artwork lookups happen later in discover_api, and only for the 12
     games on the page actually being shown, not the whole buffer."""
 
+    # Same reasoning as fetch_browse_category's cache above: this is
+    # Discover's most expensive uncached call, and it's now hit on
+    # every debounced live-filter change (not just an explicit "Find
+    # Games" click) — the exact same filter combination re-selected a
+    # few minutes later, or picked by a different visitor, re-scraped
+    # Steam from scratch every single time before this. 3 minutes
+    # matches fetch_browse_category's TTL: short enough that a real
+    # listing change still shows up quickly, long enough that the
+    # rapid back-and-forth clicking a live filter UI invites is
+    # answered from cache instead of Steam.
+    cache_key = ("discover_games", genre, play_with, budget, platform, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=180)
+    if cached is not None:
+        return cached
+
     tag_ids = []
     if genre in GENRE_TAG_IDS:
         tag_ids.append(GENRE_TAG_IDS[genre])
@@ -243,22 +311,11 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
     url = "https://store.steampowered.com/search/results/"
 
     response = requests.get(url, params=params, timeout=10)
-
-    print("\n========== DISCOVER DEBUG ==========")
-    print("Genre:", genre)
-    print("Play With:", play_with)
-    print("Budget:", budget)
-    print("Platform:", platform)
-    print("Steam URL:", response.url)
-
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
 
     rows = soup.find_all("a", class_="search_result_row")
-
-    print("Rows Found:", len(rows))
-    print("===================================\n")
 
     games = []
 
@@ -272,12 +329,44 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
             continue
 
         img = row.find("img")
-        image = img["src"] if img else None
+        image = img["src"] if img and img.get("src") else None
+
+        # ==========================================================
+        # NIMLYX TRADITION #009
+        #
+        # "Some games are getting pics, some aren't" wasn't random.
+        #
+        # Steam mixes bundle/package rows and other non-standard
+        # listing types into its own search results HTML alongside
+        # regular single-app rows. Those rows either have no
+        # data-ds-appid at all, or no real <img src>, or both — and
+        # every one of them was getting pushed into the results list
+        # anyway. Downstream, a missing app_id means
+        # default_header_image() can't build even the guaranteed CDN
+        # fallback (it needs a real app_id), and a missing image
+        # means there's nothing to show at all. Both landed on the
+        # frontend's own broken-image fallback, which — separately —
+        # pointed at a PNG file that was never actually created.
+        # Two silent failures stacked on each other looked like
+        # "random" cards missing pictures.
+        #
+        # The fix: a row that has neither a usable app_id nor a
+        # usable image isn't a card Nimlyx can honestly render —
+        # skip it here instead of passing broken data downstream and
+        # hoping a fallback catches it.
+        #
+        # Lesson:
+        # A missing image bug is sometimes actually a missing app_id
+        # bug wearing a different symptom.
+        #
+        # Battle Status:
+        # Victory.
+        # ==========================================================
+        if not app_id or not image:
+            continue
+
         small_image = image
-        large_image = (
-            image.replace("capsule_231x87", "capsule_616x353")
-            if image else None
-        )
+        large_image = image.replace("capsule_231x87", "capsule_616x353")
 
         price_div = row.find("div", class_="search_price_discount_combined")
         final_price_el = row.find("div", class_="discount_final_price")
@@ -300,6 +389,7 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
             "review_percent": parse_review_percent(row),
         })
 
+    _cache_set(cache_key, games)
     return games
 
 
@@ -309,8 +399,25 @@ def fetch_authoritative_price(app_id, cc="US"):
     or days after a change. This fetches the live price straight from
     appdetails — the same source /api/game/<app_id> already trusts —
     right before a card is shown, so discover results never show a stale
-    number. Returns None (leaving the scraped price as a fallback) if the
-    live lookup fails for any reason.
+    number.
+
+    Also retries under the US region if the caller's own region has no
+    data for this app — the same region-unavailable fallback already
+    used in services/hero/builder.py and routes/game.py. Without it, a
+    game that isn't sold in the visitor's region silently kept its
+    stale scraped price instead of getting corrected, and (see below)
+    never got a chance at a real image either.
+
+    While already talking to appdetails for the price, this also grabs
+    header_image from the same response. It's a genuine Steam-confirmed
+    URL, not a guessed CDN path — a real upgrade over
+    steam_images.default_header_image()'s guess specifically for a
+    title that needed the US retry to resolve at all: if it isn't
+    actually sold in the caller's own region, its normal store CDN
+    assets may not exist there either.
+
+    Returns None (leaving the scraped price/image as-is) only if both
+    the original region AND the US retry fail.
 
     NIMLYX TRADITION #003 — "We trusted Steam." Same endpoint, same App
     ID, different query parameters produced a different CDN cache and a
@@ -323,37 +430,60 @@ def fetch_authoritative_price(app_id, cc="US"):
     if not app_id:
         return None
 
-    try:
-        # Match the exact request used by /api/find and /api/game.
-        # Even small query parameter differences create a different
-        # Steam CDN cache key and may return stale pricing.
-        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
-        response = requests.get(url, timeout=8)
-        response.raise_for_status()
-        data = response.json()
-        entry = data.get(str(app_id))
+    # Discover's pagination calls this once per visible game, per
+    # page. Without this cache, scrolling through results re-fetches
+    # a price you already fetched moments ago for a game still on
+    # screen or just off it. 5 minutes is short enough that a real
+    # price change still shows up quickly, long enough to absorb
+    # normal browsing/pagination within one visit.
+    cache_key = ("authoritative_price", app_id, cc)
+    cached = _cache_get(cache_key, ttl_seconds=300)
+    if cached is not None:
+        return cached
 
-        if not entry or not entry.get("success"):
+    def _try(region):
+        try:
+            # Match the exact request used by /api/find and /api/game.
+            # Even small query parameter differences create a different
+            # Steam CDN cache key and may return stale pricing.
+            url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={region}"
+            response = requests.get(url, timeout=8)
+            response.raise_for_status()
+            data = response.json()
+            entry = data.get(str(app_id))
+
+            if not entry or not entry.get("success"):
+                return None
+
+            game_data = entry.get("data")
+            if not isinstance(game_data, dict):
+                return None
+
+            price_overview = game_data.get("price_overview")
+            if price_overview:
+                result = {
+                    "final": price_overview.get("final", 0),
+                    "discount_percent": price_overview.get("discount_percent", 0),
+                }
+            else:
+                # No price_overview at all means the game is free (or
+                # has no listed price) — no discount to speak of either.
+                result = {"final": 0, "discount_percent": 0}
+
+            result["header_image"] = game_data.get("header_image")
+            return result
+
+        except (requests.exceptions.RequestException, ValueError):
             return None
 
-        game_data = entry.get("data")
+    result = _try(cc)
+    if result is None:
+        # Region-unavailable fallback — same pattern as builder.py/game.py.
+        result = _try("US")
 
-        if not isinstance(game_data, dict):
-            return None
-
-        price_overview = game_data.get("price_overview")
-        if price_overview:
-            return {
-                "final": price_overview.get("final", 0),
-                "discount_percent": price_overview.get("discount_percent", 0),
-            }
-
-        # No price_overview at all means the game is free (or has no
-        # listed price) — no discount to speak of either.
-        return {"final": 0, "discount_percent": 0}
-
-    except (requests.exceptions.RequestException, ValueError):
-        return None
+    if result is not None:
+        _cache_set(cache_key, result)
+    return result
 
 
 # ==========================================================
@@ -470,7 +600,7 @@ def fetch_new_release_candidates(count=40, cc="US"):
             continue
 
         img = row.find("img")
-        image = img["src"] if img else None
+        image = img["src"] if img and img.get("src") else None
 
         candidates.append({"id": app_id, "name": name, "image": image})
 
@@ -612,7 +742,26 @@ def get_appdetails(app_id, cc):
     here lets _enrich_one() treat it as "no data for this game" (its
     existing, correct behavior) so one flaky response degrades to one
     missing candidate instead of an empty homepage.
+
+    This is the single most-called Steam endpoint in the app — Home's
+    hero pool enrichment, New Releases date verification, and Search
+    all funnel through it, and the same popular games routinely show
+    up in more than one of those at once (a hero candidate someone
+    then searches for directly, or a game both trending AND freshly
+    verified as a new release). 10 minutes is longer than the other
+    caches here since a full appdetails payload (price aside, which
+    fetch_authoritative_price already covers separately with its own
+    shorter TTL) changes far less often than a listing or a price.
+
+    Only a SUCCESSFUL response is cached — never None. Caching a
+    failure would turn one transient rate-limit blip into a "missing"
+    game for the entire TTL window instead of just this one request.
     """
+    cache_key = ("appdetails", app_id, cc)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
+
     url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
     try:
         response = requests.get(url, timeout=10)
@@ -629,7 +778,10 @@ def get_appdetails(app_id, cc):
 
     entry = data.get(str(app_id))
     if isinstance(entry, dict) and entry.get("success"):
-        return entry.get("data")
+        result = entry.get("data")
+        if result is not None:
+            _cache_set(cache_key, result)
+        return result
     return None
 
 

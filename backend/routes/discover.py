@@ -134,6 +134,13 @@ def discover_api():
             if live_price is not None:
                 g["final_price"] = live_price["final"]
                 g["discount_percent"] = live_price["discount_percent"]
+                # A real, Steam-confirmed image beats a guessed CDN
+                # path outright -- particularly for a title that only
+                # resolved via fetch_authoritative_price's US-region
+                # retry, whose normal store assets may not exist under
+                # the visitor's own region at all.
+                if live_price.get("header_image"):
+                    g["image"] = live_price["header_image"]
             app_id = g.get("id")
             # Guaranteed, zero-API-call base image every card can
             # render immediately. Higher-res candidates are cheap

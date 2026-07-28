@@ -23,30 +23,15 @@
 }
 
 @media (max-width:700px){
-  .discover-wizard{ padding:24px; }
+  .discover-wizard{ padding:8px 24px; }
   .discover-sidebar-panel{ padding:22px; }
   .wizard-options{ grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); }
-  .wizard-question-title{ font-size:1.3rem; }
+  .wizard-question-title{ font-size:1.05rem; }
+  .wizard-question-summary{ padding:20px 0; gap:10px; }
+  .wizard-step-label{ display:none; } /* redundant once the summary is a compact single row on a narrow screen */
   .discover-results-grid{ grid-template-columns:repeat(2, 1fr); gap:16px; }
   .discover-results-grid .home-card,
   .discover-skeleton-card{ aspect-ratio:4/5; border-radius:16px; }
-
-  /* Same divider role as desktop's .wizard-question + .wizard-question
-     in discover.css, just tighter to match this breakpoint's smaller
-     .discover-wizard padding. */
-  .wizard-question + .wizard-question{
-    margin-top:28px;
-    padding-top:28px;
-  }
-
-  /* Five sections stacked on a small screen is already a long scroll
-     — a staggered entrance here just makes the ones further down feel
-     like they're lagging in as you scroll to them. Show everything
-     immediately instead. */
-  .wizard-question:nth-of-type(2),
-  .wizard-question:nth-of-type(3),
-  .wizard-question:nth-of-type(4),
-  .wizard-question:nth-of-type(5){ animation-delay:0s; }
 }
 
 @media (max-width:480px){

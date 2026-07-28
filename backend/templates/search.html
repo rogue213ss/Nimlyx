@@ -6,81 +6,82 @@
 <title>Nimlyx | Game Details</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- FontAwesome kept deliberately -- search.js's own render functions
+     (renderHero, renderStats, etc.) inject "fa-solid fa-x" icons
+     directly into template strings in ~8 places. Swapping those to
+     inline SVG (matching Home/Discover's icon style) means editing
+     JS render logic, not just CSS/HTML -- out of scope for this
+     restyle pass. Flagged, not silently dropped. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search_mobile.css') }}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
-<body>
+<body class="home-page">
 
 <!-- ================= HEADER =================
-     Same .home-header / .home-nav / .home-search markup as index.html
-     (Home page), copied verbatim so the nav bar is pixel-identical.
-     search.js's ids are all preserved: #gameInput #searchBtn
-     #suggestions #regionPicker #regionTrigger #regionTriggerLabel
-     #regionMenu. Two page-specific additions on top of the shared
-     markup: the #searchBtn button (this page's search is JS-driven,
-     not a submitting <form>, so search.js can own navigation) and
+     Now the literal, UNMODIFIED .home-header markup from index.html /
+     discover.html -- inherits its styling entirely from style.css,
+     nothing page-specific redeclared. Nav links match Home exactly
+     (Home | Discover | Search | About); this page IS Search, so
+     aria-current="page" sits on that link. Two page-specific
+     additions ride alongside the shared markup: the #searchBtn button
+     (this page's search is JS-driven, not a submitting <form>) and
      the region picker (no equivalent on Home/Discover). -->
 <header class="home-header">
-    <div class="home-container home-header-inner">
-        <a href="/" class="home-logo" aria-label="Nimlyx home">
-            <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
-                <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
-            </svg>
-            Nimlyx
-        </a>
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
 
-        <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
-        <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
-            <span></span><span></span><span></span>
-        </label>
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
 
-        <div class="home-nav-panel">
-            <nav class="home-nav" aria-label="Primary">
-                <a href="/">Home</a>
-                <a href="/discover">Discover</a>
-                <a href="/deals">Deals</a>
-                <a href="/top-rated">Top Rated</a>
-                <a href="/about">About</a>
-            </nav>
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search" aria-current="page">Search</a>
+        <a href="/about">About</a>
+      </nav>
 
-            <!-- Not wrapped in a <form> like Home's — this page already
-                 has a working, JS-driven search (#searchBtn / search.js)
-                 that doesn't submit/reload, so no <form> was introduced
-                 here to avoid changing that behavior. -->
-            <div class="home-search">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="gameInput" placeholder="Search games, genres, developers…" autocomplete="off" aria-label="Search games">
-                <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
-                <div id="suggestions" class="suggestions-dropdown"></div>
-            </div>
+      <!-- Not wrapped in a <form> like Home's -- this page already has
+           a working, JS-driven search (#searchBtn / search.js) that
+           doesn't submit/reload, so no <form> was introduced here. -->
+      <div class="home-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" placeholder="Search games, genres, developers…" autocomplete="off" aria-label="Search games">
+        <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <div id="suggestions" class="suggestions-dropdown"></div>
+      </div>
 
-            <div class="region-picker" id="regionPicker">
-                <button type="button" class="region-picker__trigger" id="regionTrigger" aria-haspopup="listbox" aria-expanded="false">
-                    <i class="fa-solid fa-globe"></i>
-                    <span id="regionTriggerLabel">Region</span>
-                    <i class="fa-solid fa-chevron-down region-picker__chevron"></i>
-                </button>
-                <div class="region-picker__menu" id="regionMenu" role="listbox"></div>
-            </div>
-
-            <button type="button" class="home-btn-ghost">Sign In</button>
-        </div>
+      <div class="region-picker" id="regionPicker">
+        <button type="button" class="region-picker__trigger" id="regionTrigger" aria-haspopup="listbox" aria-expanded="false">
+          <i class="fa-solid fa-globe"></i>
+          <span id="regionTriggerLabel">Region</span>
+          <i class="fa-solid fa-chevron-down region-picker__chevron"></i>
+        </button>
+        <div class="region-picker__menu" id="regionMenu" role="listbox"></div>
+      </div>
     </div>
+  </div>
 </header>
 
 <!-- ================= HERO ================= -->
 <!-- NOTE ON "poster": search.js only ever sets .src on ONE image
-     (#heroBg) — there's no second, independently-sourced poster
+     (#heroBg) -- there's no second, independently-sourced poster
      asset coming from the API. Rather than invent a duplicate image
-     element that JS would never populate (which would just show
-     broken/blank art), the hero uses the single heroBg image as a
-     full-bleed cinematic banner — the same approach Epic Games' and
-     PlayStation Store's game pages use. The title block below sits in
-     a glass panel over it, which reads as the "poster card" region
-     without requiring a second image source. -->
+     element that JS would never populate, the hero uses the single
+     heroBg image as a full-bleed cinematic banner, with the title
+     block sitting in a glass panel over it. -->
 <section class="hero">
     <img class="hero__bg" id="heroBg" alt="">
     <div class="hero__scrim"></div>
@@ -91,10 +92,10 @@
             <h1 class="hero__title" id="heroTitle"></h1>
             <div class="hero__meta" id="heroMeta"></div>
             <div class="hero__ctas">
-                <button class="btn btn--primary" id="watchTrailerBtn">
+                <button class="home-btn home-btn-primary" id="watchTrailerBtn">
                     <i class="fa-solid fa-circle-play"></i> Watch Trailer
                 </button>
-                <a class="btn btn--secondary" id="steamLink" href="#" target="_blank" rel="noopener">
+                <a class="home-btn home-btn-ghost" id="steamLink" href="#" target="_blank" rel="noopener">
                     <i class="fa-solid fa-arrow-up-right-from-square"></i> View on Steam
                 </a>
             </div>
@@ -117,7 +118,8 @@
 
     <!-- ================= SCREENSHOTS ================= -->
     <!-- .featured-wrap is on THIS section itself, matching the original
-         markup exactly: search.js does `document.querySelector(".featured-wrap").style.display = "none"`
+         markup: search.js does
+         document.querySelector(".featured-wrap").style.display = "none"
          when a game has no screenshots, which needs to hide the whole
          section (heading included), not just the image/thumbs. -->
     <section class="panel shots-panel featured-wrap reveal">
@@ -146,13 +148,6 @@
             <h2 class="panel__title">Quick Stats</h2>
         </div>
 
-        <!-- Spotlight row: the three "headline" cards the brief calls
-             out by name (Metascore / Developer / Publisher). These sit
-             above the compact grid below, which is the full data dump
-             search.js already renders into #statsRows (price, score,
-             reviews, platforms, developer, publisher, release again,
-             in smaller form) — kept exactly as-is since it's existing
-             JS behavior, just restyled as supporting detail. -->
         <div class="stats-spotlight">
             <div class="score-card">
                 <span class="score-card__label"><i class="fa-solid fa-wand-magic-sparkles"></i> Nimlyx Score</span>
@@ -161,7 +156,7 @@
                         <defs>
                             <linearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
                                 <stop offset="0%" stop-color="#60A5FA"/>
-                                <stop offset="100%" stop-color="#8B7CF6"/>
+                                <stop offset="100%" stop-color="#3b82f6"/>
                             </linearGradient>
                         </defs>
                         <circle class="track" cx="66" cy="66" r="56"></circle>
@@ -215,6 +210,31 @@
     </section>
 
 </main>
+
+<!-- ================= FOOTER =================
+     Copied verbatim from index.html/discover.html -- zero new CSS
+     needed, style.css already styles every class here. This is the
+     piece that was missing entirely before. -->
+<footer class="home-footer">
+  <div class="home-container home-footer-inner">
+    <div class="home-footer-brand">
+      <div class="home-footer-logo">
+        <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+          <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+        </svg>
+        Nimlyx
+      </div>
+      <span class="home-footer-tag">Steam Data · Regional Pricing · Not affiliated with Valve</span>
+    </div>
+    <div class="home-footer-links">
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+  </div>
+  <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+</footer>
 
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 

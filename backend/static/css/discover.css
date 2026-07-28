@@ -83,8 +83,8 @@
 
 /* Selections / preference chips ---------------------------------- */
 .selected-preferences-chips{
-  display:flex; flex-wrap:wrap; gap:8px;
-  margin-bottom:24px;
+  display:flex; flex-direction:column; gap:16px;
+  margin-bottom:20px;
 }
 
 .discover-sidebar-empty{
@@ -95,6 +95,26 @@
   border:1px dashed var(--home-glass-border);
   border-radius:var(--home-radius-md);
   margin:0;
+}
+
+/* One .filter-compact-group per answered question — label above,
+   its chip below. Slides/fades in from the left on every render so
+   picking a filter visibly "arrives" in the sidebar rather than just
+   popping into place. */
+.filter-compact-group{
+  display:flex; flex-direction:column; gap:8px;
+  animation:filterCompactIn .35s var(--home-ease) both;
+}
+@keyframes filterCompactIn{
+  from{ opacity:0; transform:translateX(-10px); }
+  to{ opacity:1; transform:translateX(0); }
+}
+.filter-compact-group-label{
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--home-text-faint);
+}
+.filter-compact-chips{
+  display:flex; flex-wrap:wrap; gap:8px;
 }
 
 /* .preference-chip is rendered dynamically by discover.js into
@@ -126,6 +146,79 @@
 .preference-chip button:hover{
   background:rgba(239,68,68,0.16);
   color:#f87171;
+}
+
+/* Add Filter -------------------------------------------------------
+   Second entry point into the exact same filter options shown in
+   the (possibly now-collapsed) wizard below — lets you keep adding
+   filters from the sidebar without scrolling back up. See
+   discover.js's renderAddFilterPanel(), which reads the real
+   .wizard-option buttons rather than duplicating their data here. */
+.filter-add-wrap{
+  margin-bottom:20px;
+}
+.filter-add-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  width:100%;
+  background:transparent;
+  border:1px dashed var(--home-glass-border-strong);
+  border-radius:var(--home-radius-md);
+  padding:11px;
+  font-family:var(--home-font-body); font-size:.85rem; font-weight:500;
+  color:var(--home-text-muted);
+  transition:border-color .2s var(--home-ease), color .2s var(--home-ease), background .2s var(--home-ease);
+}
+.filter-add-btn:hover{
+  border-color:var(--home-accent);
+  color:var(--home-accent);
+  background:rgba(59,130,246,0.06);
+}
+.filter-add-btn[aria-expanded="true"]{
+  border-style:solid;
+  border-color:var(--home-accent);
+  color:var(--home-accent);
+}
+.filter-add-btn[aria-expanded="true"] svg{ transform:rotate(45deg); }
+.filter-add-btn svg{ transition:transform .2s var(--home-ease); }
+
+.filter-add-panel{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .3s var(--home-ease);
+}
+.filter-add-panel > *{ overflow:hidden; } /* the grid-rows trick needs an inner element to actually clip against */
+.filter-add-panel.is-open{
+  grid-template-rows:1fr;
+  margin-top:12px;
+}
+.filter-add-panel-inner{
+  display:flex; flex-direction:column; gap:14px;
+  min-height:0;
+}
+.filter-add-popover-group{
+  display:flex; flex-direction:column; gap:8px;
+}
+.filter-add-popover-group-label{
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--home-text-faint);
+}
+.filter-add-popover-options{
+  display:flex; flex-wrap:wrap; gap:6px;
+}
+.filter-add-popover-option{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:999px;
+  padding:6px 12px;
+  font-size:.78rem; color:var(--home-text-primary);
+  transition:border-color .2s var(--home-ease), background .2s var(--home-ease);
+}
+.filter-add-popover-option:hover{
+  border-color:var(--home-accent);
+  background:rgba(59,130,246,0.08);
+}
+.filter-add-popover-empty{
+  font-size:.8rem; color:var(--home-text-faint); margin:0;
 }
 
 /* Sort ------------------------------------------------------------ */
@@ -163,31 +256,49 @@
 
 /* ================================================================
    WIZARD
+   Each filter is a native <details>/<summary> accordion — collapsed
+   by default (except Genre, open on load) so having all 5 filters
+   independently visible/answerable doesn't mean scrolling past 5
+   full option-grids just to reach the results below. <details> was
+   chosen over a custom JS-driven collapse so open/closed state is
+   free, keyboard-accessible, and needs no max-height guessing.
    ================================================================ */
 .discover-wizard{
   background:var(--home-glass-fill);
   border:1px solid var(--home-glass-border);
   border-radius:var(--home-radius-lg);
-  padding:44px;
+  padding:8px 44px;
   position:relative;
   overflow:hidden;
+  /* Resting/expanded state has a generous fixed max-height (not
+     "none") specifically so collapsing it is animatable — max-height
+     can't transition from "none"/auto, only between two numbers.
+     4000px is comfortably taller than 5 accordion summaries plus one
+     fully expanded question, so it never visibly clips the content
+     it's supposed to just be a ceiling for. */
+  max-height:4000px;
+  opacity:1;
+  transition:max-height .45s var(--home-ease), opacity .3s var(--home-ease),
+             padding .45s var(--home-ease), margin .45s var(--home-ease),
+             border-color .45s var(--home-ease);
+}
+/* Compact mode: the whole wizard shrinks to nothing once a filter is
+   selected — see discover.js's collapseWizard(). .discover-results
+   is this element's next sibling in normal document flow, so as
+   max-height shrinks, results rises to sit right beside the sidebar
+   with no separate layout/grid logic needed. */
+.discover-wizard.is-collapsed{
+  max-height:0;
+  opacity:0;
+  padding-top:0; padding-bottom:0;
+  border-color:transparent;
+  pointer-events:none;
 }
 
-.wizard-question.is-hidden{ display:none; }
-.wizard-question.is-active{
-  display:block;
-  animation:discoverFadeUp .45s var(--home-ease) both;
+.wizard-question{
+  animation:discoverFadeUp .4s var(--home-ease) both;
 }
-
-/* Every filter section renders at once now (Version 1: independent,
-   non-sequential filters — no more one-question-at-a-time reveal),
-   so consecutive sections need their own separator instead of relying
-   on the single .discover-wizard container padding that was enough
-   when only one was ever visible. Matches the same divider language
-   already used for .wizard-cta below. */
 .wizard-question + .wizard-question{
-  margin-top:40px;
-  padding-top:40px;
   border-top:1px solid var(--home-glass-border);
 }
 
@@ -199,18 +310,61 @@
 .wizard-question:nth-of-type(4){ animation-delay:.15s; }
 .wizard-question:nth-of-type(5){ animation-delay:.2s; }
 
+.wizard-question-summary{
+  display:flex; align-items:center; gap:14px;
+  list-style:none; /* hides Firefox's default marker */
+  cursor:pointer;
+  padding:26px 0;
+  user-select:none;
+}
+.wizard-question-summary::-webkit-details-marker{ display:none; } /* hides Chrome/Safari's default marker */
+.wizard-question-summary:hover .wizard-question-title{ color:var(--home-accent); }
+
 .wizard-step-label{
   display:inline-block;
   font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--home-accent); margin-bottom:14px;
+  text-transform:uppercase; color:var(--home-accent);
+  flex-shrink:0;
 }
 .wizard-question-title{
   font-family:var(--home-font-display); font-weight:600;
-  font-size:1.5rem; letter-spacing:-0.01em; line-height:1.25;
-  margin:0 0 10px;
+  font-size:1.15rem; letter-spacing:-0.01em; line-height:1.3;
+  margin:0;
+  transition:color .2s var(--home-ease);
 }
+
+/* Shows the current selection right in the collapsed row (e.g.
+   "RPG") so you can see every active filter at a glance without
+   opening each section — same information the sidebar chips give,
+   just visible without scrolling there. Populated by discover.js;
+   empty and invisible until a selection exists. */
+.wizard-question-answer{
+  font-family:var(--home-font-mono); font-size:.78rem;
+  color:var(--home-text-primary);
+  background:rgba(59,130,246,0.12);
+  border:1px solid rgba(59,130,246,0.3);
+  border-radius:var(--home-radius-sm);
+  padding:3px 10px;
+  margin-left:auto;
+}
+.wizard-question-answer:empty{ display:none; }
+
+.wizard-chevron{
+  flex-shrink:0;
+  color:var(--home-text-muted);
+  transition:transform .25s var(--home-ease);
+}
+.wizard-question[open] > .wizard-question-summary .wizard-chevron{
+  transform:rotate(180deg);
+}
+
+.wizard-question-body{
+  padding-bottom:32px;
+  animation:discoverFadeUp .3s var(--home-ease) both;
+}
+
 .wizard-question-hint{
-  font-size:.92rem; color:var(--home-text-muted); margin:0 0 28px;
+  font-size:.92rem; color:var(--home-text-muted); margin:0 0 24px;
 }
 
 .wizard-options{
@@ -233,6 +387,7 @@
   transform:translateY(-3px);
   border-color:var(--home-glass-border-strong);
   background:var(--home-glass-fill-strong);
+
 }
 
 /* Selected-state — covers whichever selected/active class discover.js

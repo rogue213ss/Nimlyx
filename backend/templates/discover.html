@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover_mobile.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 </head>
 <body class="home-page discover-page">
 
@@ -37,7 +37,7 @@
       <nav class="home-nav" aria-label="Primary">
         <a href="/">Home</a>
         <a href="/discover" aria-current="page">Discover</a>
-        <a href="/compare">Compare</a>
+        <a href="/search">Search</a>
         <a href="/about">About</a>
       </nav>
 
@@ -75,12 +75,28 @@
 
         <div class="discover-sidebar-head">
           <h2 class="discover-sidebar-title">Your Selections</h2>
-          <p class="discover-sidebar-hint">Everything you choose will appear here. Remove any answer to revisit that step.</p>
+          <p class="discover-sidebar-hint">Pick any filter and it'll show up here — remove it any time to revisit that choice.</p>
         </div>
 
-        <!-- JS renders .preference-chip items into this exact element -->
+        <!-- JS renders grouped filter-compact-group items into this
+             element once at least one filter is selected; shows the
+             empty-state message otherwise. -->
         <div class="selected-preferences-chips" id="selectedPreferencesChips">
-          <p class="discover-sidebar-empty" id="sidebarEmptyState">No preferences selected yet — pick any filter on the right, in any order.</p>
+          <p class="discover-sidebar-empty" id="sidebarEmptyState">No preferences selected yet — pick any filter below, in any order.</p>
+        </div>
+
+        <!-- Lets you add another filter without scrolling back up to
+             the (now-collapsed) filter panel below. Options are read
+             live from the real .wizard-option buttons in #discoverWizard
+             and clicking one here just clicks the real button — this
+             is a second entry point into the same selection logic, not
+             a duplicate of it. -->
+        <div class="filter-add-wrap">
+          <button type="button" class="filter-add-btn" id="filterAddBtn" aria-expanded="false" aria-controls="filterAddPanel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Filter
+          </button>
+          <div class="filter-add-panel" id="filterAddPanel"><div class="filter-add-panel-inner" id="filterAddPanelInner"></div></div>
         </div>
 
         <!-- Sort menu — visual only for now. No JS hook exists to make
@@ -108,11 +124,16 @@
 
       <section class="discover-wizard" id="discoverWizard" aria-label="Game discovery wizard">
 
-        <div class="wizard-question is-active" id="question-1" data-question="1">
-          <span class="wizard-step-label">Filter</span>
-          <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
-          <p class="wizard-question-hint">Optional — pick one, or skip it entirely.</p>
-          <div class="wizard-options" role="group" aria-label="Genre options">
+        <details class="wizard-question" id="question-1" data-question="1" open>
+          <summary class="wizard-question-summary">
+            <span class="wizard-step-label">Filter</span>
+            <h2 class="wizard-question-title">What kind of adventure are you looking for?</h2>
+            <span class="wizard-question-answer" data-question-answer="1"></span>
+            <svg class="wizard-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+          </summary>
+          <div class="wizard-question-body">
+            <p class="wizard-question-hint">Optional — pick one, or skip it entirely.</p>
+            <div class="wizard-options" role="group" aria-label="Genre options">
             <button type="button" class="wizard-option" data-value="action">
               <span class="wizard-option-title">Action</span>
               <span class="wizard-option-desc">Fast Combat • Shooter</span>
@@ -146,13 +167,19 @@
               <span class="wizard-option-desc">Plan • Command</span>
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
-        <div class="wizard-question is-active" id="question-2" data-question="2">
-          <span class="wizard-step-label">Filter</span>
-          <h2 class="wizard-question-title">Who are you playing with?</h2>
-          <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
-          <div class="wizard-options" role="group" aria-label="Playstyle options">
+        <details class="wizard-question" id="question-2" data-question="2">
+          <summary class="wizard-question-summary">
+            <span class="wizard-step-label">Filter</span>
+            <h2 class="wizard-question-title">Who are you playing with?</h2>
+            <span class="wizard-question-answer" data-question-answer="2"></span>
+            <svg class="wizard-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+          </summary>
+          <div class="wizard-question-body">
+            <p class="wizard-question-hint">This helps us match games to how you actually play.</p>
+            <div class="wizard-options" role="group" aria-label="Playstyle options">
             <button type="button" class="wizard-option" data-value="solo">
               <span class="wizard-option-title">Solo</span>
               <span class="wizard-option-desc">Play at your own pace.</span>
@@ -170,13 +197,19 @@
               <span class="wizard-option-desc">Share the screen, side by side.</span>
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
-        <div class="wizard-question is-active" id="question-3" data-question="3">
-          <span class="wizard-step-label">Filter</span>
-          <h2 class="wizard-question-title">What's your budget?</h2>
-          <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
-          <div class="wizard-options" role="group" aria-label="Budget options">
+        <details class="wizard-question" id="question-3" data-question="3">
+          <summary class="wizard-question-summary">
+            <span class="wizard-step-label">Filter</span>
+            <h2 class="wizard-question-title">What's your budget?</h2>
+            <span class="wizard-question-answer" data-question-answer="3"></span>
+            <svg class="wizard-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+          </summary>
+          <div class="wizard-question-body">
+            <p class="wizard-question-hint">We'll only show you games that fit what you're willing to spend.</p>
+            <div class="wizard-options" role="group" aria-label="Budget options">
             <button type="button" class="wizard-option" data-value="free">
               <span class="wizard-option-title">Free</span>
               <span class="wizard-option-desc">No cost, no catch.</span>
@@ -198,13 +231,19 @@
               <span class="wizard-option-desc">Show me everything.</span>
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
-        <div class="wizard-question is-active" id="question-4" data-question="4">
-          <span class="wizard-step-label">Filter</span>
-          <h2 class="wizard-question-title">Minimum Review Score</h2>
-          <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
-          <div class="wizard-options" role="group" aria-label="Review score options">
+        <details class="wizard-question" id="question-4" data-question="4">
+          <summary class="wizard-question-summary">
+            <span class="wizard-step-label">Filter</span>
+            <h2 class="wizard-question-title">Minimum Review Score</h2>
+            <span class="wizard-question-answer" data-question-answer="4"></span>
+            <svg class="wizard-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+          </summary>
+          <div class="wizard-question-body">
+            <p class="wizard-question-hint">Set the bar for how well-received a game should be.</p>
+            <div class="wizard-options" role="group" aria-label="Review score options">
             <button type="button" class="wizard-option" data-value="any">
               <span class="wizard-option-title">Any</span>
               <span class="wizard-option-desc">Don't filter by reviews.</span>
@@ -222,13 +261,19 @@
               <span class="wizard-option-desc">Among the best reviewed on Steam.</span>
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
-        <div class="wizard-question is-active" id="question-5" data-question="5">
-          <span class="wizard-step-label">Filter</span>
-          <h2 class="wizard-question-title">Platform</h2>
-          <p class="wizard-question-hint">Optional — filter to where you'll actually be playing.</p>
-          <div class="wizard-options" role="group" aria-label="Platform options">
+        <details class="wizard-question" id="question-5" data-question="5">
+          <summary class="wizard-question-summary">
+            <span class="wizard-step-label">Filter</span>
+            <h2 class="wizard-question-title">Platform</h2>
+            <span class="wizard-question-answer" data-question-answer="5"></span>
+            <svg class="wizard-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6,9 12,15 18,9"/></svg>
+          </summary>
+          <div class="wizard-question-body">
+            <p class="wizard-question-hint">Optional — filter to where you'll actually be playing.</p>
+            <div class="wizard-options" role="group" aria-label="Platform options">
             <button type="button" class="wizard-option" data-value="windows">
               <span class="wizard-option-title">Windows</span>
               <span class="wizard-option-desc">The most widely supported platform.</span>
@@ -246,7 +291,8 @@
               <span class="wizard-option-desc">Verified for handheld play.</span>
             </button>
           </div>
-        </div>
+          </div>
+        </details>
 
         <div class="wizard-cta">
           <h2 class="wizard-cta-title">Not seeing what you want? Start over.</h2>

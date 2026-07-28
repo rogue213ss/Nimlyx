@@ -11,6 +11,7 @@ is no longer fetched on this route at all, which also trims one
 Steam round-trip off every homepage load.
 """
 import logging
+import threading
 import time
 import requests
 from flask import Blueprint, render_template
@@ -26,51 +27,131 @@ pages_bp = Blueprint("pages", __name__)
 logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------
-# Hero-lineup cache — STOPGAP, not the real design. See prior note:
+# Hero-lineup cache — serve-stale-while-revalidating.
+#
 # build_hero_lineup() makes ~2 live Steam calls per surviving
-# candidate; this in-memory per-region TTL cache stands in for a
-# real scheduled build (Phase 4) until services/builds/ exists.
+# candidate (100+ round-trips on a full pool). Blocking a request on
+# that — the previous TTL-cache version — is what made the homepage
+# feel heavy after the revamp, and made it outright fail on Render's
+# free tier (cold container start + cold hero build stacking into a
+# request timeout).
+#
+# New behavior:
+#   - Cache hit, fresh:  return immediately, zero Steam calls.
+#   - Cache hit, stale:  return the stale-but-REAL data immediately
+#     (never fake — just not the newest build), and kick off a
+#     background rebuild for the NEXT visitor. This request never
+#     waits on it.
+#   - Cache miss entirely (first request since process start): return
+#     (None, None). home()'s existing fallback branch already handles
+#     this honestly — real top-sellers data, insight bar correctly
+#     hidden — this just reuses that tested path instead of ever
+#     blocking a request on a full build.
+#
+# Only one background rebuild per region runs at a time; repeated
+# requests during a rebuild don't pile up duplicate builds. This is
+# still an in-memory, per-process stopgap — a redeploy or a second
+# worker process starts cold again — but it's the actual bottleneck
+# fix; a persistent/shared cache (Phase 4) is a separate step if
+# deploys turn out to be frequent enough to matter.
 # ----------------------------------------------------------------
 _HERO_CACHE = {}
+_HERO_CACHE_LOCK = threading.Lock()
 _HERO_CACHE_TTL_SECONDS = 900  # 15 minutes
+_HERO_BUILD_IN_PROGRESS = set()
+
+
+def _rebuild_hero_cache(cc):
+    """Runs in a background thread — never blocks a request. Any
+    failure here just leaves the existing cache entry (or nothing, on
+    a first build) in place; it's logged, and the next stale/miss
+    simply tries again later."""
+    try:
+        selected, all_candidates = build_hero_lineup(cc=cc)
+        with _HERO_CACHE_LOCK:
+            _HERO_CACHE[cc] = {
+                "selected": selected,
+                "all_candidates": all_candidates,
+                "fetched_at": time.time(),
+            }
+    except Exception:
+        logger.exception("Background hero rebuild failed for region %s.", cc)
+    finally:
+        with _HERO_CACHE_LOCK:
+            _HERO_BUILD_IN_PROGRESS.discard(cc)
 
 
 def _get_hero_lineup(cc):
-    cached = _HERO_CACHE.get(cc)
-    if cached and (time.time() - cached["fetched_at"]) < _HERO_CACHE_TTL_SECONDS:
+    with _HERO_CACHE_LOCK:
+        cached = _HERO_CACHE.get(cc)
+        building = cc in _HERO_BUILD_IN_PROGRESS
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= _HERO_CACHE_TTL_SECONDS
+        if is_stale and not building:
+            with _HERO_CACHE_LOCK:
+                _HERO_BUILD_IN_PROGRESS.add(cc)
+            threading.Thread(target=_rebuild_hero_cache, args=(cc,), daemon=True).start()
         return cached["selected"], cached["all_candidates"]
 
-    selected, all_candidates = build_hero_lineup(cc=cc)
-    _HERO_CACHE[cc] = {
-        "selected": selected,
-        "all_candidates": all_candidates,
-        "fetched_at": time.time(),
-    }
-    return selected, all_candidates
+    # True cold start — nothing cached yet for this region at all.
+    if not building:
+        with _HERO_CACHE_LOCK:
+            _HERO_BUILD_IN_PROGRESS.add(cc)
+        threading.Thread(target=_rebuild_hero_cache, args=(cc,), daemon=True).start()
+
+    return None, None
 
 
 # ----------------------------------------------------------------
-# New-releases cache — same STOPGAP reasoning as the hero cache
-# above. fetch_verified_new_releases() makes one live appdetails
-# call per candidate (up to candidate_pool of them) purely to check
-# each one's real release date; that's real API cost worth paying
-# once per TTL window, not on every homepage hit.
+# New-releases cache — same serve-stale-while-revalidating pattern
+# as the hero cache above, same reasoning: fetch_verified_new_
+# releases() makes one live appdetails call per candidate purely to
+# check each one's real release date, which is real API cost worth
+# paying in the background, not inside a request.
 # ----------------------------------------------------------------
 _NEW_RELEASES_CACHE = {}
+_NEW_RELEASES_CACHE_LOCK = threading.Lock()
 _NEW_RELEASES_CACHE_TTL_SECONDS = 1800  # 30 minutes
+_NEW_RELEASES_BUILD_IN_PROGRESS = set()
+
+
+def _rebuild_new_releases_cache(cc):
+    try:
+        games = fetch_verified_new_releases(limit=5, cc=cc)
+        with _NEW_RELEASES_CACHE_LOCK:
+            _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
+    except Exception:
+        logger.exception("Background new-releases rebuild failed for region %s.", cc)
+    finally:
+        with _NEW_RELEASES_CACHE_LOCK:
+            _NEW_RELEASES_BUILD_IN_PROGRESS.discard(cc)
 
 
 def _get_verified_new_releases(cc):
-    cached = _NEW_RELEASES_CACHE.get(cc)
-    if cached and (time.time() - cached["fetched_at"]) < _NEW_RELEASES_CACHE_TTL_SECONDS:
+    with _NEW_RELEASES_CACHE_LOCK:
+        cached = _NEW_RELEASES_CACHE.get(cc)
+        building = cc in _NEW_RELEASES_BUILD_IN_PROGRESS
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= _NEW_RELEASES_CACHE_TTL_SECONDS
+        if is_stale and not building:
+            with _NEW_RELEASES_CACHE_LOCK:
+                _NEW_RELEASES_BUILD_IN_PROGRESS.add(cc)
+            threading.Thread(target=_rebuild_new_releases_cache, args=(cc,), daemon=True).start()
         return cached["games"]
 
-    games = fetch_verified_new_releases(limit=5, cc=cc)
-    _NEW_RELEASES_CACHE[cc] = {
-        "games": games,
-        "fetched_at": time.time(),
-    }
-    return games
+    # True cold start — nothing cached yet. Kick off a background
+    # build and return an empty list for THIS request; the New
+    # Releases section already guards on `{% if new_release_games %}`
+    # and simply doesn't render when empty, same honest-degradation
+    # approach as the hero fallback.
+    if not building:
+        with _NEW_RELEASES_CACHE_LOCK:
+            _NEW_RELEASES_BUILD_IN_PROGRESS.add(cc)
+        threading.Thread(target=_rebuild_new_releases_cache, args=(cc,), daemon=True).start()
+
+    return []
 
 
 def hero_image_url(appid, fallback):
@@ -113,6 +194,15 @@ def home():
                 "condition that produces an empty/hidden insight bar.", cc
             )
             selected_heroes, all_candidates = [], []
+
+        # _get_hero_lineup() returns (None, None) on a true cold start
+        # (nothing cached yet, background build just kicked off) —
+        # normalize to empty so select_worth_buying() below always
+        # gets an iterable, never a None it wasn't built to handle.
+        if selected_heroes is None:
+            selected_heroes = []
+        if all_candidates is None:
+            all_candidates = []
 
         if selected_heroes:
             featured_games = []
