@@ -329,6 +329,19 @@
   margin-top:2px;
 }
 
+/* Pending state — server-rendered only while a background hero
+   build is genuinely in progress (see hero_pending in pages.py).
+   The subtle pulse is the ONLY visual difference from the real
+   insight bar; content/layout stay identical so there's no jump
+   when hero-refresh.js reloads the page with real data. */
+.home-insight-bar--pending .home-insight-kicker{
+  animation: homeInsightPulse 1.8s ease-in-out infinite;
+}
+@keyframes homeInsightPulse{
+  0%, 100%{ opacity:1; }
+  50%{ opacity:.5; }
+}
+
 /* ================================================================
    SECTIONS (generic head — numbered marks via CSS counter)
    ================================================================ */

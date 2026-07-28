@@ -118,6 +118,22 @@
     <p class="home-insight-why" id="homeInsightWhy">{{ featured_games[0].why_it_matters }}</p>
   </div>
 </section>
+{% elif hero_pending %}
+<!-- Shown ONLY while a real background build is actively running for
+     this visitor's region -- static/js/hero-refresh.js polls
+     /api/hero-status and reloads the page automatically once it's
+     done, so the visitor never has to touch Refresh themselves. If
+     the Insight Engine simply had nothing to publish this cycle
+     (hero_pending false), this doesn't render at all -- that state
+     is permanent for this build, not something to keep polling for. -->
+<section class="home-insight-bar home-insight-bar--pending" id="heroPendingNotice" aria-live="polite">
+  <div class="home-container home-insight-inner">
+    <span class="home-insight-kicker">💡 Nimlyx Insight</span>
+    <p class="home-insight-headline">Preparing fresh insights…</p>
+    <span class="home-insight-why-label">One moment</span>
+    <p class="home-insight-why">Nimlyx is analyzing today's games. This updates automatically — no need to refresh.</p>
+  </div>
+</section>
 {% endif %}
 
 <!-- ============================================
@@ -303,5 +319,6 @@
 <script src="{{ url_for('static', filename='js/hero-rotation.js') }}"></script>
 <script src="{{ url_for('static', filename='js/picks.js') }}"></script>
 <script src="{{ url_for('static', filename='js/trending.js') }}"></script>
+<script src="{{ url_for('static', filename='js/hero-refresh.js') }}"></script>
 </body>
 </html>

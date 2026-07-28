@@ -14,7 +14,7 @@ import logging
 import threading
 import time
 import requests
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
 
 from region import get_region_code
 from steam import fetch_browse_category, fetch_verified_new_releases
@@ -101,6 +101,18 @@ def _get_hero_lineup(cc):
         threading.Thread(target=_rebuild_hero_cache, args=(cc,), daemon=True).start()
 
     return None, None
+
+
+def _is_hero_build_pending(cc):
+    """True only while a background rebuild is ACTIVELY running for
+    this region right now. Deliberately separate from "no picks/hero
+    insight to show" — those need different UX: a genuine build in
+    progress will resolve itself shortly (show a notice, poll, then
+    reload), while a completed build that legitimately had nothing to
+    publish this cycle never will (show nothing, don't poll forever).
+    """
+    with _HERO_CACHE_LOCK:
+        return cc in _HERO_BUILD_IN_PROGRESS
 
 
 # ----------------------------------------------------------------
@@ -204,6 +216,12 @@ def home():
         if all_candidates is None:
             all_candidates = []
 
+        # Checked AFTER _get_hero_lineup() specifically -- that call is
+        # what sets the in-progress flag on a cold start or stale
+        # cache, so this reflects the true current state for this
+        # exact request.
+        hero_pending = _is_hero_build_pending(cc)
+
         if selected_heroes:
             featured_games = []
             for candidate in selected_heroes:
@@ -293,6 +311,7 @@ def home():
             nimlyx_picks=nimlyx_picks,
             trending_games=trending_games,
             new_release_games=new_release_games,
+            hero_pending=hero_pending,
         )
 
     except requests.exceptions.RequestException:
@@ -303,7 +322,24 @@ def home():
             nimlyx_picks=[],
             trending_games=[],
             new_release_games=[],
+            # Steam itself is unreachable here -- a background build
+            # isn't quietly finishing somewhere, there's nothing to
+            # poll for, so no pending notice.
+            hero_pending=False,
         )
+
+
+@pages_bp.route("/api/hero-status")
+def hero_status():
+    """Polled by static/js/hero-refresh.js while the homepage shows
+    the "Preparing fresh insights..." notice. Reports whether a
+    background hero build is genuinely still running for the
+    visitor's region -- once it flips to false, the poller reloads
+    the page so the visitor sees the real, completed build without
+    ever touching Refresh themselves.
+    """
+    cc = get_region_code()
+    return jsonify({"pending": _is_hero_build_pending(cc)})
 
 
 @pages_bp.route("/discover")
