@@ -77,13 +77,11 @@ def generate(game_raw):
     confidence = _confidence_from_signals(total_reviews, total_positive, price_cents)
 
     price_phrase = "free" if is_free else f"just {price_label}"
-    article = "an" if desc[:1].lower() in "aeiou" else "a"
 
     return {
-        "insight": f"{name} is {price_phrase} and holds {article} {desc} rating — still flying under most people's radar.",
+        "insight": f"{name} is {price_phrase} and sitting at {desc}, barely anyone's talking about it.",
         "why_it_matters": (
-            f"Only {total_reviews:,} reviews so far despite a {desc.lower()} reception — "
-            f"a strong case that this is underrated rather than unproven."
+            f"Just {total_reviews:,} reviews, but {desc.lower()}. This isn't unproven, it's undiscovered."
         ),
         "confidence": confidence,
         "category": CATEGORY,

@@ -61,16 +61,16 @@ def generate(game_raw):
     confidence = _confidence_from_age(days_old)
 
     if days_old <= 2:
-        insight = f"{name} just launched {_day_phrase(days_old)} — verdict still forming."
-        why_it_matters = "Too new for a review consensus yet. Early adopters are the only ones who've weighed in so far."
+        insight = f"{name} just dropped {_day_phrase(days_old)}."
+        why_it_matters = "Too fresh for a verdict yet, you'd be one of the first ones in."
     elif review_summary and review_summary.get("total_reviews", 0) > 0:
         desc = review_summary.get("review_score_desc", "")
         total = review_summary.get("total_reviews", 0)
-        insight = f"{name} released {_day_phrase(days_old)} ago and already has {total:,} reviews — {desc}."
-        why_it_matters = "An early signal is forming fast, which usually means real interest, not just launch-week noise."
+        insight = f"{name} launched {_day_phrase(days_old)} ago and already pulled in {total:,} reviews, {desc}."
+        why_it_matters = "That's fast for launch week. Usually means people are actually talking about it, not just downloading it."
     else:
-        insight = f"{name} is a new release, out for {_day_phrase(days_old)} now."
-        why_it_matters = "Still in its first two weeks — early enough that most players haven't formed an opinion yet."
+        insight = f"{name} came out {_day_phrase(days_old)} ago."
+        why_it_matters = "Early days, nobody's really weighed in yet, for better or worse."
 
     return {
         "insight": insight,

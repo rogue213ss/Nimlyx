@@ -51,23 +51,22 @@ def generate(game_raw):
     positive_descs = ("Overwhelmingly Positive", "Very Positive", "Positive")
 
     if has_volume and desc in positive_descs:
-        insight = f"{name} is {discount_percent}% off, now {final_formatted} — and it's {desc}."
+        insight = f"{name} just dropped to {final_formatted} ({discount_percent}% off), and it's actually good ({desc})."
         why_it_matters = (
-            f"A steep cut on a game with a proven track record ({desc.lower()} reviews) "
-            f"is a stronger case than a discount alone."
+            f"Steep discount AND {desc.lower()} reviews. That combo doesn't come around often."
         )
     elif has_volume:
         # Volume exists but sentiment isn't positive — state the
         # discount plainly and let the reader draw their own
         # conclusion. Never frame mixed/negative reviews as a selling
         # point just because there's a big discount attached.
-        insight = f"{name} just dropped {discount_percent}% — down to {final_formatted}."
+        insight = f"{name} is {discount_percent}% off right now, {final_formatted}."
         why_it_matters = (
-            f"One of the steeper discounts among today's candidates, though reviews are {desc.lower()} — worth a closer look."
+            f"Big price cut, but reviews are {desc.lower()}. Worth reading a few before you buy, discount or not."
         )
     else:
-        insight = f"{name} just dropped {discount_percent}% — down to {final_formatted}."
-        why_it_matters = "One of the steeper discounts among today's candidates."
+        insight = f"{name} is {discount_percent}% off right now, {final_formatted}."
+        why_it_matters = "One of the deepest cuts we're seeing today, just not enough reviews yet to vouch for the game itself."
 
     return {
         "insight": insight,

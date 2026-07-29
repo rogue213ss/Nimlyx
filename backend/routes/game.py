@@ -2,7 +2,8 @@ import requests
 from flask import Blueprint, jsonify
 
 from region import get_region_code
-from steam import get_appdetails, clean_search_term
+from steam import get_appdetails, get_review_summary, clean_search_term
+from services.analysis.wilson_score import compute_nimlyx_score
 
 game_bp = Blueprint("game", __name__)
 
@@ -60,6 +61,20 @@ def find_game(game_name):
     if raw is None:
         return jsonify({"error": "Details not found"}), 404
 
+    # Real review counts (positive/negative split) for the Wilson
+    # score — a different, more precise source than appdetails' own
+    # `recommendations.total`, which is just a single aggregate number
+    # with no positive/negative breakdown. filter=summary only (no
+    # review text), same restraint as everywhere else this project
+    # touches review data.
+    review_summary = get_review_summary(app_id, cc)
+    nimlyx_score = None
+    if review_summary:
+        nimlyx_score = compute_nimlyx_score(
+            total_positive=review_summary["total_positive"],
+            total_reviews=review_summary["total_reviews"],
+        )
+
     clean_data = {
         "name": raw.get("name"),
         "header_image": raw.get("header_image"),
@@ -70,7 +85,21 @@ def find_game(game_name):
         "publishers": raw.get("publishers", []),
         "release_date": raw.get("release_date", {}).get("date"),
         "coming_soon": raw.get("release_date", {}).get("coming_soon", False),
-        "total_reviews": raw.get("recommendations", {}).get("total", 0),
+        # review_summary's total_reviews is the more precise source
+        # (it's specifically what it's for); only fall back to
+        # appdetails' cruder aggregate if the review lookup itself
+        # failed, so this field is never just silently empty.
+        "total_reviews": (
+            review_summary["total_reviews"] if review_summary
+            else raw.get("recommendations", {}).get("total", 0)
+        ),
+        # The REAL Nimlyx Score — Wilson-adjusted, built from actual
+        # positive/negative counts, not a relabeled Metacritic number
+        # or a review-volume-only guess (see wilson_score.py's
+        # docstring for what this replaces and why). None when there's
+        # no review data to compute one from — the frontend must not
+        # invent a placeholder when this is None.
+        "nimlyx_score": nimlyx_score,
         "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
         "platforms": raw.get("platforms", {}),

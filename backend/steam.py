@@ -686,7 +686,8 @@ def get_review_summary(app_id, cc="US"):
     appreviews endpoint (filter=summary — stats only, no review text,
     so no moderation surface). Used by Phase 2 Insight Providers that
     need review sentiment: Review Momentum, Critic/User Gap, Hidden
-    Gem, Mixed/Contrarian, etc.
+    Gem, Mixed/Contrarian, etc. — and now also by the Search page's
+    real (Wilson-adjusted) Nimlyx Score, see services/analysis/wilson_score.py.
 
     Returns None if the lookup fails or the game has no review data
     yet (e.g. brand-new release) — callers must treat None as "this
@@ -694,6 +695,16 @@ def get_review_summary(app_id, cc="US"):
     """
     if not app_id:
         return None
+
+    # Same caching convention as every other Steam-calling function in
+    # this file — this became a hot path the moment Search started
+    # calling it on every game lookup, not just the homepage hero
+    # engine's bulk enrichment. 10 minutes matches get_appdetails'
+    # TTL: review aggregates don't meaningfully shift minute to minute.
+    cache_key = ("review_summary", app_id, cc)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
 
     try:
         url = (
@@ -715,12 +726,14 @@ def get_review_summary(app_id, cc="US"):
         if total_reviews == 0:
             return None
 
-        return {
+        result = {
             "review_score_desc": summary.get("review_score_desc"),
             "total_positive": summary.get("total_positive", 0),
             "total_negative": summary.get("total_negative", 0),
             "total_reviews": total_reviews,
         }
+        _cache_set(cache_key, result)
+        return result
 
     except (requests.exceptions.RequestException, ValueError):
         return None

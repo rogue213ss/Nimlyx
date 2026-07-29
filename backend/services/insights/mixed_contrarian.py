@@ -67,13 +67,12 @@ def generate(game_raw):
 
     return {
         "insight": (
-            f"{name} sits at {positive_percent}% positive on Steam — "
-            f"{desc}, and genuinely split."
+            f"{name} is sitting at {positive_percent}% positive {desc}. "
+            f"Players can't agree on this one."
         ),
         "why_it_matters": (
-            f"With {total_reviews:,} reviews behind it, this isn't a small "
-            f"sample swinging around — players are actually divided, and "
-            f"that split is worth understanding before you decide for yourself."
+            f"{total_reviews:,} reviews and still split down the middle. Not a fluke, "
+            f"people genuinely disagree, so it's worth seeing why before you pick a side."
         ),
         "confidence": confidence,
         "category": CATEGORY,

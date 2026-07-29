@@ -348,30 +348,31 @@ function renderCredits(game) {
 
 /* ---------------- NIMLYX SCORE ---------------- */
 
-function computeNimlyxScore(game) {
-    if (game.metacritic) {
-        return {
-            value: game.metacritic,
-            verdict: game.metacritic >= 85 ? "Excellent" : game.metacritic >= 70 ? "Very Good" : game.metacritic >= 50 ? "Mixed" : "Poor",
-            note: "Based on Metacritic critic score."
-        };
-    }
-    const estimate = Math.min(95, Math.round(50 + Math.log10(game.total_reviews + 1) * 8));
-    return {
-        value: estimate,
-        verdict: estimate >= 80 ? "Well Received" : estimate >= 60 ? "Generally Positive" : "Limited Data",
-        note: "Estimated from review volume (no Metacritic score available)."
-    };
-}
-
 function renderScore(game) {
-    const nimlyxScore = computeNimlyxScore(game);
+    // computeNimlyxScore() used to live here — client-side, and
+    // fabricated either way: Metacritic relabeled when present, or
+    // 50 + log10(reviews)*8 when absent (pure review VOLUME, blind to
+    // whether those reviews were positive or negative). The real
+    // score is now computed server-side from actual positive/negative
+    // counts via a Wilson score lower bound — see
+    // services/analysis/wilson_score.py — and arrives ready-to-render
+    // as game.nimlyx_score. null means "no review data to compute one
+    // from" (e.g. a brand-new release), and that's shown honestly
+    // rather than papered over with an invented placeholder number.
+    const nimlyxScore = game.nimlyx_score;
 
     const RADIUS = 56;
     const CIRC = 2 * Math.PI * RADIUS;
     const progressEl = document.getElementById("scoreProgress");
     progressEl.style.strokeDasharray = `${CIRC}`;
     progressEl.style.strokeDashoffset = `${CIRC}`;
+
+    if (!nimlyxScore) {
+        document.getElementById("scoreVerdict").textContent = "No Score Yet";
+        document.getElementById("scoreNote").textContent = "Not enough reviews to calculate a confidence-adjusted score.";
+        document.getElementById("scoreValue").textContent = "—";
+        return;
+    }
 
     document.getElementById("scoreVerdict").textContent = nimlyxScore.verdict;
     document.getElementById("scoreNote").textContent = nimlyxScore.note;

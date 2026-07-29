@@ -56,10 +56,9 @@ def generate(game_raw):
         magnitude = abs(gap)
         confidence = _confidence_from_gap(magnitude, total_reviews)
         return {
-            "insight": f"Critics gave {name} a {metacritic}, but Steam players disagree — {desc}.",
+            "insight": f"Critics scored {name} a {metacritic}, but the people actually playing it disagree ({desc}).",
             "why_it_matters": (
-                f"A {magnitude}-point gap between critic score and player sentiment "
-                f"is unusually wide — worth knowing before trusting the critic score alone."
+                f"A {magnitude}-point gap is huge. Might be worth trusting the players on this one."
             ),
             "confidence": confidence,
             "category": CATEGORY,
@@ -70,10 +69,10 @@ def generate(game_raw):
         magnitude = gap
         confidence = _confidence_from_gap(magnitude, total_reviews)
         return {
-            "insight": f"Players rate {name} far higher than critics did — {desc} on Steam vs. a {metacritic} on Metacritic.",
+            "insight": f"{name}: {desc} on Steam, but only a {metacritic} from critics.",
             "why_it_matters": (
-                f"Steam's {total_reviews:,} reviewers disagree with critics by {magnitude} points — "
-                f"often a sign of a game that rewards actually playing it over watching it reviewed."
+                f"{total_reviews:,} players say critics got this one wrong by {magnitude} points, "
+                f"often means a game that plays better than it reviews."
             ),
             "confidence": confidence,
             "category": CATEGORY,
