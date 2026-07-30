@@ -109,13 +109,34 @@ def compute_nimlyx_score(total_positive, total_reviews):
     score = round(lower_bound * 100)
     raw_percent = round((total_positive / total_reviews) * 100) if total_reviews else 0
 
+    # Plain language, no method name. The trust-building part of this
+    # note is showing the real numbers together (percentage AND
+    # sample size) — not naming the statistic that computed the
+    # score. "Wilson-adjusted for sample size" teaches a reader
+    # nothing useful unless they already know what a Wilson interval
+    # is; it just reads like report-generator language instead of
+    # something a person would actually say. Steam doesn't explain
+    # how it computes "Very Positive" either — the method is an
+    # implementation detail, not user-facing copy.
+    review_word = "review" if total_reviews == 1 else "reviews"
+    note = f"{total_reviews:,} {review_word}, {raw_percent}% positive."
+
+    # Only mention the sample-size caveat when the adjustment is
+    # actually doing real work — i.e. the score meaningfully differs
+    # from the raw percentage, which mainly happens on small samples
+    # (see wilson_score.py's docstring: a 40-review 98% game scores
+    # 87, an 11-point gap). For a normal/high-volume game the two
+    # numbers are within a point or two of each other, and repeating
+    # a caveat that isn't really doing anything just adds clutter —
+    # e.g. 1,952 reviews at 95% raw scores 94, a 1-point gap, no
+    # caveat needed.
+    if raw_percent - score >= 5:
+        note += " Still a small enough sample that this could shift."
+
     return {
         "value": score,
         "verdict": _verdict_for(score),
         "raw_percent": raw_percent,
         "total_reviews": total_reviews,
-        "note": (
-            f"{raw_percent}% of {total_reviews:,} reviews positive — "
-            f"Wilson-adjusted for sample size."
-        ),
+        "note": note,
     }

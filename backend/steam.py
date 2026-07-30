@@ -681,13 +681,25 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
     return verified[:limit]
 
 
-def get_review_summary(app_id, cc="US"):
+def get_review_summary(app_id, cc="US", day_range=None):
     """Fetches Steam's aggregate review stats for a game via the public
-    appreviews endpoint (filter=summary — stats only, no review text,
-    so no moderation surface). Used by Phase 2 Insight Providers that
-    need review sentiment: Review Momentum, Critic/User Gap, Hidden
-    Gem, Mixed/Contrarian, etc. — and now also by the Search page's
-    real (Wilson-adjusted) Nimlyx Score, see services/analysis/wilson_score.py.
+    appreviews endpoint (filter=summary by default — stats only, no
+    review text, so no moderation surface). Used by Phase 2 Insight
+    Providers that need review sentiment: Review Momentum, Critic/User
+    Gap, Hidden Gem, Mixed/Contrarian, etc. — and now also by the
+    Search page's real (Wilson-adjusted) Nimlyx Score, see
+    services/analysis/wilson_score.py.
+
+    day_range: when set, scopes the summary to only reviews posted in
+    the last `day_range` days (used by
+    services/analysis/reputation_trajectory.py to get a "recent"
+    bucket to compare against the all-time one). Per Steam's own API
+    constraint, day_range only takes effect when the query also uses
+    filter=all — filter=summary on its own ignores it and silently
+    returns the all-time summary instead, which would make a
+    "recent" claim quietly wrong rather than absent. This function
+    switches to filter=all automatically whenever day_range is set,
+    specifically to avoid that silent failure mode.
 
     Returns None if the lookup fails or the game has no review data
     yet (e.g. brand-new release) — callers must treat None as "this
@@ -701,16 +713,22 @@ def get_review_summary(app_id, cc="US"):
     # calling it on every game lookup, not just the homepage hero
     # engine's bulk enrichment. 10 minutes matches get_appdetails'
     # TTL: review aggregates don't meaningfully shift minute to minute.
-    cache_key = ("review_summary", app_id, cc)
+    # day_range is part of the cache key since it's a genuinely
+    # different query, not just a different filter on the same data.
+    cache_key = ("review_summary", app_id, cc, day_range)
     cached = _cache_get(cache_key, ttl_seconds=600)
     if cached is not None:
         return cached
 
     try:
+        review_filter = "all" if day_range else "summary"
         url = (
             f"https://store.steampowered.com/appreviews/{app_id}"
-            f"?json=1&filter=summary&language=english&cc={cc}"
+            f"?json=1&filter={review_filter}&language=english&cc={cc}"
         )
+        if day_range:
+            url += f"&day_range={day_range}"
+
         response = requests.get(url, timeout=8)
         response.raise_for_status()
         data = response.json()
@@ -737,6 +755,59 @@ def get_review_summary(app_id, cc="US"):
 
     except (requests.exceptions.RequestException, ValueError):
         return None
+
+
+def get_review_texts(app_id, cc="US", num_reviews=100):
+    """Fetches actual review TEXT, not just stats. This is a different
+    data surface than get_review_summary above, on purpose. That
+    function was built to deliberately avoid review text (see its
+    docstring: stats only, no moderation surface). This function
+    exists because services/analysis/topic_engine.py (Community Pulse,
+    Tag Honesty) needs to scan for what players are actually saying,
+    which stats alone can't answer.
+
+    Caps at num_reviews (default 100, Steam's own per-page maximum,
+    so this is a single request, not a paginated crawl). This means
+    every claim built on top of this function is a claim about a
+    sample of the most relevant recent reviews, not the entire review
+    corpus. Callers must say so explicitly in their output ("in the
+    last 100 reviews", not just "in reviews") so nobody reads a
+    sample-based count as a complete one.
+
+    Returns a list of plain review text strings, or an empty list on
+    any failure. No review author names, no profile data, no other
+    metadata beyond the review body itself, since nothing downstream
+    needs anything more than the text.
+    """
+    if not app_id:
+        return []
+
+    cache_key = ("review_texts", app_id, cc, num_reviews)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
+
+    try:
+        url = (
+            f"https://store.steampowered.com/appreviews/{app_id}"
+            f"?json=1&filter=recent&language=english&cc={cc}"
+            f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
+        )
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if not data.get("success"):
+            return []
+
+        reviews = data.get("reviews", [])
+        texts = [r.get("review", "").strip() for r in reviews if r.get("review")]
+
+        _cache_set(cache_key, texts)
+        return texts
+
+    except (requests.exceptions.RequestException, ValueError):
+        return []
 
 
 def get_appdetails(app_id, cc):

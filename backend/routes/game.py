@@ -4,6 +4,9 @@ from flask import Blueprint, jsonify
 from region import get_region_code
 from steam import get_appdetails, get_review_summary, clean_search_term
 from services.analysis.wilson_score import compute_nimlyx_score
+from services.analysis.reputation_trajectory import compute_trajectory
+from services.analysis.community_pulse import compute_pulse
+from services.analysis.tag_honesty import compute_tag_honesty
 
 game_bp = Blueprint("game", __name__)
 
@@ -75,6 +78,21 @@ def find_game(game_name):
             total_reviews=review_summary["total_reviews"],
         )
 
+    # Reuses `review_summary` (already fetched above) as the all-time
+    # side of the comparison — only the "recent" bucket needs a
+    # second live call. Returns None whenever there isn't enough
+    # evidence for an honest trend claim; the frontend must not
+    # render a Reputation Trajectory section when this is None.
+    reputation_trajectory = compute_trajectory(app_id, cc, overall_summary=review_summary)
+
+    # Steam's "categories" field (Multiplayer, Online Co-op, MMO, etc.)
+    # is what a store page's tag claims actually look like, not
+    # "genres" (Action, RPG). Tag Honesty checks against these.
+    game_categories = [c.get("description") for c in raw.get("categories", []) if c.get("description")]
+
+    community_pulse = compute_pulse(app_id, cc)
+    tag_honesty = compute_tag_honesty(app_id, game_categories, cc)
+
     clean_data = {
         "name": raw.get("name"),
         "header_image": raw.get("header_image"),
@@ -100,6 +118,9 @@ def find_game(game_name):
         # no review data to compute one from — the frontend must not
         # invent a placeholder when this is None.
         "nimlyx_score": nimlyx_score,
+        "reputation_trajectory": reputation_trajectory,
+        "community_pulse": community_pulse,
+        "tag_honesty": tag_honesty,
         "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
         "platforms": raw.get("platforms", {}),
