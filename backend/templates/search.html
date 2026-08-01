@@ -18,7 +18,8 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search_mobile.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/game_grid.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search_list.css') }}">
 </head>
 <body class="home-page">
 
@@ -76,10 +77,12 @@
   </div>
 </header>
 
-<!-- ================= SEARCH RESULTS (Sprint 3) =================
+<!-- ================= SEARCH RESULTS (Sprint 3, refined) =================
      Shown instead of the single-game hero/detail sections below
-     whenever the query didn't resolve to one obvious game. Populated
-     by GameGrid (see static/js/game_grid.js) from
+     whenever the query didn't resolve to one obvious game. Uses
+     SearchList (thumbnail-left/detail-right rows), NOT GameGrid --
+     GameGrid stays reserved for Discover's card layout. Populated by
+     initSearchList() (see static/js/search_list.js) from
      /api/search-results/<query>. Hidden by default; search.js
      toggles #searchResultsView vs #gameDetailView based on whether
      an app_id was resolved. -->
@@ -88,7 +91,10 @@
         <span class="panel__eyebrow">Search</span>
         <h2 class="panel__title" id="searchResultsTitle">Results</h2>
     </div>
-    <div class="game-grid" id="searchResultsGrid"></div>
+    <div class="search-results-layout">
+        <aside class="discover-sidebar" id="searchFilterSidebar"></aside>
+        <div class="search-list" id="searchListRows"></div>
+    </div>
 </section>
 
 <div id="gameDetailView">
@@ -270,7 +276,7 @@
   <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
 </footer>
 
-<script src="{{ url_for('static', filename='js/game_grid.js') }}"></script>
+<script src="{{ url_for('static', filename='js/search_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 
 </body>

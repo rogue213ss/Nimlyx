@@ -201,7 +201,8 @@ document.getElementById("gameInput").value = gameName || "";
 
 const searchResultsView = document.getElementById("searchResultsView");
 const gameDetailView = document.getElementById("gameDetailView");
-const searchResultsGrid = document.getElementById("searchResultsGrid");
+const searchListRows = document.getElementById("searchListRows");
+const searchFilterSidebar = document.getElementById("searchFilterSidebar");
 const searchResultsTitle = document.getElementById("searchResultsTitle");
 
 function showDetailView() {
@@ -251,7 +252,11 @@ async function loadGameByQuery(query) {
             searchResultsTitle.textContent = `Results for "${query}"`;
         }
         showResultsView();
-        renderGameGrid(searchResultsGrid, data.results);
+        initSearchList({
+            container: searchListRows,
+            sidebar: searchFilterSidebar,
+            rows: data.results,
+        });
     } catch (error) {
         console.error("Error loading search results:", error);
     }

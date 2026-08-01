@@ -1,0 +1,200 @@
+/* ==========================================================
+   SEARCHLIST — row layout for query-based search results (Sprint 3)
+   The filter sidebar itself is NOT styled here -- it reuses
+   Discover's .discover-sidebar-panel / .preference-chip /
+   .filter-add-* classes from discover.css (loaded on this page
+   alongside this file) so Search and Discover's filter UI are
+   visually and behaviorally identical. This file only covers the
+   two-column page shell, the result rows, and the one small
+   affordance Discover's sidebar doesn't need (a "Clear filters"
+   link -- Discover's clear button lives in its wizard-cta, which
+   Search has no equivalent of, so it can't just be reused verbatim).
+========================================================== */
+
+.is-hidden {
+    display: none !important;
+}
+
+/* Two-column shell -- deliberately matches Discover's own
+   .discover-columns grid (300px sidebar + fluid content) for layout
+   consistency between the two pages.
+
+   align-items is intentionally left at its default (stretch), NOT
+   "start" -- same reasoning as .discover-columns in discover.css:
+   stretch makes the sidebar grid item match the full height of the
+   results column, which is what gives the sticky
+   .discover-sidebar-panel inside it room to travel. Search reuses
+   that exact class, so it needs the same stretched track to work. */
+.search-results-layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 40px;
+}
+
+/* Breakpoints mirror discover_mobile.css's tiers for
+   .discover-columns exactly, so the sidebar collapses at the same
+   widths on both pages. The 900px tier's
+   ".discover-sidebar-panel{position:static}" override already
+   applies here too, since Search reuses that same class. */
+@media (max-width: 1100px) {
+    .search-results-layout {
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 28px;
+    }
+}
+
+@media (max-width: 900px) {
+    .search-results-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------------- ROWS ---------------- */
+
+.search-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.search-list-empty {
+    padding: 40px 0;
+    text-align: center;
+    color: var(--home-text-muted);
+    font-family: var(--home-font-body);
+}
+
+.search-list-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    background: var(--home-bg-card);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-lg);
+    padding: 10px;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: none;
+    font: inherit;
+    color: inherit;
+    transition: border-color .18s var(--home-ease), transform .18s var(--home-ease);
+}
+
+.search-list-row:hover,
+.search-list-row:focus-visible {
+    border-color: var(--home-glass-border-strong);
+    transform: translateX(2px);
+}
+
+.search-list-row__thumb-wrap {
+    flex: 0 0 auto;
+    width: 120px;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--home-radius-md);
+    overflow: hidden;
+    background: var(--home-bg-elevated);
+}
+
+.search-list-row__thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.search-list-row__body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.search-list-row__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.search-list-row__name {
+    font-family: var(--home-font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--home-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-list-row__platforms {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    color: var(--home-text-faint);
+    font-size: 13px;
+}
+
+.search-list-row__genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.search-list-row__genre-pill {
+    font-family: var(--home-font-mono);
+    font-size: 10.5px;
+    color: var(--home-text-muted);
+    background: var(--home-glass-fill);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-sm);
+    padding: 2px 6px;
+}
+
+.search-list-row__price-col {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 70px;
+}
+
+.search-list-row__discount {
+    font-family: var(--home-font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--home-verdict-worth);
+}
+
+.search-list-row__price {
+    font-family: var(--home-font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--home-text-primary);
+}
+/* ---------------- SIDEBAR: one small addition ----------------
+   Everything else in the sidebar (panel, head, chips, add-filter
+   popover) comes entirely from discover.css's classes -- see
+   search_list.js, which renders the exact same markup/classes
+   discover.js does. This is the one link Discover's sidebar has no
+   equivalent for, so it borrows the existing text tokens instead of
+   introducing a new visual style. */
+.search-filter-clear-link {
+    display: inline-block;
+    margin: 4px 0 20px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: var(--home-font-body);
+    font-size: .82rem;
+    color: var(--home-text-muted);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    transition: color .2s var(--home-ease);
+}
+.search-filter-clear-link:hover {
+    color: var(--home-accent);
+}

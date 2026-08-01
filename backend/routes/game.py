@@ -1,4 +1,5 @@
 import requests
+from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, jsonify
 
 from region import get_region_code
@@ -49,15 +50,17 @@ def search_game(game_name):
 
 @game_bp.route("/api/search-results/<query>")
 def search_results(query):
-    """Sprint 3 — powers the new GameGrid results experience (both
-    Search and, later, Discover funnel into this card shape).
+    """Sprint 3 (refined) — powers the SearchList results experience.
+    GameGrid stays reserved for Discover; query-based Search results
+    use this row layout instead (thumbnail left, details right) with
+    a client-side filter sidebar (free/price/genre/platform).
 
     Returns:
-      { "exact_match_app_id": <id or None>, "results": [GameGrid cards] }
+      { "exact_match_app_id": <id or None>, "results": [SearchList rows] }
 
     exact_match_app_id is set only when a result's name matches the
     query case-insensitively (punctuation/whitespace-normalized on
-    both sides) -- search.js uses this to skip the grid entirely and
+    both sides) -- search.js uses this to skip the list entirely and
     redirect straight to that game's page, same as Steam/Amazon/IMDb
     search do for an obvious single answer.
     """
@@ -71,30 +74,66 @@ def search_results(query):
 
         normalized_query = clean_search_term(query).lower()
 
+        # Genres aren't in storesearch's payload at all -- only
+        # appdetails has them. Platforms ARE in storesearch already
+        # (item["platforms"]), so no live call needed for those.
+        # get_appdetails() is cached 10 min, so a repeat search for
+        # the same term/region costs nothing extra here.
+        def fetch_genres(app_id):
+            raw = get_appdetails(app_id, cc)
+            if raw is None:
+                return []
+            return [g["description"] for g in raw.get("genres", [])]
+
+        app_ids = [item.get("id") for item in items]
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+
         results = []
         exact_match_app_id = None
         for item in items:
             app_id = item.get("id")
             name = item.get("name", "")
             price_overview = item.get("price", {}) or {}
+            platforms = item.get("platforms", {}) or {}
+            final_price_cents = price_overview.get("final")
 
-            card = {
+            # storesearch omits the "price" object ENTIRELY for free
+            # games -- it's not present with a final of 0, it's just
+            # absent. So final_price_cents is None here for a free
+            # game, not 0, and "final_price_cents == 0" never matched
+            # them: the Free filter silently excluded every genuinely
+            # free result. A missing price object is exactly what
+            # "free" looks like from this endpoint, so treat it the
+            # same as an explicit 0.
+            is_free = (not price_overview) or final_price_cents == 0
+            price_cents = 0 if is_free else final_price_cents
+
+            row = {
                 "app_id": app_id,
                 "name": name,
                 "header_image": item.get("tiny_image"),
+                "short_description": None,  # not in storesearch; detail page has the full one
+                "is_free": is_free,
                 "price": (
-                    "Free" if price_overview.get("final") == 0
-                    else format_price(price_overview.get("final"))
+                    "Free" if is_free
+                    else format_price(final_price_cents)
                 ),
+                "price_cents": price_cents,
                 "discount": price_overview.get("discount_percent", 0),
-                # storesearch doesn't return review data or genres --
-                # left null/empty here rather than guessed; GameGrid
-                # renders these fields only when present.
+                "genres": genres_by_id.get(app_id, []),
+                "platforms": {
+                    "windows": bool(platforms.get("windows")),
+                    "mac": bool(platforms.get("mac")),
+                    "linux": bool(platforms.get("linux")),
+                },
+                # storesearch has no review data -- left null rather
+                # than guessed; SearchList renders this row only when
+                # present.
                 "review_percentage": None,
                 "review_count": None,
-                "genres": [],
             }
-            results.append(card)
+            results.append(row)
 
             if exact_match_app_id is None and clean_search_term(name).lower() == normalized_query:
                 exact_match_app_id = app_id
