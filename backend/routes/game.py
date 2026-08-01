@@ -7,6 +7,7 @@ from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
 from services.analysis.community_pulse import compute_pulse
 from services.analysis.tag_honesty import compute_tag_honesty
+from services.analysis.spotlight_reviews import compute_spotlight_reviews
 
 game_bp = Blueprint("game", __name__)
 
@@ -93,7 +94,21 @@ def find_game(game_name):
     community_pulse = compute_pulse(app_id, cc)
     tag_honesty = compute_tag_honesty(app_id, game_categories, cc)
 
+    # Sections 5 & 6 of Nimlyx Analysis — one real, most-helpful
+    # review per direction, straight from Steam. See
+    # services/analysis/spotlight_reviews.py.
+    spotlight_reviews = compute_spotlight_reviews(app_id, cc)
+
     clean_data = {
+        "app_id": app_id,
+        # Generic Steam reviews surface for this app — used by the
+        # review spotlight's "Read on Steam →" links. Steam has no
+        # public permalink format for a single review that doesn't
+        # require the author's own steamid (which this app deliberately
+        # never fetches, see steam.get_review_texts's docstring), so
+        # this points at the app's own review list rather than a
+        # specific (unreachable) review URL.
+        "steam_reviews_url": f"https://steamcommunity.com/app/{app_id}/reviews/",
         "name": raw.get("name"),
         "header_image": raw.get("header_image"),
         "genres": [g["description"] for g in raw.get("genres", [])],
@@ -121,6 +136,7 @@ def find_game(game_name):
         "reputation_trajectory": reputation_trajectory,
         "community_pulse": community_pulse,
         "tag_honesty": tag_honesty,
+        "spotlight_reviews": spotlight_reviews,
         "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
         "platforms": raw.get("platforms", {}),

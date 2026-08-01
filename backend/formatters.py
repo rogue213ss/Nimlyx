@@ -43,6 +43,34 @@ def to_game_dict(item, stat_fields=None):
     return base
 
 
+def trim_review_quote(text, target_min=180, target_max=250):
+    """Shortens a real Steam review to a display-friendly quote,
+    roughly target_min-target_max characters — never a wall of text.
+
+    Only shortens WHERE the reviewer's own words naturally end: prefers
+    cutting at a sentence boundary that falls inside the window, and
+    only falls back to a whole-word cut (with a trailing ellipsis) when
+    no sentence break exists in range. Never rewrites, paraphrases, or
+    adds anything the reviewer didn't write.
+    """
+    if not text:
+        return text
+
+    collapsed = " ".join(text.split())  # real review text is full of raw newlines/whitespace
+    if len(collapsed) <= target_max:
+        return collapsed
+
+    window = collapsed[:target_max]
+
+    sentence_end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "))
+    if sentence_end >= target_min:
+        return collapsed[:sentence_end + 1]
+
+    last_space = window.rfind(" ")
+    cut = last_space if last_space >= target_min else target_max
+    return collapsed[:cut].rstrip(",;:- ") + "..."
+
+
 def to_discover_card(game):
     """Shapes a scraped game into the {name, header_image, analyze_url,
     footer_left, footer_right} card fields discover.js renders."""

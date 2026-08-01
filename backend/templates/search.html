@@ -141,6 +141,42 @@
         </div>
     </section>
 
+    <!-- ================= NIMLYX ANALYSIS =================
+         One premium container, not six cards -- see Sprint 2 spec.
+         Every sub-block below is populated by renderNimlyxAnalysis()
+         in search.js and is individually hidden (not left empty) by
+         JS when its backing data is null -- score/reputation/topics/
+         reviews are each optional per the spec's "Data Rules". -->
+    <section class="panel nimlyx-panel reveal" id="nimlyxPanel">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Nimlyx Analysis</span>
+            <h2 class="panel__title">What the data actually says.</h2>
+            <span class="ai-tag"><i class="fa-solid fa-chart-line"></i> Live Steam Review Data</span>
+        </div>
+
+        <div class="nimlyx-dash" id="nimlyxDash">
+
+            <div class="nimlyx-empty" id="nimlyxEmpty">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                Not enough Steam review data yet to build an analysis for this game — check back once it's picked up more reviews.
+            </div>
+
+            <div class="nimlyx-row nimlyx-row--anchor">
+                <div class="nimlyx-score" id="nimlyxScore"></div>
+                <div class="nimlyx-rep" id="nimlyxRep"></div>
+            </div>
+
+            <div class="nimlyx-divider" id="nimlyxTopicsDivider"></div>
+
+            <div class="nimlyx-row nimlyx-row--topics" id="nimlyxTopics"></div>
+
+            <div class="nimlyx-divider" id="nimlyxReviewsDivider"></div>
+
+            <div class="nimlyx-row nimlyx-row--reviews" id="nimlyxReviews"></div>
+
+        </div>
+    </section>
+
     <!-- ================= QUICK STATS ================= -->
     <section class="panel stats-panel reveal">
         <div class="panel__head">
@@ -149,28 +185,6 @@
         </div>
 
         <div class="stats-spotlight">
-            <div class="score-card">
-                <span class="score-card__label"><i class="fa-solid fa-wand-magic-sparkles"></i> Nimlyx Score</span>
-                <div class="score-ring">
-                    <svg viewBox="0 0 132 132">
-                        <defs>
-                            <linearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
-                                <stop offset="0%" stop-color="#60A5FA"/>
-                                <stop offset="100%" stop-color="#3b82f6"/>
-                            </linearGradient>
-                        </defs>
-                        <circle class="track" cx="66" cy="66" r="56"></circle>
-                        <circle class="progress" id="scoreProgress" cx="66" cy="66" r="56"></circle>
-                    </svg>
-                    <div class="score-ring__value">
-                        <strong id="scoreValue">0</strong>
-                        <span>/ 100</span>
-                    </div>
-                </div>
-                <div class="score-verdict" id="scoreVerdict"></div>
-                <div class="score-note" id="scoreNote"></div>
-            </div>
-
             <div class="credit-block">
                 <div class="credit-icon"><i class="fa-solid fa-code"></i></div>
                 <div>

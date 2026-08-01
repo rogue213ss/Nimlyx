@@ -220,10 +220,10 @@ function renderGame(game) {
     renderHero(game);
     renderAbout(game);
     renderScreenshots(game);
+    renderNimlyxAnalysis(game);
     renderTrailer(game);
     renderGenres(game);
     renderCredits(game);
-    renderScore(game);
     renderStats(game);
     initScrollReveal();
 }
@@ -304,6 +304,200 @@ function renderScreenshots(game) {
     document.getElementById("stripNext").addEventListener("click", () => thumbStrip.scrollBy({ left: 320, behavior: "smooth" }));
 }
 
+/* ---------------- NIMLYX ANALYSIS ----------------
+   One premium dashboard, not six independent cards (Sprint 2 spec).
+   Every sub-block is driven by real backend data and hidden --
+   never rendered with a placeholder -- when that data is null:
+     - nimlyx_score            -> the visual anchor of this dashboard;
+                                   Quick Stats no longer duplicates it
+     - reputation_trajectory   -> null unless statistically valid
+                                   (see reputation_trajectory.py)
+     - community_pulse         -> null if no real signal in the last
+                                   100 reviews; positives/concerns
+                                   each capped to 5 topics here
+     - spotlight_reviews       -> positive/negative each independently
+                                   null if that game has no reviews in
+                                   that direction
+------------------------------------------------------------------ */
+
+const NIMLYX_TOPIC_EMOJI = {
+    combat: "⚔️",
+    soundtrack: "🎵",
+    story: "📖",
+    ending: "🎬",
+    servers: "🌐",
+    performance: "🖥️",
+    replayability: "🔁",
+    grinding: "⛏️",
+};
+
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str ?? "";
+    return div.innerHTML;
+}
+
+function renderNimlyxAnalysis(game) {
+    const hasScore = !!game.nimlyx_score;
+    const hasTrajectory = !!game.reputation_trajectory;
+    const hasLoved = !!(game.community_pulse && game.community_pulse.positives && game.community_pulse.positives.length);
+    const hasMentioned = !!(game.community_pulse && game.community_pulse.concerns && game.community_pulse.concerns.length);
+    const hasPositiveReview = !!(game.spotlight_reviews && game.spotlight_reviews.positive);
+    const hasNegativeReview = !!(game.spotlight_reviews && game.spotlight_reviews.negative);
+
+    const hasAnything = hasScore || hasTrajectory || hasLoved || hasMentioned || hasPositiveReview || hasNegativeReview;
+
+    const emptyEl = document.getElementById("nimlyxEmpty");
+    const rowIds = ["nimlyxScore", "nimlyxRep", "nimlyxTopics", "nimlyxReviews"];
+    const dividerIds = ["nimlyxTopicsDivider", "nimlyxReviewsDivider"];
+
+    if (!hasAnything) {
+        // Not one field to show -- a bare panel header with nothing
+        // under it reads as broken, not "nothing to say yet". Show a
+        // single honest message instead, and make sure nothing else
+        // in the dashboard is left rendered underneath it.
+        emptyEl.classList.remove("is-hidden");
+        [...rowIds, ...dividerIds].forEach(id => document.getElementById(id).classList.add("is-hidden"));
+        document.querySelector(".nimlyx-row--anchor").classList.add("is-hidden");
+        return;
+    }
+
+    emptyEl.classList.add("is-hidden");
+    renderNimlyxScoreAndReputation(game);
+    renderNimlyxTopics(game);
+    renderNimlyxReviews(game);
+}
+
+function renderNimlyxScoreAndReputation(game) {
+    const scoreEl = document.getElementById("nimlyxScore");
+    const repEl = document.getElementById("nimlyxRep");
+    const score = game.nimlyx_score;
+    const trajectory = game.reputation_trajectory;
+
+    if (score) {
+        const scoreClass = score.value >= 75 ? "is-good" : score.value >= 50 ? "is-mid" : "is-low";
+        scoreEl.innerHTML = `
+            <div class="nimlyx-score__value ${scoreClass}">${score.value}<span>/ 100</span></div>
+            <div class="nimlyx-score__meta">
+                <div class="nimlyx-score__verdict">${escapeHtml(score.verdict)}</div>
+                <div class="nimlyx-score__note">Based on ${score.total_reviews.toLocaleString()}+ Steam reviews</div>
+            </div>
+        `;
+        scoreEl.classList.remove("is-hidden");
+    } else {
+        scoreEl.classList.add("is-hidden");
+    }
+
+    // Data Rules: only render a trend claim when it's statistically
+    // valid (reputation_trajectory.py already enforces this
+    // server-side); otherwise hide the block entirely rather than
+    // invent a "Stable Reputation" label the backend never computed.
+    if (trajectory) {
+        const isUp = trajectory.direction === "up";
+        repEl.innerHTML = `
+            <div class="nimlyx-rep__icon">${isUp ? "📈" : "📉"}</div>
+            <div>
+                <div class="nimlyx-rep__label ${isUp ? "is-up" : "is-down"}">${escapeHtml(trajectory.label)}</div>
+                <div class="nimlyx-rep__note">${escapeHtml(trajectory.note)}</div>
+            </div>
+        `;
+        repEl.classList.remove("is-hidden");
+    } else {
+        repEl.classList.add("is-hidden");
+    }
+
+    // If NEITHER half of the anchor row has anything to show, hide
+    // the divider that would otherwise sit under an empty row.
+    const anchorRow = document.querySelector(".nimlyx-row--anchor");
+    if (!score && !trajectory) {
+        anchorRow.classList.add("is-hidden");
+    } else {
+        anchorRow.classList.remove("is-hidden");
+    }
+}
+
+function renderNimlyxTopicGroup(topics, iconClass, label) {
+    if (!topics || topics.length === 0) return null;
+
+    const pills = topics.slice(0, 5).map(t => {
+        const emoji = NIMLYX_TOPIC_EMOJI[t.topic_id] || "•";
+        return `
+            <span class="nimlyx-topic-pill">
+                <span class="nimlyx-topic-pill__emoji">${emoji}</span>${escapeHtml(t.label)}
+            </span>
+        `;
+    }).join("");
+
+    return `
+        <div class="nimlyx-topic-group">
+            <div class="nimlyx-topic-group__label"><i class="fa-solid ${iconClass}"></i>${label}</div>
+            <div class="nimlyx-topic-list">${pills}</div>
+        </div>
+    `;
+}
+
+function renderNimlyxTopics(game) {
+    const topicsEl = document.getElementById("nimlyxTopics");
+    const dividerEl = document.getElementById("nimlyxTopicsDivider");
+    const pulse = game.community_pulse;
+
+    const lovedHtml = pulse ? renderNimlyxTopicGroup(pulse.positives, "fa-heart", "Players Loved") : null;
+    const mentionedHtml = pulse ? renderNimlyxTopicGroup(pulse.concerns, "fa-triangle-exclamation", "Players Mentioned") : null;
+
+    if (!lovedHtml && !mentionedHtml) {
+        topicsEl.classList.add("is-hidden");
+        dividerEl.classList.add("is-hidden");
+        return;
+    }
+
+    topicsEl.innerHTML = (lovedHtml || "") + (mentionedHtml || "");
+    topicsEl.classList.remove("is-hidden");
+    dividerEl.classList.remove("is-hidden");
+}
+
+function renderNimlyxQuote(review, kind, steamReviewsUrl) {
+    if (!review) return "";
+
+    const isPositive = kind === "positive";
+    const voteWord = review.votes_up === 1 ? "player" : "players";
+
+    return `
+        <div class="nimlyx-quote nimlyx-quote--${kind}">
+            <div class="nimlyx-quote__label">
+                <i class="fa-solid ${isPositive ? "fa-thumbs-up" : "fa-thumbs-down"}"></i>
+                Most Helpful ${isPositive ? "Positive" : "Negative"} Review
+            </div>
+            <div class="nimlyx-quote__body">&ldquo;${escapeHtml(review.quote)}&rdquo;</div>
+            <div class="nimlyx-quote__footer">
+                <span class="nimlyx-quote__helpful">
+                    <i class="fa-solid ${isPositive ? "fa-thumbs-up" : "fa-thumbs-down"}"></i>
+                    Found helpful by ${review.votes_up.toLocaleString()} ${voteWord}
+                </span>
+                <a class="nimlyx-quote__link" href="${steamReviewsUrl}" target="_blank" rel="noopener">Read on Steam →</a>
+            </div>
+        </div>
+    `;
+}
+
+function renderNimlyxReviews(game) {
+    const reviewsEl = document.getElementById("nimlyxReviews");
+    const dividerEl = document.getElementById("nimlyxReviewsDivider");
+    const spotlight = game.spotlight_reviews;
+
+    const positiveHtml = spotlight ? renderNimlyxQuote(spotlight.positive, "positive", game.steam_reviews_url) : "";
+    const negativeHtml = spotlight ? renderNimlyxQuote(spotlight.negative, "negative", game.steam_reviews_url) : "";
+
+    if (!positiveHtml && !negativeHtml) {
+        reviewsEl.classList.add("is-hidden");
+        dividerEl.classList.add("is-hidden");
+        return;
+    }
+
+    reviewsEl.innerHTML = positiveHtml + negativeHtml;
+    reviewsEl.classList.remove("is-hidden");
+    dividerEl.classList.remove("is-hidden");
+}
+
 /* ---------------- TRAILER ---------------- */
 
 function renderTrailer(game) {
@@ -344,58 +538,6 @@ function renderGenres(game) {
 function renderCredits(game) {
     document.getElementById("devValue").textContent = (game.developers || []).join(", ") || "Unknown";
     document.getElementById("pubValue").textContent = (game.publishers || []).join(", ") || "Unknown";
-}
-
-/* ---------------- NIMLYX SCORE ---------------- */
-
-function renderScore(game) {
-    // computeNimlyxScore() used to live here — client-side, and
-    // fabricated either way: Metacritic relabeled when present, or
-    // 50 + log10(reviews)*8 when absent (pure review VOLUME, blind to
-    // whether those reviews were positive or negative). The real
-    // score is now computed server-side from actual positive/negative
-    // counts via a Wilson score lower bound — see
-    // services/analysis/wilson_score.py — and arrives ready-to-render
-    // as game.nimlyx_score. null means "no review data to compute one
-    // from" (e.g. a brand-new release), and that's shown honestly
-    // rather than papered over with an invented placeholder number.
-    const nimlyxScore = game.nimlyx_score;
-
-    const RADIUS = 56;
-    const CIRC = 2 * Math.PI * RADIUS;
-    const progressEl = document.getElementById("scoreProgress");
-    progressEl.style.strokeDasharray = `${CIRC}`;
-    progressEl.style.strokeDashoffset = `${CIRC}`;
-
-    if (!nimlyxScore) {
-        document.getElementById("scoreVerdict").textContent = "No Score Yet";
-        document.getElementById("scoreNote").textContent = "Not enough reviews to calculate a confidence-adjusted score.";
-        document.getElementById("scoreValue").textContent = "—";
-        return;
-    }
-
-    document.getElementById("scoreVerdict").textContent = nimlyxScore.verdict;
-    document.getElementById("scoreNote").textContent = nimlyxScore.note;
-
-    requestAnimationFrame(() => {
-        const offset = CIRC - (CIRC * nimlyxScore.value) / 100;
-        progressEl.style.strokeDashoffset = `${offset}`;
-    });
-
-    (function animateScoreValue() {
-        const el = document.getElementById("scoreValue");
-        const target = nimlyxScore.value;
-        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        if (reduceMotion) { el.textContent = target; return; }
-        let current = 0;
-        const step = () => {
-            current += Math.ceil((target - current) / 6) || 1;
-            if (current >= target) { el.textContent = target; return; }
-            el.textContent = current;
-            requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-    })();
 }
 
 /* ---------------- QUICK STATS ---------------- */

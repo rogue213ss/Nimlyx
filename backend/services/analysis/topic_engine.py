@@ -1,5 +1,5 @@
 """
-TOPIC ENGINE, shared foundation for Community Pulse and Tag Honesty.
+TOPIC ENGINE, shared foundation for Player Pulse and Tag Honesty.
 
 The pitch behind this feature was "no AI, no hallucination, just real
 frequency analysis." Taken literally, plain keyword counting on real

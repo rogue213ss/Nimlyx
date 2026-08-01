@@ -1,5 +1,11 @@
 """
-COMMUNITY PULSE, the unfiltered view of topic_engine.py.
+PLAYER PULSE, the unfiltered view of topic_engine.py.
+
+(Named to stay distinct from the "Community Pulse" feature already on
+the long-range roadmap under V3 AI — that one's a Gemini-powered
+summary of broader community discussion. This one is a real-count
+scan of actual Steam review text, no AI involved. Different features,
+kept clearly separate now rather than colliding later.)
 
 Scans a sample of recent reviews for every topic in TOPICS and
 surfaces whichever ones players are actually talking about, split
@@ -15,7 +21,7 @@ NUM_REVIEWS_TO_SCAN = 100
 MIN_MENTIONS_TO_SURFACE = 3
 
 
-def compute_pulse(app_id, cc="US"):
+def compute_player_pulse(app_id, cc="US"):
     """Returns a dict with a `positives` list and a `concerns` list,
     each entry a plain sentence built from real counts, or None if
     there isn't enough signal to say anything honest.
@@ -36,7 +42,6 @@ def compute_pulse(app_id, cc="US"):
 
         if topic["positive_count"] >= MIN_MENTIONS_TO_SURFACE:
             positives.append({
-                "topic_id": topic["topic_id"],
                 "label": topic["label"],
                 "count": topic["positive_count"],
                 "total_scanned": total,
@@ -45,7 +50,6 @@ def compute_pulse(app_id, cc="US"):
 
         if topic["negative_count"] >= MIN_MENTIONS_TO_SURFACE:
             concerns.append({
-                "topic_id": topic["topic_id"],
                 "label": topic["label"],
                 "count": topic["negative_count"],
                 "total_scanned": total,

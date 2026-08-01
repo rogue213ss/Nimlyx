@@ -5,7 +5,7 @@ Steam's own store tags are a claim ("Multiplayer") with no built-in
 accountability for whether that claim holds up in practice. This
 checks whether players actually discussing the topic a claimed tag
 implies agree with it or not, using the same scan and the same
-curated phrase dictionary as Community Pulse. No topic runs unless
+curated phrase dictionary as Player Pulse. No topic runs unless
 the game actually carries a Steam tag or category that maps to it
 (see topic_engine.TAG_TOPIC_MAP), so this never manufactures a check
 for something the store page never claimed in the first place.

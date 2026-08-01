@@ -56,7 +56,7 @@ def generate(game_raw):
         magnitude = abs(gap)
         confidence = _confidence_from_gap(magnitude, total_reviews)
         return {
-            "insight": f"Critics scored {name} a {metacritic}, but the people actually playing it disagree ({desc}).",
+            "insight": f"Critics scored {name} a {metacritic}  the people actually playing it disagree ({desc}).",
             "why_it_matters": (
                 f"A {magnitude}-point gap is huge. Might be worth trusting the players on this one."
             ),
@@ -71,7 +71,7 @@ def generate(game_raw):
         return {
             "insight": f"{name}: {desc} on Steam, but only a {metacritic} from critics.",
             "why_it_matters": (
-                f"{total_reviews:,} players say critics got this one wrong by {magnitude} points, "
+                f"{total_reviews:,} players say critics got this one wrong by {magnitude} points  "
                 f"often means a game that plays better than it reviews."
             ),
             "confidence": confidence,

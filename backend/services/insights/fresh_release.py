@@ -62,15 +62,15 @@ def generate(game_raw):
 
     if days_old <= 2:
         insight = f"{name} just dropped {_day_phrase(days_old)}."
-        why_it_matters = "Too fresh for a verdict yet, you'd be one of the first ones in."
+        why_it_matters = "Too fresh for a verdict yet — you'd be one of the first ones in."
     elif review_summary and review_summary.get("total_reviews", 0) > 0:
         desc = review_summary.get("review_score_desc", "")
         total = review_summary.get("total_reviews", 0)
-        insight = f"{name} launched {_day_phrase(days_old)} ago and already pulled in {total:,} reviews, {desc}."
+        insight = f"{name} launched {_day_phrase(days_old)} ago and already pulled in {total:,} reviews {desc}."
         why_it_matters = "That's fast for launch week. Usually means people are actually talking about it, not just downloading it."
     else:
         insight = f"{name} came out {_day_phrase(days_old)} ago."
-        why_it_matters = "Early days, nobody's really weighed in yet, for better or worse."
+        why_it_matters = "Early days nobody's really weighed in yet, for better or worse."
 
     return {
         "insight": insight,

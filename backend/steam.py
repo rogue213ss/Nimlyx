@@ -810,6 +810,76 @@ def get_review_texts(app_id, cc="US", num_reviews=100):
         return []
 
 
+def get_top_helpful_review(app_id, cc="US", voted_up=True, num_reviews=20):
+    """Fetches the single most-helpful review for a game in one
+    direction (positive or negative) — the evidence behind Nimlyx
+    Analysis's review spotlight (see
+    services/analysis/spotlight_reviews.py).
+
+    Uses filter=all, which is Steam's own HELPFULNESS-sorted review
+    order (not chronological, not "recent") restricted to
+    review_type=positive/negative. The first non-empty review in that
+    response IS the most helpful one Steam has for this game in that
+    direction — no client-side re-ranking, no guessing at what
+    "helpful" means.
+
+    Returns a dict with the raw review text, Steam's own helpful-vote
+    count (votes_up), and the review's timestamp, or None if this
+    game has no usable review in that direction (brand-new release,
+    a direction with zero reviews, or the lookup failed). Callers
+    must treat None as "nothing to show here" — never invent a quote
+    or fall back to a different game's review.
+    """
+    if not app_id:
+        return None
+
+    review_type = "positive" if voted_up else "negative"
+
+    # Same caching convention as the rest of this file. 10 minutes
+    # matches get_review_summary/get_review_texts — the most-helpful
+    # review for a game doesn't change minute to minute.
+    cache_key = ("top_review", app_id, cc, review_type, num_reviews)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
+
+    try:
+        url = (
+            f"https://store.steampowered.com/appreviews/{app_id}"
+            f"?json=1&filter=all&language=english&cc={cc}"
+            f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
+            f"&review_type={review_type}"
+        )
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if not data.get("success"):
+            return None
+
+        reviews = data.get("reviews", [])
+        # reviews is already in Steam's own helpfulness order (see
+        # docstring) — walk it only to skip the rare empty-body
+        # review, never to re-sort it.
+        for review in reviews:
+            text = (review.get("review") or "").strip()
+            if not text:
+                continue
+
+            result = {
+                "text": text,
+                "votes_up": review.get("votes_up", 0),
+                "timestamp_created": review.get("timestamp_created"),
+            }
+            _cache_set(cache_key, result)
+            return result
+
+        return None
+
+    except (requests.exceptions.RequestException, ValueError):
+        return None
+
+
 def get_appdetails(app_id, cc):
     """Fetches one game's appdetails. Returns None on ANY failure —
     network error, timeout, non-JSON body, or Steam returning a bare

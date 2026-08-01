@@ -79,9 +79,9 @@ def generate(game_raw):
     price_phrase = "free" if is_free else f"just {price_label}"
 
     return {
-        "insight": f"{name} is {price_phrase} and sitting at {desc}, barely anyone's talking about it.",
+        "insight": f"{name} is {price_phrase} and sitting at {desc} barely anyone's talking about it.",
         "why_it_matters": (
-            f"Just {total_reviews:,} reviews, but {desc.lower()}. This isn't unproven, it's undiscovered."
+            f"Just {total_reviews:,} reviews, but {desc.lower()}. This isn't unproven it's undiscovered."
         ),
         "confidence": confidence,
         "category": CATEGORY,
