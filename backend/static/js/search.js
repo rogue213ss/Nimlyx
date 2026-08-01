@@ -195,18 +195,73 @@ async function fetchSuggestions(query) {
 ========================================================== */
 
 const params = new URLSearchParams(window.location.search);
+const appIdParam = params.get("app_id");
 const gameName = params.get("q");
 document.getElementById("gameInput").value = gameName || "";
 
-async function loadGame() {
-    if (!gameName) return;
+const searchResultsView = document.getElementById("searchResultsView");
+const gameDetailView = document.getElementById("gameDetailView");
+const searchResultsGrid = document.getElementById("searchResultsGrid");
+const searchResultsTitle = document.getElementById("searchResultsTitle");
 
+function showDetailView() {
+    if (searchResultsView) searchResultsView.classList.add("is-hidden");
+    if (gameDetailView) gameDetailView.classList.remove("is-hidden");
+}
+
+function showResultsView() {
+    if (gameDetailView) gameDetailView.classList.add("is-hidden");
+    if (searchResultsView) searchResultsView.classList.remove("is-hidden");
+}
+
+/** Canonical loader — always by app_id. Used for /search?app_id=
+ *  URLs directly, and internally once a name query has been resolved
+ *  to an app_id (exact match, or a GameGrid card click). */
+async function loadGameById(appId) {
     try {
-        const response = await fetch(`/api/find/${gameName}`);
+        const response = await fetch(`/api/game-detail/${appId}`);
+        if (!response.ok) throw new Error(`Game detail request failed (${response.status})`);
         const game = await response.json();
+        showDetailView();
         renderGame(game);
     } catch (error) {
         console.error("Error loading game:", error);
+    }
+}
+
+/** Legacy path — resolves a free-text query into either a direct
+ *  redirect (exact match, e.g. "Portal 2") or a GameGrid of results
+ *  (ambiguous query, e.g. "portal"), matching the search behavior of
+ *  Steam/Amazon/IMDb rather than showing a one-item results page. */
+async function loadGameByQuery(query) {
+    try {
+        const response = await fetch(`/api/search-results/${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (data.exact_match_app_id) {
+            // Redirect internally to app_id-based loading -- the URL
+            // becomes canonical without a full page reload.
+            const newUrl = `/search?app_id=${encodeURIComponent(data.exact_match_app_id)}`;
+            history.replaceState(null, "", newUrl);
+            await loadGameById(data.exact_match_app_id);
+            return;
+        }
+
+        if (searchResultsTitle) {
+            searchResultsTitle.textContent = `Results for "${query}"`;
+        }
+        showResultsView();
+        renderGameGrid(searchResultsGrid, data.results);
+    } catch (error) {
+        console.error("Error loading search results:", error);
+    }
+}
+
+async function loadGame() {
+    if (appIdParam) {
+        await loadGameById(appIdParam);
+    } else if (gameName) {
+        await loadGameByQuery(gameName);
     }
 }
 
@@ -253,7 +308,13 @@ function renderHero(game) {
 
     const steamLink = document.getElementById("steamLink");
     if (steamLink) {
-        steamLink.href = `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name)}`;
+        // Sprint 3: a real per-app store link, not a generic name
+        // search -- game.app_id is always present now that both
+        // /api/game-detail/<app_id> and /api/find/<name> resolve
+        // through the same build_game_detail() helper.
+        steamLink.href = game.app_id
+            ? `https://store.steampowered.com/app/${game.app_id}/`
+            : `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name)}`;
     }
 }
 

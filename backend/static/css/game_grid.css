@@ -1,0 +1,124 @@
+/* ==========================================================
+   GAMEGRID — shared card grid styling (Sprint 3)
+   Uses the same --home-* design tokens as style.css so it looks
+   native wherever it's dropped in (Search results, Discover results).
+========================================================== */
+
+.is-hidden {
+    display: none !important;
+}
+
+.game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+.game-grid-empty {
+    grid-column: 1 / -1;
+    padding: 40px 0;
+    text-align: center;
+    color: var(--home-text-muted);
+    font-family: var(--home-font-body);
+}
+
+.game-grid-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--home-bg-card);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    transition: transform .18s var(--home-ease), border-color .18s var(--home-ease);
+}
+
+.game-grid-card:hover,
+.game-grid-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--home-glass-border-strong);
+}
+
+.game-grid-card__image-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: var(--home-bg-elevated);
+}
+
+.game-grid-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.game-grid-card__discount {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: var(--home-verdict-worth);
+    color: #fff;
+    font-family: var(--home-font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--home-radius-sm);
+}
+
+.game-grid-card__body {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.game-grid-card__name {
+    font-family: var(--home-font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--home-text-primary);
+    line-height: 1.3;
+}
+
+.game-grid-card__genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.game-grid-card__genre-pill {
+    font-family: var(--home-font-mono);
+    font-size: 10.5px;
+    color: var(--home-text-muted);
+    background: var(--home-glass-fill);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-sm);
+    padding: 2px 6px;
+}
+
+.game-grid-card__footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--home-font-mono);
+    font-size: 12px;
+}
+
+.game-grid-card__review {
+    color: var(--home-verdict-worth);
+}
+
+.game-grid-card__review-count {
+    color: var(--home-text-faint);
+}
+
+.game-grid-card__price {
+    color: var(--home-text-primary);
+    font-weight: 600;
+}

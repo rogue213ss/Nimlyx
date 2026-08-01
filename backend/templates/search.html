@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/game_grid.css') }}">
 </head>
 <body class="home-page">
 
@@ -74,6 +75,23 @@
     </div>
   </div>
 </header>
+
+<!-- ================= SEARCH RESULTS (Sprint 3) =================
+     Shown instead of the single-game hero/detail sections below
+     whenever the query didn't resolve to one obvious game. Populated
+     by GameGrid (see static/js/game_grid.js) from
+     /api/search-results/<query>. Hidden by default; search.js
+     toggles #searchResultsView vs #gameDetailView based on whether
+     an app_id was resolved. -->
+<section class="page results-view is-hidden" id="searchResultsView">
+    <div class="panel__head" style="margin-bottom:18px;">
+        <span class="panel__eyebrow">Search</span>
+        <h2 class="panel__title" id="searchResultsTitle">Results</h2>
+    </div>
+    <div class="game-grid" id="searchResultsGrid"></div>
+</section>
+
+<div id="gameDetailView">
 
 <!-- ================= HERO ================= -->
 <!-- NOTE ON "poster": search.js only ever sets .src on ONE image
@@ -225,6 +243,8 @@
 
 </main>
 
+</div><!-- /#gameDetailView -->
+
 <!-- ================= FOOTER =================
      Copied verbatim from index.html/discover.html -- zero new CSS
      needed, style.css already styles every class here. This is the
@@ -250,6 +270,7 @@
   <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
 </footer>
 
+<script src="{{ url_for('static', filename='js/game_grid.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 
 </body>

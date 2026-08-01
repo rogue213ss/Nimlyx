@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify
 
 from region import get_region_code
 from steam import get_appdetails, get_review_summary, clean_search_term
+from formatters import format_price
 from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
 from services.analysis.community_pulse import compute_pulse
@@ -46,8 +47,87 @@ def search_game(game_name):
         return jsonify({"error": str(e)}), 500
 
 
+@game_bp.route("/api/search-results/<query>")
+def search_results(query):
+    """Sprint 3 — powers the new GameGrid results experience (both
+    Search and, later, Discover funnel into this card shape).
+
+    Returns:
+      { "exact_match_app_id": <id or None>, "results": [GameGrid cards] }
+
+    exact_match_app_id is set only when a result's name matches the
+    query case-insensitively (punctuation/whitespace-normalized on
+    both sides) -- search.js uses this to skip the grid entirely and
+    redirect straight to that game's page, same as Steam/Amazon/IMDb
+    search do for an obvious single answer.
+    """
+    try:
+        cc = get_region_code()
+        term = clean_search_term(query)
+        url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        items = response.json().get("items", [])
+
+        normalized_query = clean_search_term(query).lower()
+
+        results = []
+        exact_match_app_id = None
+        for item in items:
+            app_id = item.get("id")
+            name = item.get("name", "")
+            price_overview = item.get("price", {}) or {}
+
+            card = {
+                "app_id": app_id,
+                "name": name,
+                "header_image": item.get("tiny_image"),
+                "price": (
+                    "Free" if price_overview.get("final") == 0
+                    else format_price(price_overview.get("final"))
+                ),
+                "discount": price_overview.get("discount_percent", 0),
+                # storesearch doesn't return review data or genres --
+                # left null/empty here rather than guessed; GameGrid
+                # renders these fields only when present.
+                "review_percentage": None,
+                "review_count": None,
+                "genres": [],
+            }
+            results.append(card)
+
+            if exact_match_app_id is None and clean_search_term(name).lower() == normalized_query:
+                exact_match_app_id = app_id
+
+        return jsonify({
+            "exact_match_app_id": exact_match_app_id,
+            "results": results,
+        })
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e), "results": [], "exact_match_app_id": None}), 500
+
+
+@game_bp.route("/api/game-detail/<app_id>")
+def game_detail_by_id(app_id):
+    """Canonical Sprint 3 detail endpoint -- loads a game straight off
+    its Steam app_id, no name resolution involved. This is what
+    search.js should call whenever it already knows the app_id
+    (exact-match redirect, GameGrid card click, or a /search?app_id=
+    URL loaded directly/refreshed/shared)."""
+    cc = get_region_code()
+    clean_data = build_game_detail(app_id, cc)
+    if clean_data is None:
+        return jsonify({"error": "Details not found"}), 404
+    return jsonify(clean_data)
+
+
 @game_bp.route("/api/find/<game_name>")
 def find_game(game_name):
+    """Legacy name-based resolution -- still used by /search?q=. Finds
+    the best-matching app_id via storesearch, then delegates to the
+    exact same build_game_detail() used by the app_id route, so both
+    paths always return identical shapes."""
     cc = get_region_code()
     term = clean_search_term(game_name)
 
@@ -59,11 +139,23 @@ def find_game(game_name):
 
     app_id = search_data["items"][0]["id"]
 
+    clean_data = build_game_detail(app_id, cc)
+    if clean_data is None:
+        return jsonify({"error": "Details not found"}), 404
+    return jsonify(clean_data)
+
+
+def build_game_detail(app_id, cc):
+    """Shared by /api/game-detail/<app_id> (canonical, Sprint 3) and
+    /api/find/<game_name> (legacy name lookup) so both routes stay
+    byte-for-byte identical in what they return. Returns None if the
+    app_id doesn't resolve to real appdetails in either the visitor's
+    region or the US fallback."""
     raw = get_appdetails(app_id, cc)
     if raw is None:
         raw = get_appdetails(app_id, "US")  # fallback for region-unavailable titles
     if raw is None:
-        return jsonify({"error": "Details not found"}), 404
+        return None
 
     # Real review counts (positive/negative split) for the Wilson
     # score — a different, more precise source than appdetails' own
@@ -159,4 +251,4 @@ def find_game(game_name):
         ]
     }
 
-    return jsonify(clean_data)
+    return clean_data
