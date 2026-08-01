@@ -216,6 +216,18 @@
   display:flex; flex-direction:column;
   gap:64px;
 }
+/* .results-view (the Search results shell) shares .page for its
+   max-width/centering/horizontal padding, but it's one filter+list
+   layout, not a stack of separate .panel sections -- so it shouldn't
+   also inherit .page's 64px inter-panel gap. Left as-is, that gap
+   plus .panel__head's own 28px margin-bottom stacked into ~92px of
+   dead space between "Results for ..." and the sidebar/rows below
+   it. */
+.results-view{
+  gap:28px;
+  padding-top:40px;
+}
+.results-view .panel__head{ margin-bottom:0; }
 .panel{
   background:var(--home-glass-fill);
   border:1px solid var(--home-glass-border);

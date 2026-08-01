@@ -679,6 +679,36 @@ main{ counter-reset: nimlyx-section; }
 /* ================================================================
    RESPONSIVE
    ================================================================ */
+/* Header/nav collapse -- the burger checkbox/label markup and the
+   .home-nav-panel target have existed since Home shipped, but no
+   rule ever actually showed the burger or hid the panel at any
+   width. Below this breakpoint the full nav + 250px search box +
+   region picker was rendering in one un-wrapping flex row every
+   time, which is what overlapped/ran together in the screenshot --
+   not a spacing tweak, the collapse simply never existed. 900px
+   matches the breakpoint style_mobile.css/search_mobile.css already
+   assume this collapse happens at (see their region-picker rules). */
+@media (max-width:900px){
+  .home-nav-burger{ display:flex; }
+
+  .home-nav-panel{
+    display:none;
+    position:absolute; top:100%; left:0; right:0;
+    flex-direction:column; align-items:stretch; justify-content:flex-start;
+    gap:18px; margin-left:0; flex:none;
+    background:rgba(10,10,13,0.97);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--home-glass-border);
+    padding:20px 32px 28px;
+  }
+  .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
+
+  .home-nav{ flex-direction:column; gap:2px; }
+  .home-nav a{ padding:10px 0; }
+
+  .home-search{ width:100%; }
+}
+
 @media (max-width: 860px){
   .picks-grid{ grid-template-columns:1fr; }
   .pick-lead{ min-height:340px; }
