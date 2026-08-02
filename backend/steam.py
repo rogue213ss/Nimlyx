@@ -16,6 +16,40 @@ from bs4 import BeautifulSoup
 HARDWARE_KEYWORDS = ["steam deck", "steam controller", "steam machine", "steam link"]
 
 
+def _is_single_app_id(app_id):
+    """Steam's search results HTML mixes genuine single-game rows in
+    with franchise/bundle rows -- a "Witcher 3 + both expansions"
+    pack, for example -- and those bundle rows carry a comma-joined
+    data-ds-appid like "292030,378649,378648" instead of one real ID.
+    Every card contract in this app represents exactly one game, so a
+    multi-ID row can't be honestly rendered as one; every scrape site
+    below should skip it rather than pass the raw joined string
+    downstream, where it silently becomes a broken
+    /search?app_id=292030,378649,378648 URL with nothing behind it."""
+    return bool(app_id) and "," not in app_id
+
+
+def _is_genuine_app_row(row, app_id):
+    """A second, independent check on top of _is_single_app_id --
+    catches the case that check can't: a *single*, non-comma
+    data-ds-appid that still isn't a real standalone app. Some
+    edition/complete-collection listings on Steam's search page are
+    packages ("subs") or bundles rather than a genuine app entry, and
+    the observed behavior (see the "Complete Edition" 404 this
+    guards against) is that data-ds-appid can carry a package-space
+    ID that happens to collide with an unrelated real app_id -- so a
+    lookup either 404s or, worse, silently loads the wrong game.
+
+    The row's own href is a second, independent signal: Steam links
+    genuine app rows to /app/<id>/..., but bundles/packages link to
+    /bundle/<id>/... or /sub/<id>/... instead. Requiring the href to
+    actually say /app/ catches rows data-ds-appid alone can't."""
+    if not _is_single_app_id(app_id):
+        return False
+    href = row.get("href") or ""
+    return "/app/" in href
+
+
 # ==========================================================
 # SHORT-LIVED RESPONSE CACHE — real data only, never a substitute
 # for it.
@@ -201,7 +235,7 @@ def fetch_browse_category(category, count=25, cc="US"):
         # this app can honestly render, so it's skipped here rather
         # than passed downstream with fields that silently resolve to
         # a broken image later.
-        if not app_id or not image:
+        if not _is_genuine_app_row(game, app_id) or not image:
             continue
 
         price_div = game.find("div", class_="search_price_discount_combined")
@@ -319,7 +353,7 @@ def _scrape_search_results(params, cc):
         # Battle Status:
         # Victory.
         # ==========================================================
-        if not app_id or not image:
+        if not _is_genuine_app_row(row, app_id) or not image:
             continue
 
         small_image = image
@@ -648,7 +682,7 @@ def fetch_new_release_candidates(count=40, cc="US"):
     candidates = []
     for row in rows:
         app_id = row.get("data-ds-appid")
-        if not app_id:
+        if not _is_genuine_app_row(row, app_id):
             continue
 
         title = row.find("span", class_="title")

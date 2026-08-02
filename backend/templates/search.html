@@ -97,6 +97,24 @@
     </div>
 </section>
 
+<!-- ================= GAME LOAD ERROR =================
+     Hidden by default. search.js shows this (and hides
+     #gameDetailView) whenever /api/game-detail/<app_id> or
+     /api/find/<name> fails -- 404 (delisted/invalid app_id), network
+     error, etc. Reuses discover.css's existing .discover-empty-state
+     component (defined but never placed in markup until now) rather
+     than a page-specific error block. -->
+<div class="page" id="gameErrorState" style="display:none;">
+    <div class="discover-empty-state" style="margin-top:40px;">
+        <div class="discover-empty-state-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3 class="discover-empty-state-title">Couldn't Load This Game</h3>
+        <p class="discover-empty-state-text" id="gameErrorText">
+            This game may have been delisted, region-restricted, or the link may be broken.
+        </p>
+        <a href="/search" class="home-btn home-btn-ghost" style="margin-top:8px;">← Back to Search</a>
+    </div>
+</div>
+
 <div id="gameDetailView">
 
 <!-- ================= HERO ================= -->

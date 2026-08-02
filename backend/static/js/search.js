@@ -208,11 +208,15 @@ const searchResultsTitle = document.getElementById("searchResultsTitle");
 function showDetailView() {
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.remove("is-hidden");
+    const errorState = document.getElementById("gameErrorState");
+    if (errorState) errorState.style.display = "none";
 }
 
 function showResultsView() {
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.remove("is-hidden");
+    const errorState = document.getElementById("gameErrorState");
+    if (errorState) errorState.style.display = "none";
 }
 
 /** Canonical loader — always by app_id. Used for /search?app_id=
@@ -227,7 +231,22 @@ async function loadGameById(appId) {
         renderGame(game);
     } catch (error) {
         console.error("Error loading game:", error);
+        showGameError("This game may have been delisted, region-restricted, or the link may be broken.");
     }
+}
+
+// Previously this failure path only logged to console -- the page was
+// left exactly as it was (usually still on the loading skeleton),
+// with nothing telling the person anything went wrong. Reuses the
+// same .discover-empty-state component Discover's own empty results
+// use, rather than a page-specific error block.
+function showGameError(message) {
+    if (searchResultsView) searchResultsView.classList.add("is-hidden");
+    if (gameDetailView) gameDetailView.classList.add("is-hidden");
+    const errorState = document.getElementById("gameErrorState");
+    const errorText = document.getElementById("gameErrorText");
+    if (errorText && message) errorText.textContent = message;
+    if (errorState) errorState.style.display = "";
 }
 
 /** Legacy path — resolves a free-text query into either a direct
@@ -259,6 +278,7 @@ async function loadGameByQuery(query) {
         });
     } catch (error) {
         console.error("Error loading search results:", error);
+        showGameError("Something went wrong loading search results. Please try again.");
     }
 }
 
@@ -343,15 +363,24 @@ function buildTrendingStyleCard(g) {
         </div>
     `;
 
-    // Same safety net discover.js's createGameCard() already has --
-    // header_image is supposed to be guaranteed, but edition/bundle
-    // listings can still 404 (see related_games.py). One retry to the
-    // SVG placeholder beats showing a broken-image icon with alt text
-    // spilling over the card.
+    // Recovery chain, not just a single fallback: if the guaranteed
+    // header_image still fails to load, try each of image_candidates
+    // in turn (which now includes this game's own same-family
+    // large_image -- see related_games.py) before finally giving up
+    // to the SVG placeholder. image-upgrade.js doesn't help here: it
+    // only ever tries to do BETTER than an already-working image, it
+    // has no path for "the base image itself is broken."
     const img = card.querySelector(".trending-media img");
-    img.addEventListener("error", () => {
-        if (img.src !== FALLBACK_IMAGE) img.src = FALLBACK_IMAGE;
-    }, { once: true });
+    const retryQueue = Array.isArray(g.image_candidates) ? g.image_candidates.filter(Boolean) : [];
+    img.addEventListener("error", function onImgError() {
+        const next = retryQueue.shift();
+        if (next && next !== img.src) {
+            img.src = next;
+        } else if (img.src !== FALLBACK_IMAGE) {
+            img.removeEventListener("error", onImgError);
+            img.src = FALLBACK_IMAGE;
+        }
+    });
 
     return card;
 }
