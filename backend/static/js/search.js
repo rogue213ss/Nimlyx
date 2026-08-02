@@ -342,6 +342,17 @@ function buildTrendingStyleCard(g) {
             <span class="trending-price">${carouselCardPrice(g)}</span>
         </div>
     `;
+
+    // Same safety net discover.js's createGameCard() already has --
+    // header_image is supposed to be guaranteed, but edition/bundle
+    // listings can still 404 (see related_games.py). One retry to the
+    // SVG placeholder beats showing a broken-image icon with alt text
+    // spilling over the card.
+    const img = card.querySelector(".trending-media img");
+    img.addEventListener("error", () => {
+        if (img.src !== FALLBACK_IMAGE) img.src = FALLBACK_IMAGE;
+    }, { once: true });
+
     return card;
 }
 
