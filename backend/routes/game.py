@@ -73,6 +73,19 @@ def search_results(query):
         response.raise_for_status()
         items = response.json().get("items", [])
 
+        # Confirmed root cause of the app_id=124923 bug: storesearch
+        # returns a mix of item types -- "app" for a real single game,
+        # but also "sub" (Steam packages/bundles, e.g. "...Complete
+        # Edition") and possibly others. A "sub" id lives in a
+        # completely different Steam ID namespace than an app id, so
+        # /api/appdetails (which only understands app ids) 404s on it.
+        # Every card contract downstream represents exactly one
+        # playable app, so non-"app" items are dropped here, at the
+        # source, rather than passed through and failing later on
+        # click. See conversation history for the diagnostic that
+        # confirmed this via real storesearch JSON output.
+        items = [item for item in items if item.get("type") == "app"]
+
         normalized_query = clean_search_term(query).lower()
 
         # Genres aren't in storesearch's payload at all -- only
