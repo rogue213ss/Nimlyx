@@ -252,62 +252,19 @@ def parse_review_percent(game_anchor):
     return int(match.group(1)) if match else None
 
 
-def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=100, cc="US"):
-    """Scrapes Steam's search results using tag/price/os filters built
-    from the discover wizard's answers. Review score isn't filterable
-    server-side, so it's applied afterwards in the /api/discover route.
+def _scrape_search_results(params, cc):
+    """Shared core of Steam's search/results HTML scrape -- the request
+    + BeautifulSoup parsing that used to live directly inside
+    fetch_discover_games(). Pulled out so fetch_games_by_credit()
+    (Sprint 4 Phase 3's developer/publisher lookups) can reuse the
+    exact same parsing instead of a second copy of this ~80-line block
+    that would silently drift from this one over time.
 
-    count defaults to 100 (Steam's search page tops out comfortably
-    there in one request) instead of the old 30, so a single scrape can
-    back several pages of infinite scroll (12 → 24 → 36...) without
-    re-hitting Steam's search endpoint on every "load more". This is a
-    fixed-size buffer, not true unlimited pagination — if a filter
-    combination has fewer than `count` raw matches, scrolling will
-    eventually hit the real end of what's available rather than an
-    artificial page boundary. Good enough for the wizard's five filters;
-    would need Steam's own `start` paging to go further.
-
-    NOTE: this function only scrapes and returns raw candidates — no
-    per-game appdetails calls happen here anymore. Live price and
-    artwork lookups happen later in discover_api, and only for the 12
-    games on the page actually being shown, not the whole buffer."""
-
-    # Same reasoning as fetch_browse_category's cache above: this is
-    # Discover's most expensive uncached call, and it's now hit on
-    # every debounced live-filter change (not just an explicit "Find
-    # Games" click) — the exact same filter combination re-selected a
-    # few minutes later, or picked by a different visitor, re-scraped
-    # Steam from scratch every single time before this. 3 minutes
-    # matches fetch_browse_category's TTL: short enough that a real
-    # listing change still shows up quickly, long enough that the
-    # rapid back-and-forth clicking a live filter UI invites is
-    # answered from cache instead of Steam.
-    cache_key = ("discover_games", genre, play_with, budget, platform, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=180)
-    if cached is not None:
-        return cached
-
-    tag_ids = []
-    if genre in GENRE_TAG_IDS:
-        tag_ids.append(GENRE_TAG_IDS[genre])
-    if play_with in PLAYWITH_TAG_IDS:
-        tag_ids.append(PLAYWITH_TAG_IDS[play_with])
-
-    params = {
-        "query": "",
-        "start": 0,
-        "count": count,
-        "category1": 998,  # Games only — excludes DLC, soundtracks, software
-        "cc": cc,
-        "l": "english",
-    }
-    if tag_ids:
-        params["tags"] = ",".join(str(t) for t in tag_ids)
-    if platform in PLATFORM_OS_PARAM:
-        params["os"] = PLATFORM_OS_PARAM[platform]
-    if budget in BUDGET_MAX_PRICE_CENTS and BUDGET_MAX_PRICE_CENTS[budget] is not None:
-        params["maxprice"] = BUDGET_MAX_PRICE_CENTS[budget] / 100
-
+    Takes an already-built `params` dict so each caller stays in charge
+    of its own filter params (tags/os/maxprice for Discover,
+    developer/publisher for the game page) -- this function only owns
+    the HTTP call and the row-by-row parsing, not what's being
+    searched for."""
     url = "https://store.steampowered.com/search/results/"
 
     response = requests.get(url, params=params, timeout=10)
@@ -389,8 +346,108 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
             "review_percent": parse_review_percent(row),
         })
 
+    return games
+
+
+def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None, count=100, cc="US"):
+    """Scrapes Steam's search results using tag/price/os filters built
+    from the discover wizard's answers. Review score isn't filterable
+    server-side, so it's applied afterwards in the /api/discover route.
+
+    count defaults to 100 (Steam's search page tops out comfortably
+    there in one request) instead of the old 30, so a single scrape can
+    back several pages of infinite scroll (12 → 24 → 36...) without
+    re-hitting Steam's search endpoint on every "load more". This is a
+    fixed-size buffer, not true unlimited pagination — if a filter
+    combination has fewer than `count` raw matches, scrolling will
+    eventually hit the real end of what's available rather than an
+    artificial page boundary. Good enough for the wizard's five filters;
+    would need Steam's own `start` paging to go further.
+
+    NOTE: this function only scrapes and returns raw candidates — no
+    per-game appdetails calls happen here anymore. Live price and
+    artwork lookups happen later in discover_api, and only for the 12
+    games on the page actually being shown, not the whole buffer."""
+
+    # Same reasoning as fetch_browse_category's cache above: this is
+    # Discover's most expensive uncached call, and it's now hit on
+    # every debounced live-filter change (not just an explicit "Find
+    # Games" click) — the exact same filter combination re-selected a
+    # few minutes later, or picked by a different visitor, re-scraped
+    # Steam from scratch every single time before this. 3 minutes
+    # matches fetch_browse_category's TTL: short enough that a real
+    # listing change still shows up quickly, long enough that the
+    # rapid back-and-forth clicking a live filter UI invites is
+    # answered from cache instead of Steam.
+    cache_key = ("discover_games", genre, play_with, budget, platform, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=180)
+    if cached is not None:
+        return cached
+
+    tag_ids = []
+    if genre in GENRE_TAG_IDS:
+        tag_ids.append(GENRE_TAG_IDS[genre])
+    if play_with in PLAYWITH_TAG_IDS:
+        tag_ids.append(PLAYWITH_TAG_IDS[play_with])
+
+    params = {
+        "query": "",
+        "start": 0,
+        "count": count,
+        "category1": 998,  # Games only — excludes DLC, soundtracks, software
+        "cc": cc,
+        "l": "english",
+    }
+    if tag_ids:
+        params["tags"] = ",".join(str(t) for t in tag_ids)
+    if platform in PLATFORM_OS_PARAM:
+        params["os"] = PLATFORM_OS_PARAM[platform]
+    if budget in BUDGET_MAX_PRICE_CENTS and BUDGET_MAX_PRICE_CENTS[budget] is not None:
+        params["maxprice"] = BUDGET_MAX_PRICE_CENTS[budget] / 100
+
+    games = _scrape_search_results(params, cc)
     _cache_set(cache_key, games)
     return games
+
+
+def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
+    """Sprint 4 Phase 3 -- "More From Developer" / "More From
+    Publisher". Same Steam search/results scrape fetch_discover_games
+    uses, just filtered by Steam's own developer=/publisher= facet
+    params instead of tags/os/maxprice. field must be "developer" or
+    "publisher"; value is the exact credit name off this game's own
+    appdetails (e.g. game["developers"][0]).
+
+    exclude_app_id drops the game currently being viewed out of its
+    own "more like this" list -- Steam's own developer/publisher
+    search naturally includes the game itself.
+
+    count defaults to 10, matching the Sprint 4 spec's "6-10 games"
+    for these carousels -- small enough that no pagination or infinite
+    scroll is needed, unlike Discover's much larger buffer."""
+    if field not in ("developer", "publisher") or not value:
+        return []
+
+    cache_key = ("credit_games", field, value, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        games = cached
+    else:
+        params = {
+            "query": "",
+            "start": 0,
+            "count": count + 1,  # +1 headroom for excluding the source game itself
+            "category1": 998,
+            "cc": cc,
+            "l": "english",
+            field: value,
+        }
+        games = _scrape_search_results(params, cc)
+        _cache_set(cache_key, games)
+
+    if exclude_app_id:
+        games = [g for g in games if g.get("id") != str(exclude_app_id)]
+    return games[:count]
 
 
 def fetch_authoritative_price(app_id, cc="US"):

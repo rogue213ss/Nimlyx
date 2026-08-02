@@ -114,6 +114,7 @@
         <div class="hero__panel reveal">
             <div class="hero__kicker" id="heroKicker"></div>
             <h1 class="hero__title" id="heroTitle"></h1>
+            <div class="hero__credits" id="heroCredits"></div>
             <div class="hero__meta" id="heroMeta"></div>
             <div class="hero__ctas">
                 <button class="home-btn home-btn-primary" id="watchTrailerBtn">
@@ -227,6 +228,47 @@
         </div>
 
         <div class="stats-grid" id="statsRows"></div>
+    </section>
+
+    <!-- ================= MORE FROM DEVELOPER =================
+         Sprint 4 Phase 3. Reuses the homepage's own Trending Today
+         component (.trending-wrap/.trending-scroll/.trending-card,
+         defined in style.css, already loaded on this page) rather
+         than a page-specific carousel style -- same arrow-driven
+         horizontal scroll, same card shape, same everything, so this
+         doesn't read as a bolted-on new pattern. Whole section hidden
+         by search.js when there are no developer_games. -->
+    <section class="panel carousel-panel reveal" id="developerGamesSection">
+        <div class="panel__head">
+            <span class="panel__eyebrow" id="developerGamesEyebrow">More from developer</span>
+            <h2 class="panel__title" id="developerGamesTitle">More From This Developer</h2>
+        </div>
+        <div class="trending-wrap">
+            <button type="button" class="trending-arrow trending-arrow-left" id="developerGamesPrev" aria-label="Scroll left">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="trending-scroll" id="developerGamesCarousel"></div>
+            <button type="button" class="trending-arrow trending-arrow-right" id="developerGamesNext" aria-label="Scroll right">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- ================= MORE FROM PUBLISHER ================= -->
+    <section class="panel carousel-panel reveal" id="publisherGamesSection">
+        <div class="panel__head">
+            <span class="panel__eyebrow" id="publisherGamesEyebrow">More from publisher</span>
+            <h2 class="panel__title" id="publisherGamesTitle">More From This Publisher</h2>
+        </div>
+        <div class="trending-wrap">
+            <button type="button" class="trending-arrow trending-arrow-left" id="publisherGamesPrev" aria-label="Scroll left">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="trending-scroll" id="publisherGamesCarousel"></div>
+            <button type="button" class="trending-arrow trending-arrow-right" id="publisherGamesNext" aria-label="Scroll right">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
     </section>
 
     <!-- ================= TRAILER ================= -->

@@ -10,6 +10,7 @@ from services.analysis.reputation_trajectory import compute_trajectory
 from services.analysis.community_pulse import compute_pulse
 from services.analysis.tag_honesty import compute_tag_honesty
 from services.analysis.spotlight_reviews import compute_spotlight_reviews
+from services.game.related_games import get_developer_games, get_publisher_games
 
 game_bp = Blueprint("game", __name__)
 
@@ -230,6 +231,31 @@ def build_game_detail(app_id, cc):
     # services/analysis/spotlight_reviews.py.
     spotlight_reviews = compute_spotlight_reviews(app_id, cc)
 
+    # Sprint 4 Phase 3 -- "More From Developer" / "More From Publisher".
+    # Two independent Steam search-scrape calls, so they run in
+    # parallel rather than one after the other -- same reasoning as
+    # every other concurrent lookup in this codebase (Discover's
+    # per-card price enrichment, etc). Both are skipped entirely (no
+    # Steam call at all) when this game has no developer/publisher
+    # credit to search by.
+    developers = raw.get("developers", [])
+    publishers = raw.get("publishers", [])
+    # Self-published titles credit the same name as both developer and
+    # publisher -- showing the identical carousel twice under two
+    # headings would be exactly the "random boxes" clutter Sprint 4
+    # is trying to avoid, so publisher is skipped whenever it matches
+    # developer.
+    same_credit = bool(developers) and bool(publishers) and developers[0].strip().lower() == publishers[0].strip().lower()
+
+    with ThreadPoolExecutor(max_workers=2) as credit_executor:
+        dev_future = credit_executor.submit(get_developer_games, developers, app_id, cc)
+        pub_future = (
+            credit_executor.submit(get_publisher_games, publishers, app_id, cc)
+            if not same_credit else None
+        )
+        developer_games = dev_future.result()
+        publisher_games = pub_future.result() if pub_future else []
+
     clean_data = {
         "app_id": app_id,
         # Generic Steam reviews surface for this app — used by the
@@ -244,6 +270,10 @@ def build_game_detail(app_id, cc):
         "header_image": raw.get("header_image"),
         "genres": [g["description"] for g in raw.get("genres", [])],
         "price": raw.get("price_overview", {}).get("final_formatted", "Free"),
+        # Original (pre-discount) price, only meaningful alongside
+        # `discount` below -- frontend only renders it when discount > 0.
+        "original_price": raw.get("price_overview", {}).get("initial_formatted"),
+        "discount": raw.get("price_overview", {}).get("discount_percent", 0),
         "is_free": raw.get("is_free"),
         "developers": raw.get("developers", []),
         "publishers": raw.get("publishers", []),
@@ -264,6 +294,12 @@ def build_game_detail(app_id, cc):
         # no review data to compute one from — the frontend must not
         # invent a placeholder when this is None.
         "nimlyx_score": nimlyx_score,
+        # Steam's own review label ("Very Positive", "Mostly Positive",
+        # etc) -- deliberately kept separate from nimlyx_score above.
+        # nimlyx_score is Nimlyx's Wilson-adjusted number; this is
+        # Steam's raw aggregate descriptor. Quick Facts shows both so
+        # neither is misrepresented as the other.
+        "review_score_desc": review_summary["review_score_desc"] if review_summary else None,
         "reputation_trajectory": reputation_trajectory,
         "community_pulse": community_pulse,
         "tag_honesty": tag_honesty,
@@ -287,7 +323,9 @@ def build_game_detail(app_id, cc):
         "screenshots": [
             shot.get("path_full")
             for shot in raw.get("screenshots", [])
-        ]
+        ],
+        "developer_games": developer_games,
+        "publisher_games": publisher_games,
     }
 
     return clean_data

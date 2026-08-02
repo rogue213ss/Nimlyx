@@ -281,11 +281,136 @@ function renderGame(game) {
     renderAbout(game);
     renderScreenshots(game);
     renderNimlyxAnalysis(game);
-    renderTrailer(game);
-    renderGenres(game);
     renderCredits(game);
     renderStats(game);
+    renderDeveloperGames(game);
+    renderPublisherGames(game);
+    renderTrailer(game);
+    renderGenres(game);
     initScrollReveal();
+}
+
+/* ---------------- CAROUSELS (Sprint 4 Phase 3) ----------------
+   "More From Developer" / "More From Publisher".
+
+   Deliberately NOT a new component -- reuses the homepage's own
+   Trending Today card shape and arrow-scroll behavior exactly
+   (.trending-card / .trending-scroll / .trending-arrow, all styled
+   in style.css, already loaded here) instead of a page-specific
+   carousel, so this doesn't read as something bolted onto the game
+   page. The scroll-by-arrow logic below is the same approach
+   trending.js uses on the homepage, just generalized to run against
+   whichever scroller/prev/next triple is passed in, since this page
+   has two of these carousels instead of one. */
+
+// Same fallback artwork Discover's cards use (see discover.js) --
+// kept as an identical local copy since the two pages don't share a
+// module system. header_image is guaranteed by the backend in
+// practice (see formatters.to_discover_card), so this is a
+// defensive last resort, not an expected path.
+const FALLBACK_IMAGE = "data:image/svg+xml;utf8," + encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#131318"/>
+        <g transform="translate(200,150)" fill="none" stroke="#5c5b64" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+            <path d="M-60,-10 h120 a30,30 0 0 1 30,30 v10 a20,20 0 0 1 -35,14 l-14,-14 h-82 l-14,14 a20,20 0 0 1 -35,-14 v-10 a30,30 0 0 1 30,-30 z"/>
+            <line x1="-38" y1="8" x2="-38" y2="24"/>
+            <line x1="-46" y1="16" x2="-30" y2="16"/>
+            <circle cx="34" cy="6" r="4" fill="#5c5b64" stroke="none"/>
+            <circle cx="50" cy="20" r="4" fill="#5c5b64" stroke="none"/>
+        </g>
+    </svg>
+`.replace(/\s+/g, " ").trim());
+
+function carouselCardPrice(g) {
+    const priceLabel = (g.price === 0 || g.price === "0" || g.price == null)
+        ? "Free"
+        : `$${(Number(g.price) / 100).toFixed(2)}`;
+    return g.discount > 0 ? `-${g.discount}% \u00b7 ${priceLabel}` : priceLabel;
+}
+
+function buildTrendingStyleCard(g) {
+    const card = document.createElement("a");
+    card.className = "trending-card";
+    card.href = g.app_id ? `/search?app_id=${encodeURIComponent(g.app_id)}` : "#";
+    card.innerHTML = `
+        <div class="trending-media">
+            <img src="${g.header_image || FALLBACK_IMAGE}" alt="${g.name || ""}" loading="lazy">
+            <div class="trending-media-overlay"></div>
+        </div>
+        <div class="trending-info">
+            <h3 class="trending-title">${g.name || ""}</h3>
+            <span class="trending-price">${carouselCardPrice(g)}</span>
+        </div>
+    `;
+    return card;
+}
+
+// Same arrow-driven scroll behavior as trending.js on the homepage,
+// generalized to any scroller/prev/next triple so it can run twice
+// on this page without duplicating the wiring logic itself.
+function wireCarouselScroll(scrollerId, prevId, nextId) {
+    const scroller = document.getElementById(scrollerId);
+    const prevBtn = document.getElementById(prevId);
+    const nextBtn = document.getElementById(nextId);
+    if (!scroller || !prevBtn || !nextBtn) return;
+
+    function scrollStep() {
+        const card = scroller.querySelector(".trending-card");
+        const cardWidth = card ? card.getBoundingClientRect().width : 340;
+        return cardWidth + 18; // card width + gap, matches .trending-scroll's gap
+    }
+
+    function updateArrowState() {
+        const maxScroll = scroller.scrollWidth - scroller.clientWidth;
+        prevBtn.disabled = scroller.scrollLeft <= 4;
+        nextBtn.disabled = scroller.scrollLeft >= maxScroll - 4;
+    }
+
+    prevBtn.addEventListener("click", () => {
+        scroller.scrollBy({ left: -scrollStep(), behavior: "smooth" });
+    });
+    nextBtn.addEventListener("click", () => {
+        scroller.scrollBy({ left: scrollStep(), behavior: "smooth" });
+    });
+    scroller.addEventListener("scroll", updateArrowState, { passive: true });
+    window.addEventListener("resize", updateArrowState);
+
+    updateArrowState();
+}
+
+// Shared by both carousels below -- hides the whole panel (heading
+// included) rather than rendering an empty strip when the backend
+// found nothing, same "never render an empty section" rule the
+// screenshots panel already follows.
+function renderCarouselSection(sectionId, carouselId, prevId, nextId, games, eyebrowId, titleId, name) {
+    const section = document.getElementById(sectionId);
+    const carousel = document.getElementById(carouselId);
+    if (!games || !games.length) {
+        if (section) section.style.display = "none";
+        return;
+    }
+    if (section) section.style.display = "";
+    if (eyebrowId) document.getElementById(eyebrowId).textContent = `More from ${name}`;
+    if (titleId) document.getElementById(titleId).textContent = `More Games From ${name}`;
+    carousel.innerHTML = "";
+    games.forEach(g => carousel.appendChild(buildTrendingStyleCard(g)));
+    wireCarouselScroll(carouselId, prevId, nextId);
+}
+
+function renderDeveloperGames(game) {
+    const name = (game.developers || [])[0] || "this developer";
+    renderCarouselSection(
+        "developerGamesSection", "developerGamesCarousel", "developerGamesPrev", "developerGamesNext",
+        game.developer_games, "developerGamesEyebrow", "developerGamesTitle", name
+    );
+}
+
+function renderPublisherGames(game) {
+    const name = (game.publishers || [])[0] || "this publisher";
+    renderCarouselSection(
+        "publisherGamesSection", "publisherGamesCarousel", "publisherGamesPrev", "publisherGamesNext",
+        game.publisher_games, "publisherGamesEyebrow", "publisherGamesTitle", name
+    );
 }
 
 /* ---------------- HERO ---------------- */
@@ -297,14 +422,40 @@ function renderHero(game) {
     document.getElementById("heroKicker").textContent = game.genres.join(" · ");
     document.getElementById("heroTitle").textContent = game.name;
 
+    // Developer • Publisher credit line, IMDb-style, directly under the
+    // title. Only rendered when there's something to say -- some Steam
+    // listings genuinely have neither field populated, and an empty
+    // line would just be dead vertical space in a cinematic hero.
+    const heroCredits = document.getElementById("heroCredits");
+    const creditParts = [
+        (game.developers || []).join(", "),
+        (game.publishers || []).join(", ")
+    ].filter(Boolean);
+    if (creditParts.length) {
+        heroCredits.innerHTML = creditParts.join('<span class="hero__credits-sep">•</span>');
+        heroCredits.style.display = "";
+    } else {
+        heroCredits.style.display = "none";
+    }
+
     const scoreClass = game.metacritic >= 75 ? "is-good" : game.metacritic >= 50 ? "is-mid" : "is-low";
 
     const platformNames = Object.keys(game.platforms)
         .filter(p => game.platforms[p])
         .map(p => p.charAt(0).toUpperCase() + p.slice(1));
 
+    // Discount chip + strikethrough original price -- only ever shown
+    // together, and only when there's an actual live discount (0 is
+    // the "not on sale" case, same convention build_game_detail uses).
+    const hasDiscount = game.discount > 0 && game.original_price;
+    const discountChips = hasDiscount
+        ? `<span class="meta-chip meta-chip--discount"><i class="fa-solid fa-arrow-down"></i>-${game.discount}%</span>
+           <span class="meta-chip meta-chip--original-price">${game.original_price}</span>`
+        : "";
+
     document.getElementById("heroMeta").innerHTML = `
         <span class="meta-chip meta-chip--price"><i class="fa-solid fa-tag"></i>${game.price}</span>
+        ${discountChips}
         <span class="meta-chip"><i class="fa-regular fa-calendar"></i>${game.release_date || "TBA"}</span>
         ${game.metacritic ? `<span class="meta-chip meta-chip--score ${scoreClass}"><i class="fa-solid fa-star"></i>${game.metacritic} Metacritic</span>` : ""}
         <span class="meta-chip"><i class="fa-solid fa-users"></i>${game.total_reviews.toLocaleString()} Reviews</span>
@@ -618,8 +769,13 @@ function renderStats(game) {
     document.getElementById("statsRows").innerHTML = `
         <div class="info-row">
             <span class="info-row__label"><i class="fa-solid fa-tag"></i>Price</span>
-            <span class="info-row__value">${game.price}</span>
+            <span class="info-row__value">${game.discount > 0 ? `<span class="is-good">-${game.discount}%</span> ${game.price}` : game.price}</span>
         </div>
+        ${game.review_score_desc ? `
+        <div class="info-row">
+            <span class="info-row__label"><i class="fa-solid fa-comment"></i>Review Score</span>
+            <span class="info-row__value">${game.review_score_desc}</span>
+        </div>` : ""}
         ${game.metacritic ? `
         <div class="info-row">
             <span class="info-row__label"><i class="fa-solid fa-star"></i>Metacritic</span>
