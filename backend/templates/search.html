@@ -173,7 +173,7 @@
 
         <div class="featured-shot">
             <img id="featuredImg" alt="Featured screenshot">
-            <button class="featured-shot__expand" title="Fullscreen (coming soon)">
+            <button class="featured-shot__expand" id="featuredExpand" title="Fullscreen" aria-label="Open fullscreen screenshot viewer">
                 <i class="fa-solid fa-expand"></i>
             </button>
         </div>
@@ -183,6 +183,14 @@
             <button class="strip-nav strip-nav--next" id="stripNext" aria-label="Scroll right"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </section>
+
+    <!-- ================= SCREENSHOT LIGHTBOX ================= -->
+    <div class="shot-lightbox" id="shotLightbox" aria-hidden="true">
+        <button class="shot-lightbox__close" id="shotLightboxClose" aria-label="Close fullscreen viewer">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <img class="shot-lightbox__img" id="shotLightboxImg" alt="Fullscreen screenshot">
+    </div>
 
     <!-- ================= NIMLYX ANALYSIS =================
          One premium container, not six cards -- see Sprint 2 spec.

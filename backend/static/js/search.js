@@ -561,6 +561,50 @@ function renderScreenshots(game) {
     document.getElementById("stripNext").addEventListener("click", () => thumbStrip.scrollBy({ left: 320, behavior: "smooth" }));
 }
 
+/* ---------------- SCREENSHOT LIGHTBOX ----------------
+   featuredImg / featuredExpand / shotLightbox are static elements
+   in the page markup (only their .src / content changes on render),
+   so this wiring only needs to run once. */
+function initShotLightbox() {
+    const featuredImg = document.getElementById("featuredImg");
+    const expandBtn = document.getElementById("featuredExpand");
+    const lightbox = document.getElementById("shotLightbox");
+    const lightboxImg = document.getElementById("shotLightboxImg");
+    const closeBtn = document.getElementById("shotLightboxClose");
+
+    if (!featuredImg || !expandBtn || !lightbox || !lightboxImg || !closeBtn) return;
+
+    const openLightbox = () => {
+        if (!featuredImg.src) return;
+        lightboxImg.src = featuredImg.src;
+        lightbox.classList.add("is-open");
+        lightbox.setAttribute("aria-hidden", "false");
+    };
+
+    const closeLightbox = () => {
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+    };
+
+    expandBtn.addEventListener("click", openLightbox);
+    featuredImg.addEventListener("click", openLightbox);
+    closeBtn.addEventListener("click", closeLightbox);
+
+    // Click outside the image (on the dimmed backdrop) closes it.
+    lightbox.addEventListener("click", (e) => {
+        if (e.target === lightbox) closeLightbox();
+    });
+
+    // Escape key closes it, only while open.
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && lightbox.classList.contains("is-open")) {
+            closeLightbox();
+        }
+    });
+}
+
+initShotLightbox();
+
 /* ---------------- NIMLYX ANALYSIS ----------------
    One premium dashboard, not six independent cards (Sprint 2 spec).
    Every sub-block is driven by real backend data and hidden --
