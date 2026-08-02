@@ -614,10 +614,27 @@
         </svg>
     `.replace(/\s+/g, " ").trim());
 
+    // Canonical result-card contract (matches /api/search-results):
+    // { app_id, name, header_image, price, discount, review_percentage,
+    //   review_count, genres }. discover.js owns turning these raw
+    // fields into the .home-card footer's display strings -- the
+    // backend (to_discover_card) stays presentation-free so the same
+    // contract can back other result surfaces too.
+    function discoverCardFooterLeft(game) {
+        const priceLabel = (game.price === 0 || game.price === "0" || game.price == null)
+            ? "Free"
+            : `$${(Number(game.price) / 100).toFixed(2)}`;
+        return game.discount > 0 ? `-${game.discount}% \u00b7 ${priceLabel}` : priceLabel;
+    }
+
+    function discoverCardFooterRight(game) {
+        return game.review_percentage != null ? `${game.review_percentage}% Positive` : "No reviews yet";
+    }
+
     function createGameCard(game) {
         const card = document.createElement("a");
         card.className = "home-card";
-        card.href = game.analyze_url || "#";
+        card.href = game.app_id ? `/search?app_id=${encodeURIComponent(game.app_id)}` : "#";
 
         // header_image is guaranteed by the backend (Steam's own scraped
         // thumbnail or the CDN-convention header.jpg — never a guessed
@@ -632,8 +649,8 @@
                 <h3 class="home-card-title">${game.name || ""}</h3>
                 <div class="home-card-divider"></div>
                 <div class="home-card-footer">
-                    <span class="home-card-footer-left">${game.footer_left || ""}</span>
-                    <span class="home-card-footer-right">${game.footer_right || ""}</span>
+                    <span class="home-card-footer-left">${discoverCardFooterLeft(game)}</span>
+                    <span class="home-card-footer-right">${discoverCardFooterRight(game)}</span>
                 </div>
             </div>
         `;

@@ -72,8 +72,27 @@ def trim_review_quote(text, target_min=180, target_max=250):
 
 
 def to_discover_card(game):
-    """Shapes a scraped game into the {name, header_image, analyze_url,
-    footer_left, footer_right} card fields discover.js renders."""
+    """Shapes a scraped game into Nimlyx's canonical result-card
+    contract (Sprint 3 Phase 4) -- the same shape /api/search-results
+    returns for Search:
+
+        { app_id, name, header_image, price, discount,
+          review_percentage, review_count, genres }
+
+    Deliberately presentation-free: no formatted price strings, no
+    footer_left/footer_right, no analyze_url. discover.js (like
+    GameGrid already does for Search) is responsible for turning
+    these raw fields into whatever its card component wants to
+    display -- that keeps this function reusable by any future
+    result surface without baking in one template's layout.
+
+    genres is always [] here -- Discover's scrape (fetch_discover_games)
+    doesn't fetch per-game genre data today, unlike Search's concurrent
+    get_appdetails lookup. Deferred until a real UI need shows up, since
+    wiring it in means an extra live Steam call per card, same cost
+    Search already pays. review_count is also always None -- Discover's
+    scrape only has an aggregate review percentage, not a raw count.
+    """
 
     def parse_discount(value):
         if value is None:
@@ -83,15 +102,8 @@ def to_discover_card(game):
         digits = re.sub(r"[^\d]", "", str(value))
         return int(digits) if digits else 0
 
-    review_percent = game.get("review_percent")
-    review_label = f"{review_percent}% Positive" if review_percent is not None else "No reviews yet"
-
-    discount_percent = parse_discount(game.get("discount_percent"))
-    price_label = format_price(game.get("final_price"))
-    footer_left = f"-{discount_percent}% · {price_label}" if discount_percent > 0 else price_label
-
     return {
-        "id": game.get("id"),
+        "app_id": game.get("id"),
         "name": game.get("name"),
         # header_image is the guaranteed base every card renders
         # immediately: header_default was built with zero live Steam
@@ -104,7 +116,9 @@ def to_discover_card(game):
         # discover.js probes each with a real Image() load and only
         # swaps one in on a successful onload.
         "image_candidates": game.get("image_candidates") or [],
-        "analyze_url": f"/search?q={game.get('name', '')}",
-        "footer_left": footer_left,
-        "footer_right": review_label,
+        "price": game.get("final_price"),
+        "discount": parse_discount(game.get("discount_percent")),
+        "review_percentage": game.get("review_percent"),
+        "review_count": None,
+        "genres": [],
     }
