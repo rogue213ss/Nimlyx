@@ -1,61 +1,129 @@
 # 🎮 Nimlyx
 
-A modern Steam analytics platform built with **Flask**, **Python**, **JavaScript**, and **Steam's public APIs**.
+A modern Steam analytics and discovery platform built with Flask, Python, JavaScript, and Steam's public APIs.
 
-Nimlyx helps PC gamers discover, compare, and analyze Steam games through real-time data, curated collections, and detailed game insights.
+Nimlyx helps PC gamers discover, explore, and analyze Steam games through intelligent search, curated discovery, community insights, and detailed game pages.
 
 ---
 
-## ✨ Features
+# ✨ Features
 
-### 🏠 Homepage
+## 🏠 Homepage
+
 - Featured hero carousel
+- Trending games
 - Top Sellers
 - Biggest Deals
-- Free to Play games
-- Server-side rendered with Jinja
+- Free-to-play games
+- Dynamic Steam-powered sections
 - Responsive glassmorphism UI
 
-### 🔍 Game Search
+---
+
+## 🔍 Advanced Game Search
+
 - Live search suggestions
-- Dedicated search results page
-- High-resolution game banners
+- Dedicated search experience
+- App ID based game routing
+- Smart search results flow
+- Exact match detection
+- Multi-result discovery
+- Mobile optimized result layouts
+- Right-click / new-tab friendly navigation
+
+Game details include:
+
+- High-resolution game artwork
 - Screenshot gallery
-- Game trailers (where available)
-- Genre badges
-- Developer & Publisher information
-- Steam reviews
+- Game trailers (when available)
+- Genre information
+- Developer & publisher details
+- Steam review information
 - Metacritic score
 - Platform support
 - Release date
-- Price information
-
-### ⚙ Backend
-- Flask REST API
-- BeautifulSoup web scraping
-- Steam Store API integration
-- Server-side rendering (SSR)
-- Cleaned JSON responses
-- Reusable scraping functions
+- Pricing and discounts
 
 ---
 
-## 🛠 Tech Stack
+## 🧭 Discover Engine
 
-Frontend
+- Steam-powered game discovery
+- Advanced filtering system
+- Budget filters
+- Genre filtering
+- Platform filtering
+- Live results
+- Infinite scrolling
+- URL-synced preferences
+- Premium game card experience
+
+---
+
+## 🧠 Nimlyx Analysis
+
+Custom game insights including:
+
+- Nimlyx Score
+- Reputation trajectory
+- Community pulse
+- Tag honesty analysis
+- Review spotlight insights
+- Data-driven game evaluation
+
+---
+
+## 🎮 Game Pages
+
+Rich game analysis pages featuring:
+
+- Cinematic hero section
+- Developer and publisher credits
+- Quick statistics
+- Discount information
+- Review score breakdown
+- Screenshots and trailers
+- More From Developer carousel
+- More From Publisher carousel
+- Related game discovery
+
+---
+
+# ⚙ Backend
+
+- Flask REST API
+- Steam Store API integration
+- BeautifulSoup web scraping
+- Optimized Steam caching
+- Reusable scraping services
+- Cleaned canonical JSON contracts
+- Modular service architecture
+- Concurrent data fetching
+
+---
+
+# 🛠 Tech Stack
+
+## Frontend
+
 - HTML5
 - CSS3
 - JavaScript (ES6)
+- Jinja Templates
 
-Backend
+## Backend
+
 - Python
 - Flask
 - BeautifulSoup
 - Requests
 
-Deployment
+## Deployment & Tools
+
 - Railway
 - GitHub
+- Git
+- Gunicorn
 
 ---
 
@@ -73,40 +141,45 @@ Deployment
 
 
 ---
+# 🚀 Roadmap
 
-## 🚀 Roadmap
+## Version 1 — Steam Analytics Platform ✅
 
-### Version 1
-- [x] Homepage
-- [x] Hero carousel
-- [x] Search page
-- [x] Live search suggestions
-- [x] Steam integration
-- [ ] Discover page
-- [ ] Deals page
-- [ ] Top Rated page
-- [ ] About page
-- [ ] Nimlyx Score
-- [ ] Responsive polish
+- Homepage foundation
+- Hero carousel
+- Steam integration
+- Search system
+- Discover engine
+- Deals sections
+- Responsive design
+- Nimlyx Score
+- Community insights
+- Advanced game pages
 
-### Version 2
+## Version 2 — Personal Steam Experience
+
+Planned:
+
 - Steam account login
-- Library analytics
-- Personalized recommendations
+- User profiles
+- Personal library analytics
+- Saved games
 - Wishlist tracking
 - Achievement insights
-- AI-powered recommendations
+- Personalized recommendations
+- AI-powered game assistant
 
 ---
 
-## ⚠ Known Limitations
+# ⚠ Known Limitations
 
+- Steam data availability depends on Steam's public endpoints.
+- Some games may have missing media, trailers, or metadata.
 - Highest Rated section is still under development.
-- Trailer playback depends on Steam's available media.
-- Nimlyx Score is planned for Version 1.
+- Nimlyx recommendations will expand further in future versions.
 
 ---
 
-## 📄 License
+# 📌 Project Status
 
-MIT License
+Nimlyx is actively developed and currently evolving from a Steam analytics dashboard into a personalized game discovery platform.
