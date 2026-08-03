@@ -925,23 +925,27 @@ function renderPurchaseOptions(game) {
 
         return `
             <div class="purchase-option${isHighlighted ? " is-highlighted" : ""}">
-                <div class="purchase-option__tags">
-                    ${opt.is_base_game ? `<span class="purchase-option__tag">Base Game</span>` : ""}
-                    ${hasDiscount ? `<span class="purchase-option__discount">-${opt.discount}%</span>` : ""}
-                </div>
-                <div class="purchase-option__name">${escapeHtml(opt.name || "Steam Package")}</div>
-                <div class="purchase-option__price">
-                    <span class="purchase-option__price-current">${opt.price || ""}</span>
-                    ${hasDiscount ? `<span class="purchase-option__price-original">${opt.original_price}</span>` : ""}
-                </div>
-                ${includedApps.length ? `
-                    <div class="purchase-option__included">
-                        Includes ${includedApps.map(a => escapeHtml(a.name)).join(", ")}
+                <div class="purchase-option__main">
+                    <div class="purchase-option__tags">
+                        ${opt.is_base_game ? `<span class="purchase-option__tag">Base Game</span>` : ""}
+                        ${hasDiscount ? `<span class="purchase-option__discount">-${opt.discount}%</span>` : ""}
                     </div>
-                ` : ""}
-                <a class="home-btn home-btn-ghost purchase-option__cta" href="${opt.steam_url || "#"}" target="_blank" rel="noopener">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> View on Steam
-                </a>
+                    <div class="purchase-option__name">${escapeHtml(opt.name || "Steam Package")}</div>
+                    ${includedApps.length ? `
+                        <div class="purchase-option__included">
+                            Includes ${includedApps.map(a => escapeHtml(a.name)).join(", ")}
+                        </div>
+                    ` : ""}
+                </div>
+                <div class="purchase-option__side">
+                    <div class="purchase-option__price">
+                        ${hasDiscount ? `<span class="purchase-option__price-original">${opt.original_price}</span>` : ""}
+                        <span class="purchase-option__price-current">${opt.price || ""}</span>
+                    </div>
+                    <a class="home-btn home-btn-ghost purchase-option__cta" href="${opt.steam_url || "#"}" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> View on Steam
+                    </a>
+                </div>
             </div>
         `;
     }).join("");
