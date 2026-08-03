@@ -196,6 +196,12 @@ async function fetchSuggestions(query) {
 
 const params = new URLSearchParams(window.location.search);
 const appIdParam = params.get("app_id");
+// Present only when the visitor originally clicked a Steam package
+// ("sub" search result, e.g. a Complete/GOTY/Deluxe Edition) that got
+// resolved to this app_id -- see the package-aware game page feature.
+// Absent for ordinary app clicks, and build_game_detail's own app_id
+// output is completely unaffected by it either way.
+const packageIdParam = params.get("package_id");
 const gameName = params.get("q");
 document.getElementById("gameInput").value = gameName || "";
 
@@ -222,9 +228,12 @@ function showResultsView() {
 /** Canonical loader — always by app_id. Used for /search?app_id=
  *  URLs directly, and internally once a name query has been resolved
  *  to an app_id (exact match, or a GameGrid card click). */
-async function loadGameById(appId) {
+async function loadGameById(appId, packageId) {
     try {
-        const response = await fetch(`/api/game-detail/${appId}`);
+        const url = packageId
+            ? `/api/game-detail/${appId}?package_id=${encodeURIComponent(packageId)}`
+            : `/api/game-detail/${appId}`;
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`Game detail request failed (${response.status})`);
         const game = await response.json();
         showDetailView();
@@ -260,10 +269,20 @@ async function loadGameByQuery(query) {
 
         if (data.exact_match_app_id) {
             // Redirect internally to app_id-based loading -- the URL
-            // becomes canonical without a full page reload.
-            const newUrl = `/search?app_id=${encodeURIComponent(data.exact_match_app_id)}`;
+            // becomes canonical without a full page reload. If the
+            // matched row was itself a Steam package (steam_type ==
+            // "sub", e.g. "The Witcher 3 Complete Edition") that got
+            // resolved to this app_id, carry its steam_id along as
+            // package_id so the resulting game page can still show
+            // the package the visitor actually clicked.
+            const matchedRow = (data.results || []).find(r => r.app_id === data.exact_match_app_id);
+            const packageId = (matchedRow && matchedRow.steam_type === "sub") ? matchedRow.steam_id : null;
+
+            const newUrl = packageId
+                ? `/search?app_id=${encodeURIComponent(data.exact_match_app_id)}&package_id=${encodeURIComponent(packageId)}`
+                : `/search?app_id=${encodeURIComponent(data.exact_match_app_id)}`;
             history.replaceState(null, "", newUrl);
-            await loadGameById(data.exact_match_app_id);
+            await loadGameById(data.exact_match_app_id, packageId);
             return;
         }
 
@@ -284,7 +303,7 @@ async function loadGameByQuery(query) {
 
 async function loadGame() {
     if (appIdParam) {
-        await loadGameById(appIdParam);
+        await loadGameById(appIdParam, packageIdParam);
     } else if (gameName) {
         await loadGameByQuery(gameName);
     }
@@ -299,13 +318,13 @@ loadGame();
 function renderGame(game) {
     renderHero(game);
     renderAbout(game);
-    renderScreenshots(game);
+    renderMedia(game);
     renderNimlyxAnalysis(game);
+    renderPurchaseOptions(game);
     renderCredits(game);
     renderStats(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
-    renderTrailer(game);
     renderGenres(game);
     initScrollReveal();
 }
@@ -522,24 +541,66 @@ function renderAbout(game) {
 
 /* ---------------- SCREENSHOTS ---------------- */
 
-function renderScreenshots(game) {
+/* ---------------- MEDIA (screenshots + trailer merged) ----------------
+   Trailer, if available, is item 0 and is what's featured on load --
+   matching Steam's own product page (video first, not buried below
+   the fold). Screenshots fill the rest of the strip. No trailer just
+   falls back to exactly the old screenshots-only behavior. */
+
+function renderMedia(game) {
     const featuredImg = document.getElementById("featuredImg");
+    const featuredVideo = document.getElementById("featuredVideo");
     const thumbStrip = document.getElementById("thumbStrip");
     const wrap = document.querySelector(".featured-wrap");
+    const panelTitle = document.getElementById("mediaPanelTitle");
 
+    const movie = (game.movies || [])[0];
+    const hasTrailer = !!(movie && movie.video_url);
     const shots = game.screenshots || [];
 
-    if (shots.length === 0) {
+    const mediaItems = [];
+    if (hasTrailer) {
+        mediaItems.push({
+            type: "video",
+            video_url: movie.video_url,
+            // Falls back to the first screenshot as a poster frame if
+            // Steam didn't supply its own trailer thumbnail -- better
+            // than a blank black box before the person hits play.
+            thumbnail: movie.thumbnail || shots[0] || "",
+        });
+    }
+    shots.forEach(url => mediaItems.push({ type: "image", url }));
+
+    if (mediaItems.length === 0) {
         if (wrap) wrap.style.display = "none";
         return;
     }
     if (wrap) wrap.style.display = "";
+    if (panelTitle) panelTitle.textContent = hasTrailer ? "Media" : "Screenshots";
 
-    featuredImg.src = shots[0];
+    function showFeaturedMedia(item) {
+        if (item.type === "video") {
+            featuredVideo.innerHTML = `<source src="${item.video_url}" type="video/mp4">`;
+            featuredVideo.poster = item.thumbnail || "";
+            featuredVideo.style.display = "";
+            featuredImg.style.display = "none";
+        } else {
+            featuredVideo.pause();
+            featuredVideo.removeAttribute("src");
+            featuredVideo.innerHTML = "";
+            featuredVideo.style.display = "none";
+            featuredImg.style.display = "";
+            featuredImg.src = item.url;
+        }
+    }
 
-    thumbStrip.innerHTML = shots.map((url, i) => `
-        <button class="thumb ${i === 0 ? "is-active" : ""}" data-index="${i}" aria-label="Screenshot ${i + 1}">
-            <img src="${url}" alt="">
+    showFeaturedMedia(mediaItems[0]);
+
+    thumbStrip.innerHTML = mediaItems.map((item, i) => `
+        <button class="thumb ${item.type === "video" ? "thumb--video" : ""} ${i === 0 ? "is-active" : ""}"
+                data-index="${i}" aria-label="${item.type === "video" ? "Trailer" : `Screenshot ${i + 1}`}">
+            <img src="${item.type === "video" ? item.thumbnail : item.url}" alt="">
+            ${item.type === "video" ? '<span class="thumb-play"><i class="fa-solid fa-play"></i></span>' : ""}
         </button>
     `).join("");
 
@@ -547,11 +608,14 @@ function renderScreenshots(game) {
         const btn = e.target.closest(".thumb");
         if (!btn) return;
         const index = Number(btn.dataset.index);
+        const item = mediaItems[index];
 
-        featuredImg.src = shots[index];
-        featuredImg.style.animation = "none";
-        featuredImg.offsetHeight;
-        featuredImg.style.animation = "";
+        showFeaturedMedia(item);
+        if (item.type === "image") {
+            featuredImg.style.animation = "none";
+            featuredImg.offsetHeight;
+            featuredImg.style.animation = "";
+        }
 
         thumbStrip.querySelectorAll(".thumb").forEach(t => t.classList.remove("is-active"));
         btn.classList.add("is-active");
@@ -559,51 +623,66 @@ function renderScreenshots(game) {
 
     document.getElementById("stripPrev").addEventListener("click", () => thumbStrip.scrollBy({ left: -320, behavior: "smooth" }));
     document.getElementById("stripNext").addEventListener("click", () => thumbStrip.scrollBy({ left: 320, behavior: "smooth" }));
+
+    const watchBtn = document.getElementById("watchTrailerBtn");
+    if (watchBtn) {
+        watchBtn.style.display = hasTrailer ? "" : "none";
+        watchBtn.addEventListener("click", () => {
+            document.getElementById("mediaSection").scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+    }
 }
 
 /* ---------------- SCREENSHOT LIGHTBOX ----------------
-   featuredImg / featuredExpand / shotLightbox are static elements
-   in the page markup (only their .src / content changes on render),
-   so this wiring only needs to run once. */
-function initShotLightbox() {
+   Reuses the .shot-lightbox / .shot-lightbox__img / .shot-lightbox__close
+   styling in search.css, which existed before this fix but was never
+   wired to anything (the expand button was a "coming soon" no-op and
+   clicking the screenshot itself did nothing).
+
+   Wired exactly ONCE, at script load, rather than inside renderMedia().
+   renderMedia() only ever replaces #thumbStrip's innerHTML; #featuredImg
+   and the expand button are the same DOM nodes for the lifetime of the
+   page, so binding here can't produce duplicate listeners on repeated
+   renders, and doesn't need to be re-run when renderMedia() runs again.
+   Only the featured *image* opens the lightbox -- the featured trailer
+   video already has native fullscreen via its own controls. */
+function initScreenshotLightbox() {
     const featuredImg = document.getElementById("featuredImg");
-    const expandBtn = document.getElementById("featuredExpand");
+    const expandBtn = document.getElementById("featuredExpandBtn");
     const lightbox = document.getElementById("shotLightbox");
     const lightboxImg = document.getElementById("shotLightboxImg");
     const closeBtn = document.getElementById("shotLightboxClose");
+    if (!featuredImg || !lightbox || !lightboxImg) return;
 
-    if (!featuredImg || !expandBtn || !lightbox || !lightboxImg || !closeBtn) return;
-
-    const openLightbox = () => {
-        if (!featuredImg.src) return;
+    function openLightbox() {
+        if (featuredImg.style.display === "none" || !featuredImg.src) return;
         lightboxImg.src = featuredImg.src;
+        lightboxImg.alt = featuredImg.alt || "";
         lightbox.classList.add("is-open");
-        lightbox.setAttribute("aria-hidden", "false");
-    };
+        document.body.style.overflow = "hidden";
+    }
 
-    const closeLightbox = () => {
+    function closeLightbox() {
         lightbox.classList.remove("is-open");
-        lightbox.setAttribute("aria-hidden", "true");
-    };
+        document.body.style.overflow = "";
+    }
 
-    expandBtn.addEventListener("click", openLightbox);
     featuredImg.addEventListener("click", openLightbox);
-    closeBtn.addEventListener("click", closeLightbox);
+    if (expandBtn) expandBtn.addEventListener("click", openLightbox);
+    if (closeBtn) closeBtn.addEventListener("click", closeLightbox);
 
-    // Click outside the image (on the dimmed backdrop) closes it.
+    // Backdrop click: only when the click lands on the lightbox
+    // backdrop itself, not the image or close button inside it.
     lightbox.addEventListener("click", (e) => {
         if (e.target === lightbox) closeLightbox();
     });
 
-    // Escape key closes it, only while open.
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && lightbox.classList.contains("is-open")) {
-            closeLightbox();
-        }
+        if (e.key === "Escape" && lightbox.classList.contains("is-open")) closeLightbox();
     });
 }
 
-initShotLightbox();
+initScreenshotLightbox();
 
 /* ---------------- NIMLYX ANALYSIS ----------------
    One premium dashboard, not six independent cards (Sprint 2 spec).
@@ -799,39 +878,75 @@ function renderNimlyxReviews(game) {
     dividerEl.classList.remove("is-hidden");
 }
 
-/* ---------------- TRAILER ---------------- */
-
-function renderTrailer(game) {
-    const trailerFrame = document.getElementById("trailerFrame");
-    const movie = (game.movies || [])[0];
-
-    if (movie && movie.video_url) {
-        trailerFrame.innerHTML = `
-            <div class="trailer__player">
-                <video controls preload="metadata" poster="${movie.thumbnail || ""}">
-                    <source src="${movie.video_url}" type="video/mp4">
-                </video>
-            </div>`;
-    } else {
-        trailerFrame.innerHTML = `
-            <div class="trailer__empty">
-                <i class="fa-solid fa-video-slash"></i>
-                <span>No trailer available</span>
-                <small>Check back once Nimlyx adds full video support.</small>
-            </div>`;
-    }
-
-    document.getElementById("watchTrailerBtn").addEventListener("click", () => {
-        document.getElementById("trailerSection").scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-}
-
 /* ---------------- GENRES ---------------- */
 
 function renderGenres(game) {
     document.getElementById("genreList").innerHTML = (game.genres || [])
         .map(g => `<span class="genre-pill">${g}</span>`)
         .join("");
+}
+
+/* ---------------- PURCHASE OPTIONS ----------------
+   "Which version should I buy?" -- every way to buy this game
+   (base game, Complete/GOTY/Deluxe editions, bundles), sourced
+   straight from Steam's own package_groups data (see
+   build_purchase_options in steam.py). The base game itself is
+   always game.purchase_options[0] (is_base_game: true), matching
+   Steam's own ordering.
+
+   Purely additive, same as the card this replaced: the rest of the
+   page (hero/about/media/reviews/genres) always describes the
+   resolved base app_id regardless of what's in this list. Hidden
+   entirely (not rendered empty) whenever purchase_options is empty
+   -- e.g. many F2P titles genuinely have nothing else to show here. */
+
+function renderPurchaseOptions(game) {
+    const section = document.getElementById("purchasePanel");
+    const container = document.getElementById("purchaseOptions");
+    if (!section || !container) return;
+
+    const options = game.purchase_options || [];
+    if (!options.length) {
+        section.classList.add("is-hidden");
+        container.innerHTML = "";
+        return;
+    }
+
+    // The package the visitor actually clicked to land here (a
+    // Complete/GOTY/Deluxe Edition search result) -- see
+    // highlighted_package_id in routes/game.py. Absent for anyone who
+    // came in through the base game directly.
+    const highlightId = game.highlighted_package_id ? String(game.highlighted_package_id) : null;
+
+    container.innerHTML = options.map(opt => {
+        const hasDiscount = opt.discount > 0 && opt.original_price;
+        const includedApps = (opt.included_apps || []).filter(a => a.name);
+        const isHighlighted = highlightId && String(opt.package_id) === highlightId;
+
+        return `
+            <div class="purchase-option${isHighlighted ? " is-highlighted" : ""}">
+                <div class="purchase-option__tags">
+                    ${opt.is_base_game ? `<span class="purchase-option__tag">Base Game</span>` : ""}
+                    ${hasDiscount ? `<span class="purchase-option__discount">-${opt.discount}%</span>` : ""}
+                </div>
+                <div class="purchase-option__name">${escapeHtml(opt.name || "Steam Package")}</div>
+                <div class="purchase-option__price">
+                    <span class="purchase-option__price-current">${opt.price || ""}</span>
+                    ${hasDiscount ? `<span class="purchase-option__price-original">${opt.original_price}</span>` : ""}
+                </div>
+                ${includedApps.length ? `
+                    <div class="purchase-option__included">
+                        Includes ${includedApps.map(a => escapeHtml(a.name)).join(", ")}
+                    </div>
+                ` : ""}
+                <a class="home-btn home-btn-ghost purchase-option__cta" href="${opt.steam_url || "#"}" target="_blank" rel="noopener">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> View on Steam
+                </a>
+            </div>
+        `;
+    }).join("");
+
+    section.classList.remove("is-hidden");
 }
 
 /* ---------------- CREDITS ---------------- */

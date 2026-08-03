@@ -149,6 +149,21 @@
 <!-- ================= MAIN — single premium column, no sidebar ================= -->
 <main class="page">
 
+    <!-- ================= PURCHASE OPTIONS =================
+         "Which version should I buy?" -- sits first, right under the
+         hero, ahead of About/Media/Analysis. Built entirely from
+         Steam's own package_groups data (see build_purchase_options in
+         steam.py), base game first exactly as Steam orders it. Hidden
+         entirely (not rendered empty) when purchase_options is empty
+         -- see renderPurchaseOptions() in search.js. -->
+    <section class="panel purchase-panel reveal is-hidden" id="purchasePanel">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Which version should I buy?</span>
+            <h2 class="panel__title">Purchase Options</h2>
+        </div>
+        <div class="purchase-options" id="purchaseOptions"></div>
+    </section>
+
     <!-- ================= ABOUT ================= -->
     <section class="panel about-panel reveal">
         <div class="panel__head">
@@ -159,21 +174,26 @@
         <div class="about-copy" id="aboutText"></div>
     </section>
 
-    <!-- ================= SCREENSHOTS ================= -->
-    <!-- .featured-wrap is on THIS section itself, matching the original
-         markup: search.js does
+    <!-- ================= MEDIA (screenshots + trailer) =================
+         Sprint 4 follow-up: trailer merged in here instead of its own
+         section. If a trailer exists it's the first item (featured on
+         load, matching Steam's own product page convention), followed
+         by screenshots in the strip. If there's no trailer, this
+         behaves exactly as the screenshots-only panel did before.
+         .featured-wrap is on THIS section itself: search.js does
          document.querySelector(".featured-wrap").style.display = "none"
-         when a game has no screenshots, which needs to hide the whole
-         section (heading included), not just the image/thumbs. -->
-    <section class="panel shots-panel featured-wrap reveal">
+         when a game has neither trailer nor screenshots, hiding the
+         whole section (heading included). -->
+    <section class="panel shots-panel featured-wrap reveal" id="mediaSection">
         <div class="panel__head">
             <span class="panel__eyebrow">Media</span>
-            <h2 class="panel__title">Screenshots</h2>
+            <h2 class="panel__title" id="mediaPanelTitle">Screenshots</h2>
         </div>
 
         <div class="featured-shot">
             <img id="featuredImg" alt="Featured screenshot">
-            <button class="featured-shot__expand" id="featuredExpand" title="Fullscreen" aria-label="Open fullscreen screenshot viewer">
+            <video id="featuredVideo" controls preload="metadata" style="display:none;"></video>
+            <button class="featured-shot__expand" title="View fullscreen" id="featuredExpandBtn">
                 <i class="fa-solid fa-expand"></i>
             </button>
         </div>
@@ -184,12 +204,20 @@
         </div>
     </section>
 
-    <!-- ================= SCREENSHOT LIGHTBOX ================= -->
-    <div class="shot-lightbox" id="shotLightbox" aria-hidden="true">
-        <button class="shot-lightbox__close" id="shotLightboxClose" aria-label="Close fullscreen viewer">
+    <!-- ================= SCREENSHOT LIGHTBOX =================
+         Single shared lightbox for the featured screenshot -- opened
+         by either clicking the featured image itself or the expand
+         button (see initScreenshotLightbox() in search.js). Lives
+         outside #mediaSection/.featured-wrap so it isn't hidden along
+         with that section when a game has no media, and outside
+         #gameDetailView so it survives view swaps untouched. Uses the
+         .shot-lightbox/.shot-lightbox__img/.shot-lightbox__close
+         classes already defined in search.css. -->
+    <div class="shot-lightbox" id="shotLightbox">
+        <img class="shot-lightbox__img" id="shotLightboxImg" alt="">
+        <button class="shot-lightbox__close" id="shotLightboxClose" aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
-        <img class="shot-lightbox__img" id="shotLightboxImg" alt="Fullscreen screenshot">
     </div>
 
     <!-- ================= NIMLYX ANALYSIS =================
@@ -295,15 +323,6 @@
                 <i class="fa-solid fa-chevron-right"></i>
             </button>
         </div>
-    </section>
-
-    <!-- ================= TRAILER ================= -->
-    <section class="panel trailer-panel reveal" id="trailerSection">
-        <div class="panel__head">
-            <span class="panel__eyebrow">Watch</span>
-            <h2 class="panel__title">Trailer</h2>
-        </div>
-        <div class="trailer__frame" id="trailerFrame"></div>
     </section>
 
     <!-- ================= ADDITIONAL INFORMATION (genres) ================= -->

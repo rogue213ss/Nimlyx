@@ -648,3 +648,80 @@
    shotFadeIn, and the score-ring's stroke-dashoffset transition
    with no extra rule needed here.
    ================================================================ */
+/* ================= PURCHASE OPTIONS =================
+   "Which version should I buy?" -- compact, information-dense cards,
+   not one big feature card. Reuses .panel for the section shell
+   (same as every other section on this page) and .meta-chip/
+   .home-btn for its internals, so it reads as a native part of
+   Nimlyx rather than a bolted-on widget. Wraps into however many
+   columns fit (1 on mobile, 2-3 on desktop) rather than a fixed grid,
+   so it never needs a separate mobile stylesheet override. Section-
+   level show/hide is handled by search.js toggling .is-hidden on
+   #purchasePanel itself -- never rendered empty. */
+.purchase-options{
+  display:flex; flex-wrap:wrap; gap:14px;
+}
+.purchase-option{
+  flex:1 1 260px; max-width:340px;
+  display:flex; flex-direction:column; gap:10px;
+  padding:16px 18px;
+  border-radius:var(--home-radius-lg);
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border-strong);
+  transition:border-color .2s var(--home-ease), transform .2s var(--home-ease);
+}
+.purchase-option:hover{ transform:translateY(-2px); border-color:var(--home-cta-blue); }
+/* The option matching ?package_id= -- i.e. what the visitor actually
+   clicked to get here (a Complete/GOTY/Deluxe Edition search result).
+   A glow, not a warning treatment: this is "here's the one you
+   picked", not an alert. */
+.purchase-option.is-highlighted{
+  border-color:var(--home-cta-blue);
+  background:rgba(59,130,246,.08);
+  box-shadow:0 0 0 1px rgba(59,130,246,.25), 0 12px 30px rgba(59,130,246,.12);
+}
+.purchase-option__tags{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.purchase-option__tag{
+  font-family:var(--home-font-mono); font-size:.68rem; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--home-cta-blue);
+  background:rgba(59,130,246,.14);
+  border:1px solid rgba(59,130,246,.3);
+  border-radius:var(--home-radius-sm);
+  padding:3px 9px;
+}
+.purchase-option__discount{
+  font-family:var(--home-font-mono); font-size:.72rem; font-weight:700;
+  color:#fff;
+  background:var(--home-verdict-worth);
+  border-radius:var(--home-radius-sm);
+  padding:3px 8px;
+}
+.purchase-option__name{
+  font-family:var(--home-font-display); font-weight:600;
+  font-size:1rem; line-height:1.3;
+  color:var(--home-text-primary);
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.purchase-option__price{
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+}
+.purchase-option__price-current{
+  font-family:var(--home-font-mono); font-weight:700;
+  font-size:1.05rem; color:var(--home-text-primary);
+}
+.purchase-option__price-original{
+  font-family:var(--home-font-mono); font-size:.82rem;
+  color:var(--home-text-muted);
+  text-decoration:line-through;
+}
+.purchase-option__included{
+  font-size:.78rem; color:var(--home-text-muted);
+}
+.purchase-option__cta{
+  margin-top:auto; align-self:flex-start;
+  font-size:.85rem; padding:8px 16px;
+}

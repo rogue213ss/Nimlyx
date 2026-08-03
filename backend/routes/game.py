@@ -1,9 +1,9 @@
 import requests
 from concurrent.futures import ThreadPoolExecutor
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from region import get_region_code
-from steam import get_appdetails, get_review_summary, clean_search_term
+from steam import get_appdetails, get_review_summary, clean_search_term, resolve_package_primary_app, build_purchase_options
 from formatters import format_price
 from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
@@ -75,16 +75,37 @@ def search_results(query):
 
         # Confirmed root cause of the app_id=124923 bug: storesearch
         # returns a mix of item types -- "app" for a real single game,
-        # but also "sub" (Steam packages/bundles, e.g. "...Complete
-        # Edition") and possibly others. A "sub" id lives in a
+        # "sub" for a Steam package (Complete/GOTY/Deluxe Edition,
+        # bundle, etc), and possibly others. A sub id lives in a
         # completely different Steam ID namespace than an app id, so
         # /api/appdetails (which only understands app ids) 404s on it.
-        # Every card contract downstream represents exactly one
-        # playable app, so non-"app" items are dropped here, at the
-        # source, rather than passed through and failing later on
-        # click. See conversation history for the diagnostic that
-        # confirmed this via real storesearch JSON output.
-        items = [item for item in items if item.get("type") == "app"]
+        #
+        # Rather than dropping every sub result, each one is resolved
+        # to the app_id of the actual game it contains -- see
+        # resolve_package_primary_app() in steam.py. Not hardcoded to
+        # any title: it asks Steam's own packagedetails endpoint what
+        # a package contains, then asks each included app's own
+        # appdetails what *type* it is to find the real game among
+        # any bundled DLC/soundtracks/etc.
+        def resolve_item(item):
+            steam_id = item.get("id")
+            steam_type = item.get("type")
+            if steam_type == "app":
+                return item, steam_id, steam_type, steam_id
+            if steam_type == "sub":
+                return item, resolve_package_primary_app(steam_id, cc), steam_type, steam_id
+            # Unknown/unhandled type (Steam does return a few other
+            # values in practice) -- nothing safe to link to.
+            return item, None, steam_type, steam_id
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            resolved_items = list(executor.map(resolve_item, items))
+
+        # Rows whose app_id couldn't be resolved (unresolvable
+        # package, or a type this app doesn't understand) have no
+        # honest destination inside Nimlyx and are dropped here,
+        # rather than passed through to fail on click.
+        resolved_items = [r for r in resolved_items if r[1] is not None]
 
         normalized_query = clean_search_term(query).lower()
 
@@ -92,21 +113,22 @@ def search_results(query):
         # appdetails has them. Platforms ARE in storesearch already
         # (item["platforms"]), so no live call needed for those.
         # get_appdetails() is cached 10 min, so a repeat search for
-        # the same term/region costs nothing extra here.
+        # the same term/region costs nothing extra here. Keyed by the
+        # RESOLVED app_id now, not the raw storesearch id -- a sub's
+        # own id was never a valid appdetails lookup to begin with.
         def fetch_genres(app_id):
             raw = get_appdetails(app_id, cc)
             if raw is None:
                 return []
             return [g["description"] for g in raw.get("genres", [])]
 
-        app_ids = [item.get("id") for item in items]
+        resolved_app_ids = [r[1] for r in resolved_items]
         with ThreadPoolExecutor(max_workers=8) as executor:
-            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+            genres_by_id = dict(zip(resolved_app_ids, executor.map(fetch_genres, resolved_app_ids)))
 
         results = []
         exact_match_app_id = None
-        for item in items:
-            app_id = item.get("id")
+        for item, app_id, steam_type, steam_id in resolved_items:
             name = item.get("name", "")
             price_overview = item.get("price", {}) or {}
             platforms = item.get("platforms", {}) or {}
@@ -124,7 +146,17 @@ def search_results(query):
             price_cents = 0 if is_free else final_price_cents
 
             row = {
+                # app_id is always a real, navigable app id -- either
+                # storesearch's own "app"-type id, or a sub resolved
+                # to its primary game above. steam_type/steam_id
+                # preserve what Steam actually returned, for
+                # provenance/debugging -- a "sub" row's displayed
+                # name/price/image below are still the PACKAGE's own
+                # (that's genuinely what was searched for), only the
+                # navigation target is the resolved base game.
                 "app_id": app_id,
+                "steam_type": steam_type,
+                "steam_id": steam_id,
                 "name": name,
                 "header_image": item.get("tiny_image"),
                 "short_description": None,  # not in storesearch; detail page has the full one
@@ -167,11 +199,24 @@ def game_detail_by_id(app_id):
     its Steam app_id, no name resolution involved. This is what
     search.js should call whenever it already knows the app_id
     (exact-match redirect, GameGrid card click, or a /search?app_id=
-    URL loaded directly/refreshed/shared)."""
+    URL loaded directly/refreshed/shared).
+
+    Optional ?package_id=<sub_id> is passed through as
+    highlighted_package_id (Steam `sub` support): when the visitor
+    originally clicked a package (Complete/GOTY/Deluxe Edition, etc)
+    that got resolved to this app_id, this tells the frontend which
+    card in the Purchase Options section (built from Steam's own
+    package_groups -- see build_game_detail) to highlight as "what you
+    clicked", without a second fetch: that package is already one of
+    the options build_game_detail returned.
+    """
     cc = get_region_code()
     clean_data = build_game_detail(app_id, cc)
     if clean_data is None:
         return jsonify({"error": "Details not found"}), 404
+
+    clean_data["highlighted_package_id"] = request.args.get("package_id")
+
     return jsonify(clean_data)
 
 
@@ -269,6 +314,14 @@ def build_game_detail(app_id, cc):
         developer_games = dev_future.result()
         publisher_games = pub_future.result() if pub_future else []
 
+    # Purchase Options -- "which version should I buy?" -- built
+    # straight from this same appdetails response's package_groups
+    # field (Steam's own purchase-options data), not a second lookup.
+    # Empty list when Steam has nothing to offer beyond the base game
+    # itself (e.g. many F2P titles); frontend must not render the
+    # section in that case.
+    purchase_options = build_purchase_options(app_id, raw, cc)
+
     clean_data = {
         "app_id": app_id,
         # Generic Steam reviews surface for this app — used by the
@@ -339,6 +392,7 @@ def build_game_detail(app_id, cc):
         ],
         "developer_games": developer_games,
         "publisher_games": publisher_games,
+        "purchase_options": purchase_options,
     }
 
     return clean_data

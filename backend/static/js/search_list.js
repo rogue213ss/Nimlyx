@@ -80,8 +80,17 @@ const SearchList = (function () {
         const hasDiscount = row.discount && row.discount > 0;
         const genres = (row.genres || []).slice(0, 4);
 
+        // A row whose Steam result was a package ("sub" -- Complete/
+        // GOTY/Deluxe Edition, etc) still links to its resolved base
+        // app, but carries steam_id along as package_id so the game
+        // page can show what was actually clicked -- see the
+        // package-aware game page feature.
+        const href = row.steam_type === "sub"
+            ? `/search?app_id=${encodeURIComponent(row.app_id)}&package_id=${encodeURIComponent(row.steam_id)}`
+            : `/search?app_id=${encodeURIComponent(row.app_id)}`;
+
         return `
-            <a class="search-list-row" data-app-id="${row.app_id}" href="/search?app_id=${encodeURIComponent(row.app_id)}">
+            <a class="search-list-row" data-app-id="${row.app_id}" href="${href}">
                 <div class="search-list-row__thumb-wrap">
                     <img class="search-list-row__thumb" src="${row.header_image || ""}" alt="${escapeListHtml(row.name)}" loading="lazy">
                 </div>

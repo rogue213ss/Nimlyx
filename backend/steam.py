@@ -971,6 +971,251 @@ def get_top_helpful_review(app_id, cc="US", voted_up=True, num_reviews=20):
         return None
 
 
+def _fetch_packagedetails_payload(package_id, cc="US"):
+    """Raw, cached fetch of Steam's packagedetails endpoint for one
+    package ("sub") id. Shared by resolve_package_primary_app() (which
+    only needs the included app ids) and get_package_display_info()
+    (which needs the package's own name/price/discount for the
+    package-aware game page card) so both stay off a single cached
+    call instead of hitting packagedetails twice for the same id.
+
+    Returns the raw `data.<package_id>` dict from Steam, or None if
+    the request/parse failed or Steam reported no success. Cached
+    (including negative results, via the "" sentinel -- same
+    convention as the rest of this module) for 1 hour, matching
+    resolve_package_primary_app's existing TTL for this endpoint.
+    """
+    package_id = str(package_id)
+    cache_key = ("packagedetails_payload", package_id, cc)
+    cached = _cache_get(cache_key, ttl_seconds=3600)
+    if cached is not None:
+        return cached if cached != "" else None
+
+    try:
+        url = "https://store.steampowered.com/api/packagedetails/"
+        response = requests.get(url, params={"packageids": package_id, "cc": cc, "l": "english"}, timeout=10)
+        response.raise_for_status()
+        payload = response.json().get(package_id, {})
+    except (requests.exceptions.RequestException, ValueError):
+        print(f"[package-resolve] sub {package_id} -> packagedetails request failed")
+        return None
+
+    if not isinstance(payload, dict) or not payload.get("success"):
+        print(f"[package-resolve] sub {package_id} -> packagedetails returned no success")
+        _cache_set(cache_key, "")
+        return None
+
+    data = payload.get("data", {}) or {}
+    _cache_set(cache_key, data)
+    return data
+
+
+_CURRENCY_SYMBOLS = {
+    "USD": "$", "CAD": "CA$", "AUD": "A$", "NZD": "NZ$", "SGD": "S$",
+    "GBP": "£", "EUR": "€", "JPY": "¥", "CNY": "¥", "KRW": "₩",
+    "INR": "₹", "RUB": "₽", "BRL": "R$", "MXN": "MX$", "PKR": "Rs ",
+}
+
+
+def _format_price_cents(cents, currency="USD"):
+    """Formats a raw integer cent amount into a display string.
+
+    Needed specifically because Steam's packagedetails endpoint --
+    unlike appdetails' price_overview -- does NOT return a pre-
+    formatted string (no final_formatted/initial_formatted field,
+    just raw cents). get_package_display_info used to read those
+    field names anyway, which silently produced None for every
+    package's price rather than erroring, since dict.get() on a
+    missing key just returns nothing to blame. This is the fix: format
+    the raw cents ourselves for the currencies we recognize, falling
+    back to a plain "CODE 12.34" for anything else rather than
+    inventing a symbol we're not sure of.
+    """
+    if cents is None:
+        return None
+    amount = f"{cents / 100:.2f}"
+    symbol = _CURRENCY_SYMBOLS.get(currency)
+    return f"{symbol}{amount}" if symbol else f"{currency} {amount}"
+
+
+def get_package_display_info(package_id, cc="US"):
+    """Builds display-facing info for one Steam package ("sub") id --
+    name/price/discount/included-apps/steam_url. The shared building
+    block behind the Purchase Options section (build_purchase_options,
+    below), which fans this out concurrently across every package
+    Steam lists for a game.
+
+    Returns None when the package can't be honestly described (same
+    failure modes as resolve_package_primary_app -- packagedetails
+    request failed, or Steam reported no success for this id). Callers
+    must skip this package rather than render invented data when this
+    is None.
+    """
+    package_id = str(package_id)
+    data = _fetch_packagedetails_payload(package_id, cc)
+    if data is None:
+        return None
+
+    price_info = data.get("price", {}) or {}
+    included_apps = data.get("apps", []) or []
+    currency = price_info.get("currency", "USD")
+    discount = price_info.get("discount_percent", 0) or 0
+    final_cents = price_info.get("final")
+    # packagedetails only gives the discounted "final" cents plus a
+    # discount %, never the pre-discount amount directly (unlike
+    # appdetails' price_overview, which has both final and initial).
+    # Back it out from final + discount% instead of leaving it blank.
+    initial_cents = (
+        round(final_cents / (1 - discount / 100)) if discount and final_cents else None
+    )
+
+    return {
+        "package_id": package_id,
+        "name": data.get("name"),
+        "price": _format_price_cents(final_cents, currency),
+        "original_price": _format_price_cents(initial_cents, currency) if discount else None,
+        "discount": discount,
+        "steam_url": f"https://store.steampowered.com/sub/{package_id}/",
+        "included_apps": [
+            {"app_id": a.get("id"), "name": a.get("name")}
+            for a in included_apps if a.get("id")
+        ],
+    }
+
+
+def build_purchase_options(app_id, raw_appdetails, cc="US"):
+    """Purchase Options: "which version should I buy?", answered from
+    Steam's OWN purchase-options data instead of Nimlyx guessing at it.
+
+    appdetails (already fetched for every game page, see
+    routes/game.build_game_detail) includes a `package_groups` field --
+    this is literally the same data Steam's own store page purchase box
+    is built from: every package a visitor can buy this game through
+    (the base game itself, Complete/Deluxe/GOTY editions, franchise
+    bundles), in Steam's own display order, base game first.
+
+    Each entry is filled in via get_package_display_info() -- the exact
+    same per-package lookup the old standalone "Steam Package" card
+    used, just fanned out across every package instead of one. Nothing
+    about how a single package's info is fetched changes; this only
+    changes how many are shown and where.
+
+    Returns [] when this game has no package_groups (some titles,
+    especially F2P ones, genuinely don't) -- the frontend must not
+    render a Purchase Options section when this is empty. The first
+    item is always the base game itself (`is_base_game: True`), exactly
+    matching Steam's own ordering, so the frontend never has to guess
+    which option that is either.
+    """
+    app_id = str(app_id)
+    groups = raw_appdetails.get("package_groups") or []
+    sub_ids = []
+    for group in groups:
+        for sub in group.get("subs", []) or []:
+            package_id = sub.get("packageid")
+            if package_id is not None and package_id not in sub_ids:
+                sub_ids.append(package_id)  # de-dupe, preserve Steam's order
+    if not sub_ids:
+        return []
+
+    cache_key = ("purchase_options", app_id, cc, tuple(sub_ids))
+    cached = _cache_get(cache_key, ttl_seconds=1800)
+    if cached is not None:
+        return cached
+
+    # Same reasoning as build_game_detail's developer/publisher lookup:
+    # independent per-package calls, so run them concurrently rather
+    # than one after another. Each individual call is itself cached for
+    # an hour (_fetch_packagedetails_payload), so this fan-out is cheap
+    # on anything but a fully cold cache.
+    with ThreadPoolExecutor(max_workers=min(len(sub_ids), 6)) as executor:
+        results = list(executor.map(lambda pid: get_package_display_info(pid, cc), sub_ids))
+
+    options = []
+    for index, info in enumerate(results):
+        if info is None:
+            continue  # honest omission, not a placeholder -- see get_package_display_info
+        options.append({**info, "is_base_game": index == 0})
+
+    _cache_set(cache_key, options)
+    return options
+
+
+def resolve_package_primary_app(package_id, cc="US"):
+    """Resolves a Steam package ("sub") ID -- a Complete/GOTY/Deluxe
+    Edition, or any other bundle -- to the app_id of the one base game
+    it contains. Not specific to any title: works purely from Steam's
+    own data, in two steps:
+
+    1. packagedetails tells us which app_ids a package actually
+       contains (Steam has no other public endpoint for this -- a sub
+       id and an app id are different ID namespaces with no
+       conversion formula between them, so this lookup is mandatory,
+       not optional).
+    2. Each included app's own appdetails `type` field ("game" vs
+       "dlc"/"music"/"video"/etc) tells us which of those included
+       apps is the actual playable base game, rather than a bonus
+       soundtrack or an expansion also bundled in. This is the same
+       get_appdetails() every other part of the app already calls, so
+       it's cached the same way (10 min).
+
+    If a package genuinely bundles more than one standalone game
+    (uncommon, but franchise packs exist), the lowest app_id is
+    chosen deterministically -- normally also the earliest-released /
+    primary title -- rather than guessing from the name.
+
+    Returns None when the package can't be honestly resolved (no
+    included apps, or none of them are type="game"). Callers should
+    drop the row in that case; there's no in-app destination to send
+    someone to for a package Nimlyx can't identify a real game in.
+
+    NOTE: I have not been able to verify Steam's packagedetails
+    endpoint against live traffic from this environment (no network
+    access to store.steampowered.com here) -- this is built from
+    known Steam API conventions, not a confirmed live response. Watch
+    the first few [package-resolve] log lines in production to
+    confirm the shape actually matches before trusting this broadly.
+    """
+    package_id = str(package_id)
+    cache_key = ("package_primary_app", package_id, cc)
+    cached = _cache_get(cache_key, ttl_seconds=3600)
+    if cached is not None:
+        return cached if cached != "" else None  # "" is the cached-negative sentinel; see below
+
+    resolved = None
+    data = _fetch_packagedetails_payload(package_id, cc)
+    if data is None:
+        # _fetch_packagedetails_payload already logged the specific
+        # failure reason (request failed vs. no success) -- nothing
+        # further to add here, and its own cache_key already holds
+        # the negative result, so this function's cache doesn't need
+        # a duplicate negative entry.
+        return None
+
+    included_apps = data.get("apps", []) or []
+    included_ids = [a.get("id") for a in included_apps if a.get("id")]
+
+    if not included_ids:
+        print(f"[package-resolve] sub {package_id} -> no included apps found")
+        _cache_set(cache_key, "")
+        return None
+
+    game_apps = []
+    for app_id in included_ids:
+        details = get_appdetails(app_id, cc)
+        if details and details.get("type") == "game":
+            game_apps.append(app_id)
+
+    if game_apps:
+        resolved = min(game_apps)
+        print(f"[package-resolve] sub {package_id} -> app {resolved} (game candidates: {game_apps}, all included: {included_ids})")
+    else:
+        print(f"[package-resolve] sub {package_id} -> included apps {included_ids}, none are type=game")
+
+    _cache_set(cache_key, resolved if resolved is not None else "")
+    return resolved
+
+
 def get_appdetails(app_id, cc):
     """Fetches one game's appdetails. Returns None on ANY failure —
     network error, timeout, non-JSON body, or Steam returning a bare
