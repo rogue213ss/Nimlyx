@@ -325,7 +325,6 @@ function renderGame(game) {
     renderStats(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
-    renderGenres(game);
     initScrollReveal();
 }
 
@@ -872,14 +871,6 @@ function renderNimlyxReviews(game) {
     reviewsEl.innerHTML = positiveHtml + negativeHtml;
     reviewsEl.classList.remove("is-hidden");
     dividerEl.classList.remove("is-hidden");
-}
-
-/* ---------------- GENRES ---------------- */
-
-function renderGenres(game) {
-    document.getElementById("genreList").innerHTML = (game.genres || [])
-        .map(g => `<span class="genre-pill">${g}</span>`)
-        .join("");
 }
 
 /* ---------------- PURCHASE OPTIONS ----------------

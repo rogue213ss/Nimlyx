@@ -197,6 +197,17 @@
   box-shadow:0 0 20px rgba(59,130,246,.14);
 }
 .meta-chip--price i{ color:var(--home-cta-blue); }
+/* The "-80%" chip -- deliberately the loudest thing in the meta row
+   next to the title, since a steep discount is the single strongest
+   reason to click through to Steam right now. Solid fill (not a
+   tinted-glass chip like the others) plus a glow, same "this is a
+   deal" language as the Purchase Options discount badges below. */
+.meta-chip--discount{
+  background:var(--home-verdict-worth); border-color:var(--home-verdict-worth);
+  color:#fff; font-weight:800;
+  box-shadow:0 0 22px rgba(34,197,94,.4);
+}
+.meta-chip--discount i{ color:#fff; }
 .meta-chip--score{ font-weight:700; }
 .meta-chip--score.is-good{ color:var(--home-good); border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.1); }
 .meta-chip--score.is-mid{ color:var(--home-mid); border-color:rgba(245,185,66,.35); background:rgba(245,185,66,.1); }
@@ -475,25 +486,6 @@
 .trailer__empty i{ font-size:2.1rem; color:var(--home-text-faint); opacity:.7; }
 .trailer__empty span{ font-size:.95rem; font-weight:600; color:var(--home-text-primary); }
 .trailer__empty small{ font-size:.8rem; color:var(--home-text-faint); }
-
-/* ================================================================
-   GENRES
-   ================================================================ */
-.genre-list{ display:flex; flex-wrap:wrap; gap:10px; }
-.genre-pill{
-  display:inline-flex; align-items:center; gap:8px;
-  font-size:.86rem; font-weight:600; color:var(--home-text-primary);
-  background:var(--home-glass-fill-strong);
-  border:1px solid var(--home-glass-border-strong);
-  border-radius:999px;
-  padding:9px 18px;
-  transition:border-color .25s var(--home-ease), transform .25s var(--home-ease);
-}
-.genre-pill::before{
-  content:""; width:6px; height:6px; border-radius:50%;
-  background:var(--home-cta-blue); flex-shrink:0;
-}
-.genre-pill:hover{ border-color:rgba(59,130,246,.4); transform:translateY(-2px); }
 
 /* ================================================================
    NIMLYX ANALYSIS — one premium container, internal dividers, not
