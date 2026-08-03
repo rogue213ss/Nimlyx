@@ -64,6 +64,22 @@
   .strip-nav{ display:none; }
 
   .stats-grid{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
+
+  /* Purchase Options: name/tags/included on their own line, price +
+     CTA on their own full-width line below, instead of squeezing
+     both halves of the row side by side. */
+  .purchase-option{ flex-direction:column; align-items:flex-start; gap:12px; }
+  /* .purchase-option__main's flex:1 1 320px (search.css) is a WIDTH
+     basis for the desktop row layout. Once the row above switches to
+     flex-direction:column, that same 320px basis applies to the now-
+     vertical main axis instead -- i.e. it becomes a min-HEIGHT, and
+     every card gets stretched to ~320px tall with a big empty gap
+     before the price/CTA line. Reset it back to auto here so column
+     mode sizes to content instead of inheriting the row layout's
+     width figure as a height. */
+  .purchase-option__main{ flex:0 1 auto; width:100%; }
+  .purchase-option__side{ width:100%; justify-content:space-between; }
+  .purchase-option__included{ white-space:normal; }
 }
 
 @media (max-width:480px){
@@ -82,4 +98,11 @@
 
   .results-view{ gap:16px; padding-top:20px; }
   .discover-sidebar-panel{ padding:18px; }
+
+  /* At this width even "price + CTA" side by side gets tight -- let
+     the CTA drop to its own full-width line rather than compressing
+     the button or overflowing the row. */
+  .purchase-option{ padding:14px 16px; }
+  .purchase-option__side{ flex-wrap:wrap; gap:10px; }
+  .purchase-option__cta{ width:100%; justify-content:center; }
 }

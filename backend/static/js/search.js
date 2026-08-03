@@ -928,7 +928,7 @@ function renderPurchaseOptions(game) {
                 <div class="purchase-option__main">
                     <div class="purchase-option__tags">
                         ${opt.is_base_game ? `<span class="purchase-option__tag">Base Game</span>` : ""}
-                        ${hasDiscount ? `<span class="purchase-option__discount">-${opt.discount}%</span>` : ""}
+                        ${hasDiscount ? `<span class="purchase-option__discount"><i class="fa-solid fa-arrow-down"></i>-${opt.discount}%</span>` : ""}
                     </div>
                     <div class="purchase-option__name">${escapeHtml(opt.name || "Steam Package")}</div>
                     ${includedApps.length ? `
