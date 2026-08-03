@@ -481,21 +481,13 @@ function renderHero(game) {
     document.getElementById("heroKicker").textContent = game.genres.join(" · ");
     document.getElementById("heroTitle").textContent = game.name;
 
-    // Developer • Publisher credit line, IMDb-style, directly under the
-    // title. Only rendered when there's something to say -- some Steam
-    // listings genuinely have neither field populated, and an empty
-    // line would just be dead vertical space in a cinematic hero.
+    // Dev/publisher credit line intentionally removed from the hero --
+    // Quick Stats (further down the page) already shows Developer and
+    // Publisher, so repeating it here right under the title was
+    // redundant clutter rather than a second useful signal. #heroCredits
+    // stays in the DOM (search.html) but is always hidden now.
     const heroCredits = document.getElementById("heroCredits");
-    const creditParts = [
-        (game.developers || []).join(", "),
-        (game.publishers || []).join(", ")
-    ].filter(Boolean);
-    if (creditParts.length) {
-        heroCredits.innerHTML = creditParts.join('<span class="hero__credits-sep">•</span>');
-        heroCredits.style.display = "";
-    } else {
-        heroCredits.style.display = "none";
-    }
+    if (heroCredits) heroCredits.style.display = "none";
 
     const scoreClass = game.metacritic >= 75 ? "is-good" : game.metacritic >= 50 ? "is-mid" : "is-low";
 
@@ -503,18 +495,22 @@ function renderHero(game) {
         .filter(p => game.platforms[p])
         .map(p => p.charAt(0).toUpperCase() + p.slice(1));
 
-    // Discount chip + strikethrough original price -- only ever shown
-    // together, and only when there's an actual live discount (0 is
-    // the "not on sale" case, same convention build_game_detail uses).
-    const hasDiscount = game.discount > 0 && game.original_price;
-    const discountChips = hasDiscount
-        ? `<span class="meta-chip meta-chip--discount"><i class="fa-solid fa-arrow-down"></i>-${game.discount}%</span>
-           <span class="meta-chip meta-chip--original-price">${game.original_price}</span>`
+    // Discount chip -- only the % off, not also a separate original-
+    // price chip. The price chip right next to it already IS the
+    // discounted price, so a discount% + that price is the complete,
+    // uncluttered answer ("-80%, $7.99") without a third redundant
+    // number crowding the row. Only shown for an actual live discount
+    // (0 is the "not on sale" case, same convention build_game_detail
+    // uses) -- when there's no discount, the price chip alone already
+    // covers it.
+    const hasDiscount = game.discount > 0;
+    const discountChip = hasDiscount
+        ? `<span class="meta-chip meta-chip--discount"><i class="fa-solid fa-arrow-down"></i>-${game.discount}%</span>`
         : "";
 
     document.getElementById("heroMeta").innerHTML = `
         <span class="meta-chip meta-chip--price"><i class="fa-solid fa-tag"></i>${game.price}</span>
-        ${discountChips}
+        ${discountChip}
         <span class="meta-chip"><i class="fa-regular fa-calendar"></i>${game.release_date || "TBA"}</span>
         ${game.metacritic ? `<span class="meta-chip meta-chip--score ${scoreClass}"><i class="fa-solid fa-star"></i>${game.metacritic} Metacritic</span>` : ""}
         <span class="meta-chip"><i class="fa-solid fa-users"></i>${game.total_reviews.toLocaleString()} Reviews</span>
