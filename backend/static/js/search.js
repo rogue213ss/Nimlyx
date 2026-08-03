@@ -959,7 +959,7 @@ function renderStats(game) {
     document.getElementById("statsRows").innerHTML = `
         <div class="info-row">
             <span class="info-row__label"><i class="fa-solid fa-tag"></i>Price</span>
-            <span class="info-row__value">${game.discount > 0 ? `<span class="is-good">-${game.discount}%</span> ${game.price}` : game.price}</span>
+            <span class="info-row__value">${game.discount > 0 ? `<span class="stat-discount">-${game.discount}%</span> ${game.price}` : game.price}</span>
         </div>
         ${game.review_score_desc ? `
         <div class="info-row">
