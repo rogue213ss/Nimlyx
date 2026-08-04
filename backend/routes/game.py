@@ -243,6 +243,36 @@ def find_game(game_name):
     return jsonify(clean_data)
 
 
+def _build_movie_entry(movie):
+    """Sprint 4 Media Enhancement Pass. Shapes one of Steam appdetails'
+    raw `movies[]` entries into Nimlyx's contract:
+
+        { name, thumbnail, highlight, hls_url }
+
+    - `highlight`: Steam's own signal for which trailer it considers
+      primary (e.g. the launch trailer over an older teaser). Passed
+      through as-is; the frontend picks the featured trailer from
+      this, falling back to movies[0] when no movie is highlighted
+      -- never assumed true when the field is simply absent.
+    - `hls_url`: Nimlyx Tradition -- as of this Sprint, Steam's
+      `movies[]` entries no longer carry flat/progressive mp4 or webm
+      file URLs (confirmed via a live diagnostic against The Witcher 3,
+      app_id 292030: the real keys are `dash_av1`, `dash_h264`,
+      `hls_h264`, nothing else playable). Only `hls_h264` is used --
+      `dash_av1`/`dash_h264` are ignored on purpose, since hls.js on
+      the frontend covers every modern browser via HLS alone, and
+      carrying DASH too would just be two ways to do the same job.
+      This key can be None for a movie with no `hls_h264` at all; the
+      frontend filters those out (same "don't render what can't play"
+      rule this section has always followed)."""
+    return {
+        "name": movie.get("name"),
+        "thumbnail": movie.get("thumbnail"),
+        "highlight": bool(movie.get("highlight")),
+        "hls_url": movie.get("hls_h264"),
+    }
+
+
 def build_game_detail(app_id, cc):
     """Shared by /api/game-detail/<app_id> (canonical, Sprint 3) and
     /api/find/<game_name> (legacy name lookup) so both routes stay
@@ -373,19 +403,7 @@ def build_game_detail(app_id, cc):
         "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
         "platforms": raw.get("platforms", {}),
-        "movies": [
-            {
-                "name": movie.get("name"),
-                "thumbnail": movie.get("thumbnail"),
-                "video_url": (
-                    movie.get("mp4", {}).get("max")
-                    or movie.get("mp4", {}).get("480")
-                    or movie.get("webm", {}).get("max")
-                    or movie.get("webm", {}).get("480")
-                )
-            }
-            for movie in raw.get("movies", [])
-        ],
+        "movies": [_build_movie_entry(movie) for movie in raw.get("movies", [])],
         "screenshots": [
             shot.get("path_full")
             for shot in raw.get("screenshots", [])

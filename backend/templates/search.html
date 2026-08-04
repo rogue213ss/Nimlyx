@@ -188,6 +188,7 @@
         <div class="panel__head">
             <span class="panel__eyebrow">Media</span>
             <h2 class="panel__title" id="mediaPanelTitle">Screenshots</h2>
+            <span class="panel__meta" id="mediaPanelCounts"></span>
         </div>
 
         <div class="featured-shot">
@@ -354,6 +355,12 @@
   <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
 </footer>
 
+<!-- Nimlyx's first external JS dependency. Needed because Steam's
+     movies[] entries only expose DASH/HLS manifests now (no flat
+     mp4/webm) -- see _build_movie_entry in routes/game.py. Pinned to
+     the major version (@1), per hls.js's own docs, so patch/minor
+     releases apply automatically but a future breaking v2 won't. -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <script src="{{ url_for('static', filename='js/search_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 

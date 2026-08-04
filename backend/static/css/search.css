@@ -260,6 +260,10 @@
   font-size:clamp(1.4rem,2vw,1.8rem);
   letter-spacing:-0.01em;
 }
+.panel__meta{
+  font-family:var(--home-font-body); font-size:.88rem; font-weight:500;
+  color:var(--home-text-muted);
+}
 .ai-tag{
   display:inline-flex; align-items:center; gap:8px;
   font-family:var(--home-font-mono); font-size:.72rem; font-weight:600;
@@ -300,6 +304,21 @@
   animation:shotFadeIn .5s var(--home-ease);
 }
 @keyframes shotFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+/* Nimlyx Tradition: the <img> rule above sizes screenshots to fill
+   .featured-shot, but #featuredVideo has no such rule of its own --
+   without this, the video renders at its native intrinsic size
+   (tiny, pinned top-left) instead of filling the panel the way every
+   other piece of featured media does. object-fit:contain (not cover,
+   unlike the screenshot rule) is deliberate here: cropping a trailer
+   is far more noticeable/jarring than cropping a screenshot, and the
+   black letterboxing this produces reads as intentional against the
+   dark theme rather than as a bug. */
+#featuredVideo{
+  display:block;
+  width:100%; height:100%;
+  object-fit:contain;
+  background:#000;
+}
 .featured-shot__expand{
   position:absolute; top:16px; right:16px;
   display:flex; align-items:center; justify-content:center;

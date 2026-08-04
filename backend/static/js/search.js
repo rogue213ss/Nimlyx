@@ -542,28 +542,36 @@ function renderAbout(game) {
    the fold). Screenshots fill the rest of the strip. No trailer just
    falls back to exactly the old screenshots-only behavior. */
 
+/* ---------------- MEDIA (screenshots + trailers merged) ----------------
+   Sprint 4 Media Enhancement Pass. Every trailer in game.movies gets
+   its own thumbnail (not just the first one) -- but which one is
+   FEATURED on load follows Steam's own highlight signal, falling
+   back to movies[0] only when nothing is highlighted. Screenshots
+   fill the rest of the strip, same as before. No trailers at all
+   falls back to exactly the old screenshots-only behavior. */
+
+function pluralize(count, singular, plural) {
+    return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function renderMedia(game) {
     const featuredImg = document.getElementById("featuredImg");
     const featuredVideo = document.getElementById("featuredVideo");
     const thumbStrip = document.getElementById("thumbStrip");
     const wrap = document.querySelector(".featured-wrap");
     const panelTitle = document.getElementById("mediaPanelTitle");
+    const panelCounts = document.getElementById("mediaPanelCounts");
 
-    const movie = (game.movies || [])[0];
-    const hasTrailer = !!(movie && movie.video_url);
     const shots = game.screenshots || [];
+    // A movie with no hls_url (see _build_movie_entry in
+    // routes/game.py -- Steam's current schema only exposes
+    // dash_av1/dash_h264/hls_h264, and Nimlyx only wires up hls_h264)
+    // isn't something this page can actually play -- excluded here
+    // rather than producing a thumbnail that does nothing when clicked.
+    const movies = (game.movies || []).filter(m => m.hls_url);
 
     const mediaItems = [];
-    if (hasTrailer) {
-        mediaItems.push({
-            type: "video",
-            video_url: movie.video_url,
-            // Falls back to the first screenshot as a poster frame if
-            // Steam didn't supply its own trailer thumbnail -- better
-            // than a blank black box before the person hits play.
-            thumbnail: movie.thumbnail || shots[0] || "",
-        });
-    }
+    movies.forEach(movie => mediaItems.push({ type: "video", movie }));
     shots.forEach(url => mediaItems.push({ type: "image", url }));
 
     if (mediaItems.length === 0) {
@@ -571,33 +579,99 @@ function renderMedia(game) {
         return;
     }
     if (wrap) wrap.style.display = "";
-    if (panelTitle) panelTitle.textContent = hasTrailer ? "Media" : "Screenshots";
+    if (panelTitle) panelTitle.textContent = "Media";
+
+    // Media Panel Counts -- e.g. "12 Screenshots • 3 Trailers", with
+    // correct singular/plural and either half omitted when zero
+    // (never "0 Trailers").
+    if (panelCounts) {
+        const parts = [];
+        if (shots.length > 0) parts.push(pluralize(shots.length, "Screenshot", "Screenshots"));
+        if (movies.length > 0) parts.push(pluralize(movies.length, "Trailer", "Trailers"));
+        panelCounts.textContent = parts.join(" • ");
+    }
+
+    // Highlight-Aware Featured Trailer Selection: Steam's own
+    // highlight flag wins when present; multiple highlighted entries
+    // (shouldn't normally happen, but Steam's data isn't a contract)
+    // resolve to whichever comes first in movies[]; no highlighted
+    // entry at all preserves the previous behavior of using
+    // movies[0]. Missing highlight metadata (undefined/false) never
+    // breaks this -- it just falls through to the movies[0] default.
+    const highlightedMovie = movies.find(m => m.highlight);
+    const featuredMovie = highlightedMovie || movies[0];
+    const initialIndex = featuredMovie
+        ? mediaItems.findIndex(item => item.type === "video" && item.movie === featuredMovie)
+        : 0;
+
+    // Nimlyx Tradition: Steam's movies[] no longer ships flat mp4/webm
+    // files (see _build_movie_entry in routes/game.py) -- only DASH and
+    // HLS adaptive-streaming manifests. hls.js plays hls_url via Media
+    // Source Extensions in Chrome/Firefox/Edge; Safari plays the same
+    // .m3u8 natively off .src, no library involved. One Hls instance is
+    // tracked here so switching trailers (or media items) always tears
+    // the old one down first -- letting instances pile up across clicks
+    // leaks buffered segments and eventually stalls playback.
+    let currentHls = null;
+    function destroyCurrentHls() {
+        if (currentHls) {
+            currentHls.destroy();
+            currentHls = null;
+        }
+    }
 
     function showFeaturedMedia(item) {
         if (item.type === "video") {
-            featuredVideo.innerHTML = `<source src="${item.video_url}" type="video/mp4">`;
-            featuredVideo.poster = item.thumbnail || "";
+            destroyCurrentHls();
+            featuredVideo.poster = item.movie.thumbnail || "";
+
+            if (window.Hls && Hls.isSupported()) {
+                currentHls = new Hls();
+                currentHls.loadSource(item.movie.hls_url);
+                currentHls.attachMedia(featuredVideo);
+            } else if (featuredVideo.canPlayType("application/vnd.apple.mpegurl")) {
+                // Safari: native HLS support built into the <video>
+                // element itself -- setting .src directly is enough,
+                // hls.js would be redundant here.
+                featuredVideo.src = item.movie.hls_url;
+            }
+            // Neither hls.js nor native HLS available: featuredVideo is
+            // shown with no playable source rather than hidden outright,
+            // since its native controls/poster still communicate that a
+            // trailer exists -- the same "don't fabricate a broken state"
+            // call as everywhere else in this panel.
+
             featuredVideo.style.display = "";
             featuredImg.style.display = "none";
         } else {
+            destroyCurrentHls();
             featuredVideo.pause();
             featuredVideo.removeAttribute("src");
-            featuredVideo.innerHTML = "";
             featuredVideo.style.display = "none";
             featuredImg.style.display = "";
             featuredImg.src = item.url;
         }
     }
 
-    showFeaturedMedia(mediaItems[0]);
+    showFeaturedMedia(mediaItems[initialIndex]);
 
-    thumbStrip.innerHTML = mediaItems.map((item, i) => `
-        <button class="thumb ${item.type === "video" ? "thumb--video" : ""} ${i === 0 ? "is-active" : ""}"
-                data-index="${i}" aria-label="${item.type === "video" ? "Trailer" : `Screenshot ${i + 1}`}">
-            <img src="${item.type === "video" ? item.thumbnail : item.url}" alt="">
-            ${item.type === "video" ? '<span class="thumb-play"><i class="fa-solid fa-play"></i></span>' : ""}
+    thumbStrip.innerHTML = mediaItems.map((item, i) => {
+        const isVideo = item.type === "video";
+        // Multiple trailers now get their own real name in the thumb's
+        // label/tooltip ("Gameplay Trailer" vs "Launch Trailer")
+        // instead of every video thumb just saying "Trailer" --
+        // otherwise a game with 3 trailers shows 3 identical-looking,
+        // identically-labeled thumbs with no way to tell them apart
+        // before clicking.
+        const label = isVideo ? (item.movie.name || "Trailer") : `Screenshot ${i + 1}`;
+        return `
+        <button class="thumb ${isVideo ? "thumb--video" : ""} ${i === initialIndex ? "is-active" : ""}"
+                data-index="${i}" aria-label="${label}" title="${label}">
+            <img src="${isVideo ? item.movie.thumbnail : item.url}" alt="">
+            ${isVideo ? '<span class="thumb-play"><i class="fa-solid fa-play"></i></span>' : ""}
         </button>
-    `).join("");
+    `;
+    }).join("");
 
     thumbStrip.addEventListener("click", (e) => {
         const btn = e.target.closest(".thumb");
@@ -621,7 +695,7 @@ function renderMedia(game) {
 
     const watchBtn = document.getElementById("watchTrailerBtn");
     if (watchBtn) {
-        watchBtn.style.display = hasTrailer ? "" : "none";
+        watchBtn.style.display = movies.length > 0 ? "" : "none";
         watchBtn.addEventListener("click", () => {
             document.getElementById("mediaSection").scrollIntoView({ behavior: "smooth", block: "center" });
         });
