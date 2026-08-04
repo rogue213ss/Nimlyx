@@ -297,7 +297,16 @@
   overflow:hidden;
   border:1px solid var(--home-glass-border-strong);
   background:var(--home-bg-elevated);
-  box-shadow:var(--home-shadow-lg);
+  box-shadow:var(--home-shadow-lg),
+    0 0 70px 12px var(--media-glow-color, transparent),
+    0 0 160px 40px var(--media-glow-color-soft, transparent);
+  /* --media-glow-color is set/cleared by initMediaGlow() in search.js,
+     sampled live off the playing trailer's own frames -- transitioning
+     it here is what makes color changes (new trailer, scene cut, back
+     to a screenshot) read as a smooth ambient shift instead of a snap.
+     overflow:hidden above only clips this element's *content*, not its
+     own box-shadow, so the glow isn't cut off at the panel's edges. */
+  transition:box-shadow .6s var(--home-ease);
 }
 .featured-shot img{
   width:100%; height:100%; object-fit:cover;

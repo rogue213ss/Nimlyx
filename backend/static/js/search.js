@@ -632,7 +632,13 @@ function renderMedia(game) {
             } else if (featuredVideo.canPlayType("application/vnd.apple.mpegurl")) {
                 // Safari: native HLS support built into the <video>
                 // element itself -- setting .src directly is enough,
-                // hls.js would be redundant here.
+                // hls.js would be redundant here. crossOrigin is set
+                // first (harmless if Steam's CDN doesn't send matching
+                // CORS headers -- the ambient glow sampler just detects
+                // that itself and quietly gives up) in case it does,
+                // since it's required for canvas frame-sampling to work
+                // on a cross-origin video.
+                featuredVideo.crossOrigin = "anonymous";
                 featuredVideo.src = item.movie.hls_url;
             }
             // Neither hls.js nor native HLS available: featuredVideo is
@@ -713,10 +719,16 @@ function renderMedia(game) {
    and the expand button are the same DOM nodes for the lifetime of the
    page, so binding here can't produce duplicate listeners on repeated
    renders, and doesn't need to be re-run when renderMedia() runs again.
-   Only the featured *image* opens the lightbox -- the featured trailer
-   video already has native fullscreen via its own controls. */
+   The expand button now branches on which media is actually showing:
+   screenshot -> lightbox, trailer -> fullscreen the video itself. It
+   used to always open the lightbox and silently no-op on video (the
+   lightbox only knows how to show #featuredImg), on the assumption
+   that "the video already has native fullscreen via its own controls"
+   covered it -- true for the controls bar, but the corner expand
+   button itself did nothing while a trailer was playing. */
 function initScreenshotLightbox() {
     const featuredImg = document.getElementById("featuredImg");
+    const featuredVideo = document.getElementById("featuredVideo");
     const expandBtn = document.getElementById("featuredExpandBtn");
     const lightbox = document.getElementById("shotLightbox");
     const lightboxImg = document.getElementById("shotLightboxImg");
@@ -736,8 +748,32 @@ function initScreenshotLightbox() {
         document.body.style.overflow = "";
     }
 
+    // Safari (desktop and iOS) doesn't implement the standard
+    // requestFullscreen() on <video>/other elements the same way --
+    // iOS Safari specifically only exposes the older
+    // webkitEnterFullscreen() on the video element itself. Trying the
+    // standard API first and falling back covers both without
+    // needing separate browser-sniffing.
+    function requestVideoFullscreen() {
+        if (featuredVideo.requestFullscreen) {
+            featuredVideo.requestFullscreen();
+        } else if (featuredVideo.webkitRequestFullscreen) {
+            featuredVideo.webkitRequestFullscreen();
+        } else if (featuredVideo.webkitEnterFullscreen) {
+            featuredVideo.webkitEnterFullscreen();
+        }
+    }
+
+    function handleExpandClick() {
+        if (featuredVideo && featuredVideo.style.display !== "none") {
+            requestVideoFullscreen();
+        } else {
+            openLightbox();
+        }
+    }
+
     featuredImg.addEventListener("click", openLightbox);
-    if (expandBtn) expandBtn.addEventListener("click", openLightbox);
+    if (expandBtn) expandBtn.addEventListener("click", handleExpandClick);
     if (closeBtn) closeBtn.addEventListener("click", closeLightbox);
 
     // Backdrop click: only when the click lands on the lightbox
@@ -752,6 +788,117 @@ function initScreenshotLightbox() {
 }
 
 initScreenshotLightbox();
+
+/* ---------------- AMBIENT TRAILER GLOW ----------------
+   Trailer playing -> sample the current video frame -> average its
+   colors -> push that color into a CSS var -> .featured-shot's own
+   box-shadow (see search.css) reads that var to glow in the trailer's
+   own palette instead of a fixed brand color.
+
+   Wired exactly ONCE at script load, same reasoning as
+   initScreenshotLightbox() above: #featuredVideo is the same DOM node
+   for the page's lifetime, renderMedia() only ever swaps what's
+   playing inside it, so binding play/pause/ended here can't produce
+   duplicate listeners across repeated renderMedia() calls. */
+function initMediaGlow() {
+    const featuredVideo = document.getElementById("featuredVideo");
+    const featuredImg = document.getElementById("featuredImg");
+    if (!featuredVideo) return;
+
+    // Downscaled way below the video's real resolution on purpose --
+    // this is sampled for an average color, not viewed, so a tiny
+    // canvas keeps drawImage/getImageData cheap enough to run on an
+    // interval without competing with actual video decode/render.
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 18;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+    let intervalId = null;
+    // Cross-origin video frames (Safari's native-HLS path hitting
+    // Steam's CDN directly, without permissive CORS headers) taint the
+    // canvas -- getImageData throws a SecurityError. Ambient glow is a
+    // nice-to-have layered on top of trailer playback, not a
+    // requirement for it, so one thrown error latches this off for
+    // good instead of retrying (and failing, and logging) every tick.
+    let broken = false;
+
+    function setGlow(r, g, b) {
+        const wrap = document.querySelector(".featured-shot");
+        if (!wrap) return;
+        if (r === null) {
+            wrap.style.setProperty("--media-glow-color", "transparent");
+            wrap.style.setProperty("--media-glow-color-soft", "transparent");
+            return;
+        }
+        // Two alphas backing the two box-shadow layers in search.css:
+        // a tighter, more saturated ring right against the panel edge,
+        // and a much softer, larger wash further out. Bumped up from
+        // the original single 0.35-alpha layer, which read as barely
+        // there against the page's dark background.
+        wrap.style.setProperty("--media-glow-color", `rgba(${r}, ${g}, ${b}, 0.65)`);
+        wrap.style.setProperty("--media-glow-color-soft", `rgba(${r}, ${g}, ${b}, 0.4)`);
+    }
+
+    function sample() {
+        if (broken || !ctx) return;
+        try {
+            ctx.drawImage(featuredVideo, 0, 0, canvas.width, canvas.height);
+            const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            let r = 0, g = 0, b = 0, n = 0;
+            for (let i = 0; i < data.length; i += 4) {
+                // Near-black/near-white pixels (letterbox bars, blown-out
+                // highlights) get skipped so they don't wash the average
+                // toward grey -- the glow should read as "this trailer's
+                // color", not a muddy average of its darkest and
+                // brightest frames.
+                const lum = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                if (lum < 12 || lum > 245) continue;
+                r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+            }
+            if (n === 0) return;
+            r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+            setGlow(r, g, b);
+        } catch (err) {
+            broken = true;
+            stop();
+        }
+    }
+
+    function start() {
+        if (broken) return;
+        stop();
+        sample();
+        intervalId = setInterval(sample, 500);
+    }
+
+    function stop() {
+        if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+        }
+    }
+
+    featuredVideo.addEventListener("play", start);
+    featuredVideo.addEventListener("pause", stop);
+    featuredVideo.addEventListener("ended", stop);
+
+    // Switching to the featured screenshot (thumb-strip click) doesn't
+    // fire the video's own pause/ended -- showFeaturedMedia() calls
+    // .pause() on it, which does fire "pause", so this is mostly a
+    // belt-and-suspenders reset for the glow fading back out cleanly
+    // whenever the image is what's actually on screen.
+    if (featuredImg) {
+        featuredImg.addEventListener("load", () => {
+            if (featuredVideo.style.display === "none") {
+                stop();
+                setGlow(null, null, null);
+            }
+        });
+    }
+}
+
+initMediaGlow();
 
 /* ---------------- NIMLYX ANALYSIS ----------------
    One premium dashboard, not six independent cards (Sprint 2 spec).
