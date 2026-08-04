@@ -620,13 +620,67 @@ function renderMedia(game) {
         }
     }
 
+    // QA Pass: hls.js/Safari's native HLS were both playing correctly
+    // once loaded, but nothing handled the load actually failing --
+    // an expired signed CDN URL (Steam's hls_h264 links carry a `t=`
+    // token), a network blip, or a browser with neither hls.js support
+    // nor native HLS left the poster frame sitting there indefinitely
+    // with no indication anything was wrong. This shows an honest
+    // failure state with a real fallback instead.
+    const errorBox = document.getElementById("featuredMediaError");
+    const errorLink = document.getElementById("featuredMediaErrorLink");
+    const playOverlay = document.getElementById("featuredPlayOverlay");
+
+    function showMediaError() {
+        destroyCurrentHls();
+        if (playOverlay) playOverlay.style.display = "none";
+        if (errorLink) {
+            errorLink.href = game.app_id
+                ? `https://store.steampowered.com/app/${game.app_id}/`
+                : `https://store.steampowered.com/search/?term=${encodeURIComponent(game.name || "")}`;
+        }
+        if (errorBox) errorBox.style.display = "";
+        featuredVideo.style.display = "none";
+        featuredImg.style.display = "none";
+    }
+
+    function clearMediaError() {
+        if (errorBox) errorBox.style.display = "none";
+    }
+
     function showFeaturedMedia(item) {
+        clearMediaError();
+
         if (item.type === "video") {
             destroyCurrentHls();
             featuredVideo.poster = item.movie.thumbnail || "";
 
             if (window.Hls && Hls.isSupported()) {
                 currentHls = new Hls();
+                // hls.js already retries plenty of non-fatal hiccups
+                // (a dropped segment, a stalled fragment load) on its
+                // own -- only `fatal` errors reach here. One retry per
+                // failure class before giving up: startLoad() for a
+                // network failure (covers a manifest request that
+                // failed transiently), recoverMediaError() for a
+                // decode/buffer-append failure. A second fatal error of
+                // the same kind, or anything outside those two known-
+                // recoverable categories, goes straight to the error
+                // state rather than retrying forever.
+                let networkRetried = false;
+                let mediaRetried = false;
+                currentHls.on(Hls.Events.ERROR, (event, data) => {
+                    if (!data.fatal) return;
+                    if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !networkRetried) {
+                        networkRetried = true;
+                        currentHls.startLoad();
+                    } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !mediaRetried) {
+                        mediaRetried = true;
+                        currentHls.recoverMediaError();
+                    } else {
+                        showMediaError();
+                    }
+                });
                 currentHls.loadSource(item.movie.hls_url);
                 currentHls.attachMedia(featuredVideo);
             } else if (featuredVideo.canPlayType("application/vnd.apple.mpegurl")) {
@@ -637,15 +691,21 @@ function renderMedia(game) {
                 // CORS headers -- the ambient glow sampler just detects
                 // that itself and quietly gives up) in case it does,
                 // since it's required for canvas frame-sampling to work
-                // on a cross-origin video.
+                // on a cross-origin video. Property assignment (not
+                // addEventListener) for onerror so re-running this
+                // branch on a later trailer switch replaces the handler
+                // instead of stacking a new one underneath it.
                 featuredVideo.crossOrigin = "anonymous";
+                featuredVideo.onerror = () => showMediaError();
                 featuredVideo.src = item.movie.hls_url;
+            } else {
+                // Neither hls.js nor native HLS available -- this browser
+                // genuinely cannot play the trailer, full stop. Used to
+                // leave the poster frame sitting there looking clickable
+                // with nothing playable behind it; now it says so.
+                showMediaError();
+                return;
             }
-            // Neither hls.js nor native HLS available: featuredVideo is
-            // shown with no playable source rather than hidden outright,
-            // since its native controls/poster still communicate that a
-            // trailer exists -- the same "don't fabricate a broken state"
-            // call as everywhere else in this panel.
 
             featuredVideo.style.display = "";
             featuredImg.style.display = "none";
@@ -653,6 +713,7 @@ function renderMedia(game) {
             destroyCurrentHls();
             featuredVideo.pause();
             featuredVideo.removeAttribute("src");
+            featuredVideo.onerror = null;
             featuredVideo.style.display = "none";
             featuredImg.style.display = "";
             featuredImg.src = item.url;
@@ -899,6 +960,59 @@ function initMediaGlow() {
 }
 
 initMediaGlow();
+
+/* ---------------- FEATURED PLAY OVERLAY ----------------
+   A poster frame alone doesn't read as "this is a video" at a glance
+   -- easy to mistake for just another screenshot until you notice the
+   scrubber at the bottom. This puts a centered play button over
+   #featuredVideo whenever it's the active media and paused, and hides
+   it the instant playback actually starts.
+
+   Wired exactly once at script load, same reasoning as
+   initScreenshotLightbox()/initMediaGlow() above: #featuredVideo and
+   #featuredPlayOverlay are the same DOM nodes for the page's
+   lifetime, so binding here can't duplicate listeners across repeated
+   renderMedia() calls. */
+function initFeaturedPlayOverlay() {
+    const featuredVideo = document.getElementById("featuredVideo");
+    const featuredImg = document.getElementById("featuredImg");
+    const overlay = document.getElementById("featuredPlayOverlay");
+    if (!featuredVideo || !overlay) return;
+
+    function show() { overlay.style.display = ""; }
+    function hide() { overlay.style.display = "none"; }
+
+    // "loadstart" fires whenever a new trailer is loaded into the
+    // element -- whether that's hls.js calling loadSource() or Safari's
+    // native path setting .src directly -- which is exactly when the
+    // overlay should reappear, since a freshly loaded video is always
+    // paused at that point regardless of which trailer thumb was clicked.
+    featuredVideo.addEventListener("loadstart", show);
+    featuredVideo.addEventListener("play", hide);
+    featuredVideo.addEventListener("pause", show);
+    featuredVideo.addEventListener("ended", show);
+    overlay.addEventListener("click", () => {
+        // .play() returns a promise that rejects if playback can't
+        // start (e.g. the source failed to load in the moment between
+        // the overlay appearing and being clicked) -- the fatal-error
+        // path in showFeaturedMedia() already handles telling the user
+        // via the error state, so this just needs to not leave an
+        // unhandled rejection sitting in the console on top of that.
+        featuredVideo.play().catch(() => {});
+    });
+
+    // Switching to the featured screenshot needs the overlay gone too
+    // -- same belt-and-suspenders reasoning as the glow reset above,
+    // since showFeaturedMedia() hides #featuredVideo itself rather
+    // than firing any event this overlay already listens for.
+    if (featuredImg) {
+        featuredImg.addEventListener("load", () => {
+            if (featuredVideo.style.display === "none") hide();
+        });
+    }
+}
+
+initFeaturedPlayOverlay();
 
 /* ---------------- NIMLYX ANALYSIS ----------------
    One premium dashboard, not six independent cards (Sprint 2 spec).

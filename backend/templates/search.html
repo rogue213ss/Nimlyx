@@ -194,6 +194,27 @@
         <div class="featured-shot">
             <img id="featuredImg" alt="Featured screenshot">
             <video id="featuredVideo" controls preload="metadata" style="display:none;"></video>
+            <!-- Shown/hidden by search.js keyed off #featuredVideo's own
+                 play/pause state (see initMediaGlow's playState wiring) --
+                 the poster frame alone didn't read as "this is a video" at
+                 a glance, easy to mistake for just another screenshot
+                 until you already know to look for the scrubber. -->
+            <button class="featured-play-overlay" id="featuredPlayOverlay" title="Play trailer" style="display:none;">
+                <i class="fa-solid fa-play"></i>
+            </button>
+            <!-- Shown by showMediaError() in search.js when hls.js hits a
+                 fatal, unrecoverable error (or the browser can play
+                 neither hls.js nor native HLS at all) -- an honest failure
+                 state instead of leaving the poster frame sitting there
+                 looking clickable with nothing actually playable behind
+                 it. Steam link is filled in with this game's real app_id
+                 at render time, same steamLink pattern already used
+                 elsewhere on this page. -->
+            <div class="featured-media-error" id="featuredMediaError" style="display:none;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>This trailer couldn't be loaded.</p>
+                <a href="#" id="featuredMediaErrorLink" target="_blank" rel="noopener">Watch on Steam</a>
+            </div>
             <button class="featured-shot__expand" title="View fullscreen" id="featuredExpandBtn">
                 <i class="fa-solid fa-expand"></i>
             </button>

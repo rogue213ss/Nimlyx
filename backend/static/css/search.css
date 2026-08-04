@@ -343,6 +343,62 @@
 .featured-shot__expand:hover{ background:rgba(10,10,13,.8); transform:scale(1.06); }
 .featured-shot img{ cursor:zoom-in; }
 
+.featured-play-overlay{
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
+  width:84px; height:84px;
+  border-radius:50%;
+  /* Solid dark core (no backdrop-filter) on purpose -- the earlier
+     version used a semi-transparent + blurred background like the
+     fullscreen button, which sampled whatever warm/busy colors were
+     in the video frame behind it and came out looking like a muddy
+     tan blob instead of a clean control. A solid core plus a glowing
+     blue ring stays legible and on-brand no matter what's playing. */
+  background:rgba(10,14,20,.82);
+  border:2px solid var(--home-cta-blue);
+  box-shadow:0 0 24px 2px rgba(59,130,246,.55), 0 4px 16px rgba(0,0,0,.4);
+  color:var(--home-text-primary);
+  font-size:1.7rem;
+  cursor:pointer;
+  transition:background .2s var(--home-ease), transform .2s var(--home-ease), box-shadow .2s var(--home-ease);
+  /* Play glyph sits visually left-of-center in a circle if it's just
+     centered as-is -- nudging it a hair right corrects for that. */
+  padding-left:6px;
+}
+.featured-play-overlay:hover{
+  background:rgba(10,14,20,.95);
+  transform:translate(-50%,-50%) scale(1.08);
+  box-shadow:0 0 32px 4px rgba(59,130,246,.75), 0 4px 16px rgba(0,0,0,.4);
+}
+
+.featured-media-error{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px;
+  background:rgba(10,10,13,.9);
+  text-align:center;
+  padding:24px;
+}
+.featured-media-error i{
+  font-size:1.6rem;
+  color:var(--home-text-muted);
+}
+.featured-media-error p{
+  margin:0;
+  color:var(--home-text-primary);
+  font-size:.95rem;
+}
+.featured-media-error a{
+  color:var(--home-cta-blue);
+  font-size:.9rem;
+  font-weight:600;
+  text-decoration:none;
+  border-bottom:1px solid transparent;
+  transition:border-color .2s var(--home-ease);
+}
+.featured-media-error a:hover{ border-color:var(--home-cta-blue); }
+
 .shot-lightbox{
   position:fixed; inset:0; z-index:999;
   display:flex; align-items:center; justify-content:center;

@@ -22,6 +22,17 @@
   .region-picker{ width:100%; }
   .region-picker__trigger{ width:100%; justify-content:space-between; }
   .region-picker__menu{ left:0; right:0; }
+
+  /* search.html loads discover.css (for the sidebar's shared chip/
+     add-filter classes) but not discover_mobile.css, so the sidebar
+     never picked up Discover's own mobile treatment. search_list.css
+     already stacks .search-results-layout to one column at this
+     width, but .discover-sidebar-panel itself still had
+     position:sticky/top:96px from discover.css's base rule, which
+     would pin it in place mid-scroll instead of just sitting above
+     the results like Discover's own sidebar does. Same fix, same
+     breakpoint, same values as discover_mobile.css. */
+  .discover-sidebar-panel{ position:static; top:auto; }
 }
 
 @media (max-width:700px){
@@ -29,6 +40,7 @@
   .hero__content{ padding:0 20px 36px; }
   .hero__panel{ padding:22px 20px; border-radius:var(--home-radius-md); }
   .hero__title{ font-size:1.7rem; }
+  .hero__credits{ font-size:.85rem; margin-bottom:14px; }
   .hero__ctas{ flex-direction:column; }
   .hero__ctas .home-btn{ width:100%; justify-content:center; }
 
@@ -38,14 +50,48 @@
   .panel__title{ font-size:1.25rem; }
   .ai-tag{ margin-left:0; }
 
+  /* .page{gap:44px} above would otherwise win over search.css's
+     .results-view{gap:28px} at this width (equal specificity, this
+     file loads after search.css) and bring back the dead-space gap
+     between the results title and the sidebar/rows. */
+  .results-view{ gap:20px; padding-top:28px; }
+
+  /* Same padding reduction discover_mobile.css gives
+     .discover-sidebar-panel at this width. */
+  .discover-sidebar-panel{ padding:22px; }
+
   .thumb{ width:110px; height:64px; }
   .strip-nav{ display:none; }
 
+  /* The 84px play button and error-state icon/text sizes were tuned
+     against the desktop-width .featured-shot (which stays at a wide
+     16:9 aspect ratio down to fairly narrow viewports since it's just
+     width:100% of its column). Shrinking here keeps the button from
+     dominating the video at phone widths the same way the fullscreen
+     button and thumb strip are already scaled down on this page. */
+  .featured-play-overlay{ width:64px; height:64px; font-size:1.3rem; }
+  .featured-media-error{ padding:16px; gap:8px; }
+  .featured-media-error i{ font-size:1.3rem; }
+  .featured-media-error p{ font-size:.85rem; }
+  .featured-media-error a{ font-size:.82rem; }
+
   .stats-grid{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
 
-  .nimlyx-divider{ margin:22px 0; }
-  .nimlyx-rep{ padding-left:0; border-left:none; border-top:1px solid var(--home-glass-border); padding-top:16px; }
-  .nimlyx-quote{ padding:18px 20px; }
+  /* Purchase Options: name/tags/included on their own line, price +
+     CTA on their own full-width line below, instead of squeezing
+     both halves of the row side by side. */
+  .purchase-option{ flex-direction:column; align-items:flex-start; gap:12px; }
+  /* .purchase-option__main's flex:1 1 320px (search.css) is a WIDTH
+     basis for the desktop row layout. Once the row above switches to
+     flex-direction:column, that same 320px basis applies to the now-
+     vertical main axis instead -- i.e. it becomes a min-HEIGHT, and
+     every card gets stretched to ~320px tall with a big empty gap
+     before the price/CTA line. Reset it back to auto here so column
+     mode sizes to content instead of inheriting the row layout's
+     width figure as a height. */
+  .purchase-option__main{ flex:0 1 auto; width:100%; }
+  .purchase-option__side{ width:100%; justify-content:space-between; }
+  .purchase-option__included{ white-space:normal; }
 }
 
 @media (max-width:480px){
@@ -53,6 +99,7 @@
   .hero__content{ padding:0 16px 24px; }
   .hero__panel{ padding:18px 16px; }
   .hero__title{ font-size:1.4rem; }
+  .hero__credits{ font-size:.78rem; margin-bottom:12px; }
   .hero__meta{ gap:8px; margin-bottom:20px; }
   .meta-chip{ font-size:.78rem; padding:6px 12px; }
   .hero__ctas{ gap:10px; }
@@ -60,4 +107,14 @@
   .page{ gap:32px; }
   .panel:first-of-type{ margin-top:28px; }
   .panel{ padding:18px; }
+
+  .results-view{ gap:16px; padding-top:20px; }
+  .discover-sidebar-panel{ padding:18px; }
+
+  /* At this width even "price + CTA" side by side gets tight -- let
+     the CTA drop to its own full-width line rather than compressing
+     the button or overflowing the row. */
+  .purchase-option{ padding:14px 16px; }
+  .purchase-option__side{ flex-wrap:wrap; gap:10px; }
+  .purchase-option__cta{ width:100%; justify-content:center; }
 }
