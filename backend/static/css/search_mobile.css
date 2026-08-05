@@ -13,6 +13,12 @@
   .stats-spotlight{ grid-template-columns:1fr; }
   .hero{ height:clamp(420px, 70vh, 620px); }
   .hero__panel{ max-width:100%; }
+
+  /* System Requirements (Sprint 5): Minimum/Recommended stack to one
+     column instead of squeezing side by side -- same breakpoint as
+     stats-spotlight above since both are two-column desktop layouts
+     that need the same room. */
+  .requirements-grid{ grid-template-columns:1fr; gap:28px; }
 }
 
 @media (max-width:900px){

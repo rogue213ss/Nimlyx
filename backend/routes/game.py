@@ -12,6 +12,7 @@ from services.analysis.community_pulse import compute_pulse
 from services.analysis.tag_honesty import compute_tag_honesty
 from services.analysis.spotlight_reviews import compute_spotlight_reviews
 from services.game.related_games import get_developer_games, get_publisher_games
+from services.game.requirements import parse_requirements
 
 game_bp = Blueprint("game", __name__)
 
@@ -381,6 +382,16 @@ def build_game_detail(app_id, cc):
     # section in that case.
     purchase_options = build_purchase_options(app_id, raw, cc)
 
+    # System Requirements -- Sprint 5. Parsed from THIS SAME appdetails
+    # response's pc_requirements field, already sitting in `raw` -- no
+    # extra Steam call. Pure in-memory string parsing (no I/O), so this
+    # runs inline rather than through the ThreadPoolExecutor above; it
+    # costs microseconds, not a round-trip, and never blocks anything
+    # else in build_game_detail(). parse_requirements() never raises --
+    # see its own docstring -- so this can't be the reason a game page
+    # fails to load.
+    requirements = parse_requirements(raw.get("pc_requirements"))
+
     clean_data = {
         "app_id": app_id,
         # Generic Steam reviews surface for this app — used by the
@@ -440,6 +451,13 @@ def build_game_detail(app_id, cc):
         "developer_games": developer_games,
         "publisher_games": publisher_games,
         "purchase_options": purchase_options,
+        # Normalized {minimum: {...}, recommended: {...}} -- see
+        # services/game/requirements.py. This is the ONLY requirements
+        # data sent to the frontend; Steam's raw HTML never leaves the
+        # backend, and parsing never happens client-side (per Sprint 5
+        # spec). This is also the future input source for Phase 2's
+        # compatibility engine -- keep this shape stable.
+        "requirements": requirements,
     }
 
     return clean_data

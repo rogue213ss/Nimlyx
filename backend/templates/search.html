@@ -67,6 +67,9 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="gameInput" placeholder="Search games, genres, developers…" autocomplete="off" aria-label="Search games">
         <button id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <label for="homeSearchToggle" class="home-search-close-btn" aria-label="Close search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </label>
         <div id="suggestions" class="suggestions-dropdown"></div>
       </div>
 
@@ -462,6 +465,23 @@
         </div>
 
         <div class="stats-grid" id="statsRows"></div>
+    </section>
+
+    <!-- ================= SYSTEM REQUIREMENTS =================
+         Sprint 5. Backend-normalized only -- see
+         services/game/requirements.py and build_game_detail() in
+         routes/game.py. No HTML parsing happens here; requirementsPanel
+         just renders the already-structured minimum/recommended fields
+         search.js received in game.requirements. Whole section hidden
+         by search.js when a game has no requirements data at all
+         (e.g. very old or barely-listed titles). -->
+    <section class="panel requirements-panel reveal is-hidden" id="requirementsPanel">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Can it run?</span>
+            <h2 class="panel__title">System Requirements</h2>
+        </div>
+
+        <div class="requirements-grid" id="requirementsGrid"></div>
     </section>
 
     <!-- ================= MORE FROM DEVELOPER =================

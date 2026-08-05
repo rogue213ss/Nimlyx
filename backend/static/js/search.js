@@ -428,6 +428,7 @@ function renderGame(game) {
     renderPurchaseOptions(game);
     renderCredits(game);
     renderStats(game);
+    renderRequirements(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
     initScrollReveal();
@@ -1521,6 +1522,72 @@ function renderStats(game) {
             <span class="info-row__value">${game.release_date || "TBA"}</span>
         </div>
     `;
+}
+
+/* ---------------- SYSTEM REQUIREMENTS (Sprint 5) ----------------
+   game.requirements is already normalized by the backend --
+   {minimum: {os,cpu,gpu,ram,storage}, recommended: {...}} -- see
+   services/game/requirements.py. This function only renders it; no
+   HTML parsing happens client-side, per the Sprint 5 spec. */
+
+const REQUIREMENT_FIELD_ORDER = [
+    { key: "os", label: "OS", icon: "fa-solid fa-desktop" },
+    { key: "cpu", label: "Processor", icon: "fa-solid fa-microchip" },
+    { key: "gpu", label: "Graphics", icon: "fa-solid fa-tv" },
+    { key: "ram", label: "Memory", icon: "fa-solid fa-memory" },
+    { key: "storage", label: "Storage", icon: "fa-solid fa-hard-drive" },
+];
+
+function _renderRequirementTier(tier, title, modifier) {
+    const rows = REQUIREMENT_FIELD_ORDER
+        .filter(f => tier[f.key])
+        .map(f => `
+            <div class="info-row">
+                <span class="info-row__label"><i class="${f.icon}"></i>${f.label}</span>
+                <span class="info-row__value">${tier[f.key]}</span>
+            </div>
+        `).join("");
+
+    if (!rows) return "";
+
+    // modifier ("is-minimum" / "is-recommended") drives the visual
+    // split between the two tiers -- see .requirements-tier--* in
+    // search.css. Without this the two columns were styled
+    // identically and only distinguishable by small label text,
+    // which read as "8 identical cards" rather than two tiers.
+    const icon = modifier === "is-recommended" ? "fa-solid fa-circle-check" : "fa-regular fa-circle";
+
+    return `
+        <div class="requirements-tier ${modifier}">
+            <h3 class="requirements-tier__title"><i class="${icon}"></i>${title}</h3>
+            <div class="stats-grid">${rows}</div>
+        </div>
+    `;
+}
+
+function renderRequirements(game) {
+    const panel = document.getElementById("requirementsPanel");
+    const requirements = game.requirements;
+
+    if (!requirements) {
+        panel.classList.add("is-hidden");
+        return;
+    }
+
+    const minimumHtml = _renderRequirementTier(requirements.minimum || {}, "Minimum", "is-minimum");
+    const recommendedHtml = _renderRequirementTier(requirements.recommended || {}, "Recommended", "is-recommended");
+
+    // No usable fields in EITHER tier -- Steam had no parseable
+    // requirements for this game (see requirements.py Case 3/4).
+    // Nothing honest to show, so the whole panel stays hidden rather
+    // than rendering an empty shell.
+    if (!minimumHtml && !recommendedHtml) {
+        panel.classList.add("is-hidden");
+        return;
+    }
+
+    document.getElementById("requirementsGrid").innerHTML = minimumHtml + recommendedHtml;
+    panel.classList.remove("is-hidden");
 }
 
 /* ==========================================================

@@ -771,6 +771,51 @@
   grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
   gap:14px;
 }
+
+/* ---- System Requirements panel (Sprint 5) — #requirementsGrid,
+   populated with two .requirements-tier blocks (Minimum/Recommended)
+   by search.js. Each tier reuses .stats-grid/.info-row above rather
+   than its own row styling, so a requirement row looks identical to
+   a Quick Stats row. Side-by-side on desktop; search_mobile.css
+   stacks these to one column. ---- */
+.requirements-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+.requirements-tier__title{
+  display:flex; align-items:center; gap:8px;
+  font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--home-text-muted);
+  margin:0 0 14px;
+}
+.requirements-tier__title i{ font-size:.8rem; }
+
+/* Minimum vs Recommended visual split -- otherwise the two columns
+   are styled identically and only differ by small label text, which
+   reads as one undifferentiated grid of 8 cards rather than two
+   tiers. Recommended borrows the page's existing CTA blue (same
+   accent already used for buttons/links elsewhere) since it's the
+   "aspirational" tier; Minimum stays neutral/muted -- keeps to the
+   established rule that the violet accent stays reserved for
+   AI/Nimlyx Score elements only. */
+.requirements-tier.is-minimum .requirements-tier__title{
+  color:var(--home-text-muted);
+}
+.requirements-tier.is-recommended .requirements-tier__title{
+  color:var(--home-cta-blue);
+}
+.requirements-tier.is-recommended .info-row{
+  border-color:rgba(59,130,246,.22);
+  background:rgba(59,130,246,.05);
+}
+.requirements-tier.is-recommended .info-row:hover{
+  border-color:rgba(59,130,246,.4);
+  background:rgba(59,130,246,.09);
+}
+.requirements-tier.is-recommended .info-row__label i{
+  color:var(--home-cta-blue);
+}
 .info-row{
   display:flex; flex-direction:column; gap:10px;
   background:var(--home-glass-fill);

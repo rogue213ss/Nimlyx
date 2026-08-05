@@ -731,19 +731,78 @@ main{ counter-reset: nimlyx-section; }
   }
   .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
 
-  /* Quick-search icon opens the SAME .home-nav-panel dropdown (no
-     second copy of the search markup, see the comment above) but
-     hides everything in it except .home-search -- so tapping the
-     search icon gets straight to a search box, not a full nav menu
-     with search buried at the bottom of it. The hamburger still opens
-     the full panel (nav links + search + region) exactly as before;
-     these two checkboxes are independent and don't affect each other. */
-  .home-search-checkbox:checked ~ .home-nav-panel{ display:flex; }
+  /* Quick-search icon reuses the SAME .home-nav-panel + .home-search
+     markup as the hamburger dropdown (no second copy, see the
+     comment above) but hides everything in it except .home-search --
+     so tapping the search icon gets straight to a search box, not a
+     full nav menu with search buried at the bottom of it. The
+     hamburger still opens the full panel (nav links + search +
+     region) exactly as before, unchanged, at .home-nav-checkbox --
+     these two checkboxes remain fully independent.
+
+     What changes below is HOW the search-only panel is presented.
+     It used to inherit .home-nav-panel's dropdown positioning
+     (position:absolute; top:100%), which drops a whole panel in
+     below the header and visibly shifts the page. The old header
+     itself (logo left, burger right) stays exactly as it always
+     was and is never hidden -- only the magnifying-glass icon
+     swaps out, in place, for an inline search bar that grows in
+     the same row between the logo and the burger. `order` (not
+     moving anything in the DOM) is used to slot the now-inline
+     .home-nav-panel between the icon's old spot and the burger. */
+  .home-logo{ order:1; }
+  .home-mobile-search-btn{ order:2; }
+  .home-nav-checkbox,
+  .home-nav-burger{ order:4; }
+
+  .home-search-checkbox:checked ~ .home-mobile-search-btn{ display:none; }
+
+  .home-search-checkbox:checked ~ .home-nav-panel{
+    display:flex;
+    order:3;
+    position:static;
+    flex-direction:row;
+    align-items:center;
+    flex:1; min-width:0;
+    margin:0 12px; padding:0; gap:0;
+    background:none; border-bottom:none;
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+    transform-origin:left center;
+    animation:home-search-morph-in .18s var(--home-ease);
+  }
   .home-search-checkbox:checked ~ .home-nav-panel .home-nav,
   .home-search-checkbox:checked ~ .home-nav-panel .region-picker,
   .home-search-checkbox:checked ~ .home-nav-panel > .home-btn-ghost{
     display:none;
   }
+  .home-search-checkbox:checked ~ .home-nav-panel .home-search{ width:100%; }
+
+  /* Close (X) control inside the expanded bar -- a second label
+     pointing at the same homeSearchToggle checkbox, so tapping it
+     just unchecks the box and collapses the bar back to the icon.
+     Hidden everywhere except this expanded state. */
+  .home-search-close-btn{ display:none; }
+  .home-search-checkbox:checked ~ .home-nav-panel .home-search-close-btn{
+    display:flex; align-items:center; justify-content:center;
+    width:28px; height:28px; margin-left:4px; flex-shrink:0;
+    color:var(--home-text-faint); cursor:pointer;
+  }
+
+  @keyframes home-search-morph-in{
+    from{ opacity:0; transform:scaleX(.9); }
+    to{ opacity:1; transform:scaleX(1); }
+  }
+
+  /* Collapsed-state spacing fix: .home-mobile-search-btn and
+     .home-nav-burger both carry margin-left:auto from the base
+     (non-mobile) rules above. In a single flex row, free space
+     splits evenly across every auto margin present, so each icon
+     got pushed apart from the other -- that's the empty gap between
+     them. Only the search icon's auto margin is kept (it pulls the
+     icon+burger pair together to the header's right edge); the
+     burger gets one fixed, comfortable gap instead of its own auto
+     push, so the two sit close but not cramped. */
+  .home-nav-burger{ margin-left:18px; }
 
   .home-nav{ flex-direction:column; gap:2px; }
   .home-nav a{ padding:10px 0; }
