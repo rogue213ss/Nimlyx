@@ -1,9 +1,10 @@
+import re
 import requests
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, jsonify, request
 
 from region import get_region_code
-from steam import get_appdetails, get_review_summary, clean_search_term, resolve_package_primary_app, build_purchase_options
+from steam import get_appdetails, get_review_summary, clean_search_term, build_purchase_options, fetch_search_by_term
 from formatters import format_price
 from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
@@ -51,146 +52,144 @@ def search_game(game_name):
 
 @game_bp.route("/api/search-results/<query>")
 def search_results(query):
-    """Sprint 3 (refined) — powers the SearchList results experience.
+    """Sprint 3 (refined) -- powers the SearchList results experience.
     GameGrid stays reserved for Discover; query-based Search results
     use this row layout instead (thumbnail left, details right) with
     a client-side filter sidebar (free/price/genre/platform).
 
-    Returns:
-      { "exact_match_app_id": <id or None>, "results": [SearchList rows] }
+    ARCHITECTURE NOTE (search backend switch): this used to call
+    Steam's storesearch JSON endpoint. That was replaced after
+    debugging confirmed, empirically (repeated identical &start= probes
+    against storesearch directly, at three different offsets, always
+    coming back with the exact same 10 app_ids in the exact same
+    order), that storesearch is a small, non-paginating autocomplete-
+    style endpoint -- fine for a search-bar dropdown, unusable for
+    "give me a whole franchise's real result set". This now uses
+    fetch_search_by_term() in steam.py, the same /search/results/ HTML
+    scrape fetch_discover_games() and fetch_games_by_credit() (Sprint 4
+    Phase 3's developer/publisher lookups) already share -- the
+    endpoint Steam's own search results PAGE itself pages through, so
+    &start= there genuinely does page.
 
-    exact_match_app_id is set only when a result's name matches the
-    query case-insensitively (punctuation/whitespace-normalized on
-    both sides) -- search.js uses this to skip the list entirely and
-    redirect straight to that game's page, same as Steam/Amazon/IMDb
-    search do for an obvious single answer.
+    A second, related simplification came for free with the switch:
+    Steam's own category1=998 (Games) filter + _is_genuine_app_row's
+    href check exclude DLC/software/soundtracks/bundles/packages at
+    the SOURCE, server-side, on Steam's end -- there's no longer a
+    client-side appdetails type-verification pass needed to catch a
+    same-named DLC/edition the way storesearch's ambiguous "app" type
+    required (that verification pass was also the origin of this
+    endpoint's earlier rate-limit problems on broad queries; it's gone
+    now, not just made more lenient).
+
+    Returns:
+      { "exact_match_app_id": <id or None>, "has_more": bool,
+        "next_offset": <int or None>, "results": [SearchList rows] }
+
+    exact_match_app_id is set only on the first page (offset==0) and
+    only when a result's name matches the query case-insensitively
+    (punctuation/whitespace-normalized on both sides) -- search.js
+    uses this to skip the list entirely and redirect straight to that
+    game's page, same as Steam/Amazon/IMDb search do for an obvious
+    single answer. Gated to offset==0 so a later "Load more" batch
+    matching by coincidence can't yank someone out of a list they're
+    deliberately browsing.
     """
     try:
         cc = get_region_code()
         term = clean_search_term(query)
-        url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        items = response.json().get("items", [])
 
-        # Confirmed root cause of the app_id=124923 bug: storesearch
-        # returns a mix of item types -- "app" for a real single game,
-        # "sub" for a Steam package (Complete/GOTY/Deluxe Edition,
-        # bundle, etc), and possibly others. A sub id lives in a
-        # completely different Steam ID namespace than an app id, so
-        # /api/appdetails (which only understands app ids) 404s on it.
-        #
-        # Rather than dropping every sub result, each one is resolved
-        # to the app_id of the actual game it contains -- see
-        # resolve_package_primary_app() in steam.py. Not hardcoded to
-        # any title: it asks Steam's own packagedetails endpoint what
-        # a package contains, then asks each included app's own
-        # appdetails what *type* it is to find the real game among
-        # any bundled DLC/soundtracks/etc.
-        def resolve_item(item):
-            steam_id = item.get("id")
-            steam_type = item.get("type")
-            if steam_type == "app":
-                return item, steam_id, steam_type, steam_id
-            if steam_type == "sub":
-                return item, resolve_package_primary_app(steam_id, cc), steam_type, steam_id
-            # Unknown/unhandled type (Steam does return a few other
-            # values in practice) -- nothing safe to link to.
-            return item, None, steam_type, steam_id
+        # offset is real Steam &start= now (see fetch_search_by_term) --
+        # the frontend's "Load more" control passes back whatever
+        # next_offset this endpoint returned last time, so a request
+        # continues exactly where the previous one left off.
+        offset = request.args.get("offset", default=0, type=int)
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            resolved_items = list(executor.map(resolve_item, items))
+        # One request pulls BATCH_SIZE candidates directly at the given
+        # offset -- genuine pagination, not a fixed-page cap papering
+        # over a non-paginating endpoint the way the old storesearch
+        # loop had to. A short batch (fewer than BATCH_SIZE rows) is
+        # Steam's own signal there's nothing further to fetch.
+        BATCH_SIZE = 30
+        games = fetch_search_by_term(term, start=offset, count=BATCH_SIZE, cc=cc)
+        has_more = len(games) == BATCH_SIZE
+        next_offset = offset + BATCH_SIZE if has_more else None
 
-        # Rows whose app_id couldn't be resolved (unresolvable
-        # package, or a type this app doesn't understand) have no
-        # honest destination inside Nimlyx and are dropped here,
-        # rather than passed through to fail on click.
-        resolved_items = [r for r in resolved_items if r[1] is not None]
-
-        normalized_query = clean_search_term(query).lower()
-
-        # Genres aren't in storesearch's payload at all -- only
-        # appdetails has them. Platforms ARE in storesearch already
-        # (item["platforms"]), so no live call needed for those.
-        # get_appdetails() is cached 10 min, so a repeat search for
-        # the same term/region costs nothing extra here. Keyed by the
-        # RESOLVED app_id now, not the raw storesearch id -- a sub's
-        # own id was never a valid appdetails lookup to begin with.
+        # Genre data isn't in this scrape's HTML (same acknowledged gap
+        # to_discover_card()/fetch_discover_games() already document for
+        # Discover's own cards) -- so it's fetched here, concurrently,
+        # purely to populate the Genre filter sidebar. Deliberately
+        # NOT a gate: unlike the old storesearch verification pass,
+        # nothing here can remove a result -- a failed/slow lookup just
+        # leaves that one row's genre pills empty. Bounded to whatever
+        # this one batch is (BATCH_SIZE, not a whole franchise), so this
+        # can't reintroduce the rate-limit pressure the old per-search
+        # verification pass caused.
         def fetch_genres(app_id):
             raw = get_appdetails(app_id, cc)
-            if raw is None:
-                return []
-            return [g["description"] for g in raw.get("genres", [])]
+            return [g["description"] for g in (raw or {}).get("genres", [])]
 
-        resolved_app_ids = [r[1] for r in resolved_items]
+        app_ids = [g.get("id") for g in games if g.get("id")]
         with ThreadPoolExecutor(max_workers=8) as executor:
-            genres_by_id = dict(zip(resolved_app_ids, executor.map(fetch_genres, resolved_app_ids)))
+            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
 
+        normalized_query = clean_search_term(query).lower()
         results = []
         exact_match_app_id = None
-        for item, app_id, steam_type, steam_id in resolved_items:
-            name = item.get("name", "")
-            price_overview = item.get("price", {}) or {}
-            platforms = item.get("platforms", {}) or {}
-            final_price_cents = price_overview.get("final")
 
-            # storesearch omits the "price" object ENTIRELY for free
-            # games -- it's not present with a final of 0, it's just
-            # absent. So final_price_cents is None here for a free
-            # game, not 0, and "final_price_cents == 0" never matched
-            # them: the Free filter silently excluded every genuinely
-            # free result. A missing price object is exactly what
-            # "free" looks like from this endpoint, so treat it the
-            # same as an explicit 0.
-            is_free = (not price_overview) or final_price_cents == 0
-            price_cents = 0 if is_free else final_price_cents
+        for g in games:
+            app_id = g.get("id")
+            name = g.get("name", "")
+
+            # final_price is a cents string ("0" for free) straight off
+            # the scrape -- see _scrape_search_results -- same unit
+            # format_price() already expects everywhere else in this file.
+            final_price = g.get("final_price")
+            is_free = final_price == "0"
+            price_cents = int(final_price) if final_price and final_price.isdigit() else 0
+
+            discount_raw = g.get("discount_percent") or ""
+            discount_digits = re.sub(r"[^\d]", "", discount_raw)
+            discount = int(discount_digits) if discount_digits else 0
 
             row = {
-                # app_id is always a real, navigable app id -- either
-                # storesearch's own "app"-type id, or a sub resolved
-                # to its primary game above. steam_type/steam_id
-                # preserve what Steam actually returned, for
-                # provenance/debugging -- a "sub" row's displayed
-                # name/price/image below are still the PACKAGE's own
-                # (that's genuinely what was searched for), only the
-                # navigation target is the resolved base game.
+                # steam_type/steam_id kept for shape-parity with the
+                # SearchList row contract (and the package_id-aware
+                # href branch in search_list.js) -- always "app" here
+                # now, since packages/bundles never reach this point at
+                # all (_is_genuine_app_row excludes them server-side-
+                # adjacent, before this loop ever sees them).
                 "app_id": app_id,
-                "steam_type": steam_type,
-                "steam_id": steam_id,
+                "steam_type": "app",
+                "steam_id": app_id,
                 "name": name,
-                "header_image": item.get("tiny_image"),
-                "short_description": None,  # not in storesearch; detail page has the full one
+                "header_image": g.get("image"),
+                "short_description": None,  # not in this scrape either -- detail page has the full one
                 "is_free": is_free,
-                "price": (
-                    "Free" if is_free
-                    else format_price(final_price_cents)
-                ),
+                "price": "Free" if is_free else format_price(price_cents),
                 "price_cents": price_cents,
-                "discount": price_overview.get("discount_percent", 0),
+                "discount": discount,
                 "genres": genres_by_id.get(app_id, []),
-                "platforms": {
-                    "windows": bool(platforms.get("windows")),
-                    "mac": bool(platforms.get("mac")),
-                    "linux": bool(platforms.get("linux")),
-                },
-                # storesearch has no review data -- left null rather
-                # than guessed; SearchList renders this row only when
-                # present.
-                "review_percentage": None,
+                "platforms": g.get("platforms") or {"windows": False, "mac": False, "linux": False},
+                # This scrape only has an aggregate review percentage,
+                # not a raw review count -- same limitation
+                # to_discover_card() already documents for Discover.
+                "review_percentage": g.get("review_percent"),
                 "review_count": None,
             }
             results.append(row)
 
-            if exact_match_app_id is None and clean_search_term(name).lower() == normalized_query:
+            if offset == 0 and exact_match_app_id is None and clean_search_term(name).lower() == normalized_query:
                 exact_match_app_id = app_id
 
         return jsonify({
             "exact_match_app_id": exact_match_app_id,
+            "has_more": has_more,
+            "next_offset": next_offset,
             "results": results,
         })
 
     except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e), "results": [], "exact_match_app_id": None}), 500
+        return jsonify({"error": str(e), "results": [], "exact_match_app_id": None, "has_more": False, "next_offset": None}), 500
 
 
 @game_bp.route("/api/game-detail/<app_id>")
@@ -222,20 +221,33 @@ def game_detail_by_id(app_id):
 
 @game_bp.route("/api/find/<game_name>")
 def find_game(game_name):
-    """Legacy name-based resolution -- still used by /search?q=. Finds
-    the best-matching app_id via storesearch, then delegates to the
-    exact same build_game_detail() used by the app_id route, so both
-    paths always return identical shapes."""
+    """Legacy name-based resolution. Not currently called by any
+    frontend JS (search.js uses /api/search-results -> app_id-based
+    /search?app_id= instead) but still routed, so it stays aligned
+    with search_results()'s current rule: subs (packages) are never
+    a search/find target -- see the triage comment in search_results()
+    -- and a failed appdetails verification is an unknown state, kept
+    rather than treated as disqualifying, so a single Steam rate-limit
+    blip can't make an otherwise-real game unfindable here either."""
     cc = get_region_code()
     term = clean_search_term(game_name)
 
     search_url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
     search_data = requests.get(search_url).json()
 
-    if not search_data.get("items"):
-        return jsonify({"error": "No game found"}), 404
+    for item in search_data.get("items", []):
+        if item.get("type") != "app":
+            continue  # subs (packages) excluded -- see search_results()
+        candidate_id = item.get("id")
 
-    app_id = search_data["items"][0]["id"]
+        raw = get_appdetails(candidate_id, cc)
+        # Fail open: raw is None means "couldn't verify", not
+        # "confirmed not a game" -- same reasoning as search_results().
+        if raw is None or raw.get("type") == "game":
+            app_id = candidate_id
+            break
+    else:
+        return jsonify({"error": "No game found"}), 404
 
     clean_data = build_game_detail(app_id, cc)
     if clean_data is None:
@@ -285,47 +297,23 @@ def build_game_detail(app_id, cc):
     if raw is None:
         return None
 
-    # Real review counts (positive/negative split) for the Wilson
-    # score — a different, more precise source than appdetails' own
-    # `recommendations.total`, which is just a single aggregate number
-    # with no positive/negative breakdown. filter=summary only (no
-    # review text), same restraint as everywhere else this project
-    # touches review data.
-    review_summary = get_review_summary(app_id, cc)
-    nimlyx_score = None
-    if review_summary:
-        nimlyx_score = compute_nimlyx_score(
-            total_positive=review_summary["total_positive"],
-            total_reviews=review_summary["total_reviews"],
-        )
-
-    # Reuses `review_summary` (already fetched above) as the all-time
-    # side of the comparison — only the "recent" bucket needs a
-    # second live call. Returns None whenever there isn't enough
-    # evidence for an honest trend claim; the frontend must not
-    # render a Reputation Trajectory section when this is None.
-    reputation_trajectory = compute_trajectory(app_id, cc, overall_summary=review_summary)
-
+    # ---- Performance: everything below this point used to run
+    # sequentially on the main thread -- review_summary, trajectory,
+    # community pulse, tag honesty, spotlight reviews (itself 2 more
+    # sequential calls) -- SIX-plus chained Steam round-trips stacked
+    # up before the one already-parallel dev/pub step even started.
+    # None of these actually depend on each other except within the
+    # two pairs noted below, so they're grouped into independent
+    # units and run concurrently instead. This is a pure wall-clock
+    # win -- same calls, same data, same caching, just not queued one
+    # behind another.
+    #
     # Steam's "categories" field (Multiplayer, Online Co-op, MMO, etc.)
     # is what a store page's tag claims actually look like, not
-    # "genres" (Action, RPG). Tag Honesty checks against these.
+    # "genres" (Action, RPG). Tag Honesty checks against these -- pure
+    # in-memory work on `raw` already fetched, no Steam call of its own.
     game_categories = [c.get("description") for c in raw.get("categories", []) if c.get("description")]
 
-    community_pulse = compute_pulse(app_id, cc)
-    tag_honesty = compute_tag_honesty(app_id, game_categories, cc)
-
-    # Sections 5 & 6 of Nimlyx Analysis — one real, most-helpful
-    # review per direction, straight from Steam. See
-    # services/analysis/spotlight_reviews.py.
-    spotlight_reviews = compute_spotlight_reviews(app_id, cc)
-
-    # Sprint 4 Phase 3 -- "More From Developer" / "More From Publisher".
-    # Two independent Steam search-scrape calls, so they run in
-    # parallel rather than one after the other -- same reasoning as
-    # every other concurrent lookup in this codebase (Discover's
-    # per-card price enrichment, etc). Both are skipped entirely (no
-    # Steam call at all) when this game has no developer/publisher
-    # credit to search by.
     developers = raw.get("developers", [])
     publishers = raw.get("publishers", [])
     # Self-published titles credit the same name as both developer and
@@ -335,14 +323,55 @@ def build_game_detail(app_id, cc):
     # developer.
     same_credit = bool(developers) and bool(publishers) and developers[0].strip().lower() == publishers[0].strip().lower()
 
-    with ThreadPoolExecutor(max_workers=2) as credit_executor:
-        dev_future = credit_executor.submit(get_developer_games, developers, app_id, cc)
+    def _fetch_review_summary_and_trajectory():
+        # Kept together, sequential: compute_trajectory needs
+        # review_summary's result as its all-time comparison side
+        # (reusing it, not re-fetching), so this pair has a real
+        # dependency the other groups below don't.
+        summary = get_review_summary(app_id, cc)
+        trajectory = compute_trajectory(app_id, cc, overall_summary=summary)
+        return summary, trajectory
+
+    def _fetch_pulse_and_honesty():
+        # Kept together, sequential ON PURPOSE (not just left alone):
+        # both call get_review_texts(app_id, cc) with identical
+        # params, which land on the SAME 600s cache entry (see
+        # steam.get_review_texts). Sequential here means the second
+        # call is a guaranteed cache hit -- one real network call
+        # instead of two. Running these two against EACH OTHER
+        # concurrently would race both onto a cold cache and could
+        # cause the exact duplicate live call this grouping avoids;
+        # they only run concurrently relative to the OTHER groups
+        # below, which don't share any cache key with these.
+        pulse = compute_pulse(app_id, cc)
+        honesty = compute_tag_honesty(app_id, game_categories, cc)
+        return pulse, honesty
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        summary_trajectory_future = executor.submit(_fetch_review_summary_and_trajectory)
+        pulse_honesty_future = executor.submit(_fetch_pulse_and_honesty)
+        # Spotlight's own 2 calls (positive/negative helpful review)
+        # are genuinely independent of each other too -- see
+        # spotlight_reviews.py's own internal parallelization below.
+        spotlight_future = executor.submit(compute_spotlight_reviews, app_id, cc)
+        dev_future = executor.submit(get_developer_games, developers, app_id, cc)
         pub_future = (
-            credit_executor.submit(get_publisher_games, publishers, app_id, cc)
+            executor.submit(get_publisher_games, publishers, app_id, cc)
             if not same_credit else None
         )
+
+        review_summary, reputation_trajectory = summary_trajectory_future.result()
+        community_pulse, tag_honesty = pulse_honesty_future.result()
+        spotlight_reviews = spotlight_future.result()
         developer_games = dev_future.result()
         publisher_games = pub_future.result() if pub_future else []
+
+    nimlyx_score = None
+    if review_summary:
+        nimlyx_score = compute_nimlyx_score(
+            total_positive=review_summary["total_positive"],
+            total_reviews=review_summary["total_reviews"],
+        )
 
     # Purchase Options -- "which version should I buy?" -- built
     # straight from this same appdetails response's package_groups

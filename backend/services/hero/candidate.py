@@ -99,7 +99,19 @@ class HeroCandidate:
             "image": self._guaranteed_image(),
             "image_candidates": self._image_candidates(),
             "price": price,
-            "url": f"/search?q={self.name}",
+            # Root-cause fix: self.app_id is already a confirmed,
+            # resolved Steam app_id by the time a candidate reaches
+            # this dict (that's the whole point of the pool/enrichment
+            # pipeline) -- building this link from the game's NAME
+            # instead threw that away and forced every homepage card
+            # (hero, Nimlyx Picks) back through name-based search
+            # resolution on click. That's what let a same-named
+            # DLC/edition win the exact-match lookup and hijack the
+            # click instead of the real game (see routes/game.py
+            # search_results()'s type filtering fix for the other half
+            # of this bug). Once Nimlyx has an app_id, that id is the
+            # source of truth -- it must never be re-resolved by name.
+            "url": f"/search?app_id={self.app_id}",
         }
 
     def to_manifest_dict(self):

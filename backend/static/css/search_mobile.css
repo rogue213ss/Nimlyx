@@ -63,6 +63,30 @@
   .thumb{ width:110px; height:64px; }
   .strip-nav{ display:none; }
 
+  /* Desktop's 84px play button (search.css) is tuned against the
+     desktop-width .featured-shot -- at phone widths it dominates the
+     trailer instead of reading as a control. This file is the
+     correct place for the override: it's the only stylesheet that
+     loads AFTER search.css (see <link> order in search.html), so at
+     equal specificity it's guaranteed to win the cascade regardless
+     of media query -- a same override placed in style_mobile.css
+     (loads before search.css) loses that tie every time. The
+     #id + .class selector is extra insurance on top of load order,
+     in case this file's position in search.html ever changes.
+
+     ~46% of the 84px desktop size -- small enough to read as a
+     subtle control, not so small it drops below a comfortable touch
+     target. Icon size, the play-glyph nudge, and the glow's blur/
+     spread are all scaled down in proportion so it still looks like
+     the same button, just smaller, rather than a different design. */
+  #featuredPlayOverlay.featured-play-overlay{
+    width:40px; height:40px;
+    font-size:.8rem;
+    padding-left:3px;
+    border-width:1.5px;
+    box-shadow:0 0 12px 1px rgba(59,130,246,.55), 0 2px 8px rgba(0,0,0,.4);
+  }
+
   .stats-grid{ grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); }
 
   /* Purchase Options: name/tags/included on their own line, price +

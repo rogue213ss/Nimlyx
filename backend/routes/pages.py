@@ -249,7 +249,10 @@ def home():
                     "name": g.get("name"),
                     "header_image": hero_image_url(g.get("id"), g.get("image")),
                     "image_candidates": build_image_candidates(g.get("id")),
-                    "analyze_url": f"/search?q={g.get('name', '')}",
+                    # Same fix as HeroCandidate._build_base_dict -- g["id"]
+                    # is Steam's own top-sellers app_id, already right
+                    # here; don't discard it for a name-based re-lookup.
+                    "analyze_url": f"/search?app_id={g.get('id')}",
                     "insight": "",
                     "why_it_matters": "",
                 }
@@ -268,7 +271,9 @@ def home():
                 "name": g.get("name"),
                 "header_image": hero_image_url(g.get("id"), g.get("image")),
                 "image_candidates": build_image_candidates(g.get("id")),
-                "analyze_url": f"/search?q={g.get('name', '')}",
+                # Same fix as HeroCandidate._build_base_dict -- link by
+                # the app_id Steam's top-sellers list already gave us.
+                "analyze_url": f"/search?app_id={g.get('id')}",
                 "rank": i + 1,
                 "price": format_price(g.get("final_price")),
             }
@@ -296,7 +301,10 @@ def home():
                 "name": g["name"],
                 "header_image": g["image"],
                 "image_candidates": build_image_candidates(g["id"]),
-                "analyze_url": f"/search?q={g['name']}",
+                # Same fix as HeroCandidate._build_base_dict -- g["id"]
+                # is already the verified app_id fetch_verified_new_releases
+                # confirmed the release date against; link straight to it.
+                "analyze_url": f"/search?app_id={g['id']}",
                 "recency_label": g["recency_label"],
                 # No invented "Free" or placeholder price when Steam
                 # simply didn't return price data for this region.

@@ -63,13 +63,13 @@
   .thumb{ width:110px; height:64px; }
   .strip-nav{ display:none; }
 
-  /* The 84px play button and error-state icon/text sizes were tuned
-     against the desktop-width .featured-shot (which stays at a wide
-     16:9 aspect ratio down to fairly narrow viewports since it's just
-     width:100% of its column). Shrinking here keeps the button from
-     dominating the video at phone widths the same way the fullscreen
-     button and thumb strip are already scaled down on this page. */
-  .featured-play-overlay{ width:64px; height:64px; font-size:1.3rem; }
+  /* Play-button sizing lives in search_mobile.css, not here -- this
+     file loads BEFORE search.css (see link order in search.html), so
+     a same-specificity override placed in this file loses the
+     cascade tie to search.css's unconditional desktop rule no matter
+     what the media query says. search_mobile.css loads after
+     search.css, which is the only place in the load order that can
+     actually beat it. */
   .featured-media-error{ padding:16px; gap:8px; }
   .featured-media-error i{ font-size:1.3rem; }
   .featured-media-error p{ font-size:.85rem; }

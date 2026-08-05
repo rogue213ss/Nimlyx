@@ -14,6 +14,9 @@
        container: document.getElementById("searchListRows"),
        sidebar: document.getElementById("searchFilterSidebar"),
        rows: data.results,   // from /api/search-results/<query>
+       hasMore: data.has_more,
+       nextOffset: data.next_offset,
+       fetchMore: async (offset) => { ... return {results, has_more, next_offset} ... },
      });
 ========================================================== */
 
@@ -24,6 +27,15 @@ const SearchList = (function () {
 
     let allRows = [];
     let containerEl = null;
+    let seenAppIds = new Set();
+
+    // Load-more state -- undefined fetchMore (old call sites that
+    // don't pass it) just means the button never renders, so this is
+    // backward compatible with any other future caller of initSearchList.
+    let hasMoreState = false;
+    let nextOffsetState = null;
+    let fetchMoreFn = null;
+    let loadingMore = false;
 
     /* ------------------------------------------------------------
        FILTER STATE
@@ -126,6 +138,47 @@ const SearchList = (function () {
         // "Open in new tab", middle-click, and Ctrl/Cmd-click all work
         // as native browser link behavior -- nothing to wire up here.
         containerEl.innerHTML = filtered.map(rowHtml).join("");
+
+        // "Load more" only makes sense when the visible list isn't
+        // already being narrowed by a filter -- Steam has more pages
+        // of the RAW search to fetch, not more matches for whatever
+        // genre/price/platform filter is currently active. Filtering
+        // stays entirely client-side over whatever's already been
+        // fetched, same as before this feature existed.
+        const noFilterActive = filtered.length === allRows.length;
+        if (hasMoreState && fetchMoreFn && noFilterActive) {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "search-list-load-more";
+            btn.textContent = loadingMore ? "Loading…" : "Load more results";
+            btn.disabled = loadingMore;
+            btn.addEventListener("click", handleLoadMore);
+            containerEl.appendChild(btn);
+        }
+    }
+
+    async function handleLoadMore() {
+        if (loadingMore || !fetchMoreFn || nextOffsetState == null) return;
+        loadingMore = true;
+        renderRows(); // swap the button to its disabled "Loading…" state
+
+        try {
+            const data = await fetchMoreFn(nextOffsetState);
+            const newRows = (data.results || []).filter(row => !seenAppIds.has(row.app_id));
+            newRows.forEach(row => seenAppIds.add(row.app_id));
+            allRows = allRows.concat(newRows);
+
+            hasMoreState = Boolean(data.has_more);
+            nextOffsetState = data.next_offset ?? null;
+
+            if (chipsContainerEl) buildFilterGroups(); // pick up any new genres from the appended rows
+        } catch (error) {
+            console.error("Error loading more search results:", error);
+            hasMoreState = false; // don't leave a dead "Load more" button behind on failure
+        } finally {
+            loadingMore = false;
+            renderRows();
+        }
     }
 
     /* ------------------------------------------------------------
@@ -398,9 +451,14 @@ const SearchList = (function () {
     /* ------------------------------------------------------------
        PUBLIC INIT
     ------------------------------------------------------------ */
-    function init({ container, sidebar, rows }) {
+    function init({ container, sidebar, rows, hasMore, nextOffset, fetchMore }) {
         containerEl = container;
         allRows = rows || [];
+        seenAppIds = new Set(allRows.map(r => r.app_id));
+        hasMoreState = Boolean(hasMore);
+        nextOffsetState = nextOffset ?? null;
+        fetchMoreFn = fetchMore || null;
+        loadingMore = false;
 
         filterState.freeOnly = false;
         filterState.maxPrice = null;

@@ -128,7 +128,24 @@ function searchGame(name) {
     function openGameSearch() {
         const game = heroGames[heroIndex];
         if (!game) return;
-        window.location.href = `/search?q=${encodeURIComponent(game.name)}`;
+        // Root-cause fix: /api/featured already gives us this game's
+        // real Steam app_id (see routes/browse.py's featured_games_api
+        // -- hero entries come straight off Steam's own top_sellers
+        // list, always a genuine "app", never a DLC/sub). Routing
+        // through /search?q=<name> instead of using that id directly
+        // threw away a known-good app_id and forced a fresh name-based
+        // resolution, which is exactly the path that can land on a
+        // same-named DLC/edition instead of the base game (see
+        // /api/search-results's type filtering fix). Once Nimlyx has
+        // an app_id, that id is the source of truth -- never
+        // re-resolve it by name.
+        if (game.appid) {
+            window.location.href = `/search?app_id=${encodeURIComponent(game.appid)}`;
+        } else {
+            // Defensive fallback only -- shouldn't happen given the
+            // shape /api/featured returns, but better than a dead click.
+            window.location.href = `/search?q=${encodeURIComponent(game.name)}`;
+        }
     }
 
     initHero();

@@ -369,6 +369,23 @@ def _scrape_search_results(params, cc):
 
         discount_span = row.find("div", class_="discount_pct")
         discount_percent = discount_span.text.strip() if discount_span else None
+
+        # Platform icons -- Steam marks each supported OS with its own
+        # <span class="platform_img win/mac/linux"> inside the row.
+        # Not previously extracted here (Discover/credit-games callers
+        # never needed it -- their cards don't show platform icons),
+        # generalized in now that a caller (search) does. Best-effort:
+        # if Steam's markup for this ever differs from what's assumed
+        # here, this just quietly yields no icons for a row rather than
+        # breaking anything -- nothing downstream depends on it being
+        # present.
+        platform_icons = row.find_all("span", class_="platform_img")
+        platforms = {
+            "windows": any("win" in (icon.get("class") or []) for icon in platform_icons),
+            "mac": any("mac" in (icon.get("class") or []) for icon in platform_icons),
+            "linux": any("linux" in (icon.get("class") or []) for icon in platform_icons),
+        }
+
         games.append({
             "id": app_id,
             "name": name,
@@ -378,6 +395,7 @@ def _scrape_search_results(params, cc):
             "original_price": original_price,
             "discount_percent": discount_percent,
             "review_percent": parse_review_percent(row),
+            "platforms": platforms,
         })
 
     return games
@@ -482,6 +500,47 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
     if exclude_app_id:
         games = [g for g in games if g.get("id") != str(exclude_app_id)]
     return games[:count]
+
+
+def fetch_search_by_term(term, start=0, count=30, cc="US"):
+    """Search's backend, replacing storesearch (see the /api/search-
+    results docstring in routes/game.py for the full history -- in
+    short: storesearch was confirmed, empirically, to ignore &start=
+    entirely and just re-serve the same top-10 relevance set no
+    matter the offset, so a broad franchise search could never see
+    past it). Same /search/results/ HTML scrape fetch_discover_games
+    and fetch_games_by_credit already use, just driven by Steam's own
+    free-text `term=` facet instead of tags/developer/publisher.
+
+    category1=998 (Games only) is Steam's own server-side filter --
+    DLC/soundtracks/software never come back in the response at all,
+    and _is_genuine_app_row (see its docstring) already excludes
+    bundle/package rows via their /bundle//sub/ href. Neither needs a
+    client-side appdetails type-verification call the way
+    storesearch's ambiguous "app" type (real game OR same-shaped DLC)
+    did -- that whole verification pass, and the rate-limit pressure
+    it put on broad queries, goes away with it.
+
+    start/count are real Steam pagination on this endpoint -- unlike
+    storesearch, /search/results/ is the endpoint Steam's own search
+    results PAGE uses to page through results, so different start
+    values genuinely return different games."""
+    cache_key = ("term_search", term, start, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=120)
+    if cached is not None:
+        return cached
+
+    params = {
+        "term": term,
+        "start": start,
+        "count": count,
+        "category1": 998,
+        "cc": cc,
+        "l": "english",
+    }
+    games = _scrape_search_results(params, cc)
+    _cache_set(cache_key, games)
+    return games
 
 
 def fetch_authoritative_price(app_id, cc="US"):
@@ -1276,8 +1335,26 @@ def get_appdetails(app_id, cc):
 
 
 def clean_search_term(name):
-    # Strip punctuation that breaks Steam's storesearch matching,
-    # collapse whitespace
-    cleaned = re.sub(r"[^\w\s]", " ", name)
+    # An apostrophe (straight ' or curly ') inside a word is a
+    # contraction/possessive, not a word boundary -- plenty of real
+    # Steam titles have one (Assassin's Creed, Tom Clancy's..., Marvel's
+    # Spider-Man). Deleting it outright keeps the word glued together
+    # ("Assassins Creed") so storesearch matches the intact word.
+    #
+    # This used to fall through to the generic punctuation-strip below,
+    # which replaces punctuation with a SPACE -- turning "Assassin's"
+    # into "Assassin" + a stray one-letter "s" token. That extra noise
+    # token was diluting storesearch's own relevance ranking enough
+    # that most mainline Assassin's Creed titles fell out of its
+    # returned result set entirely (nothing downstream -- exact-match,
+    # type filtering, etc -- can recover a title Steam's own search
+    # never returned in the first place). Titles without an apostrophe
+    # (Witcher, Cyberpunk, Fallout) were never affected by this, which
+    # is why the bug looked Assassin's-Creed-specific even though the
+    # underlying defect wasn't.
+    cleaned = re.sub(r"[’']", "", name)
+    # Remaining punctuation (colons, hyphens, etc.) still becomes a
+    # space -- those genuinely do separate meaningful words for search.
+    cleaned = re.sub(r"[^\w\s]", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned

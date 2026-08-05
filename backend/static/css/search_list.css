@@ -64,6 +64,31 @@
     font-family: var(--home-font-body);
 }
 
+.search-list-load-more {
+    align-self: center;
+    margin-top: 6px;
+    padding: 10px 22px;
+    background: var(--home-bg-card);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-lg);
+    color: inherit;
+    font: inherit;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: border-color .18s var(--home-ease), transform .18s var(--home-ease);
+}
+
+.search-list-load-more:hover:not(:disabled),
+.search-list-load-more:focus-visible:not(:disabled) {
+    border-color: var(--home-glass-border-strong);
+    transform: translateX(2px);
+}
+
+.search-list-load-more:disabled {
+    opacity: .6;
+    cursor: default;
+}
+
 .search-list-row {
     display: flex;
     align-items: center;

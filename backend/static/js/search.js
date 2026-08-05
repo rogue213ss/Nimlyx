@@ -174,7 +174,7 @@ async function fetchSuggestions(query) {
             : "N/A";
 
         item.innerHTML = `
-            <img src="${game.tiny_image}" alt="${game.name}">
+            <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
             <div class="suggestion-info">
                 <span class="suggestion-name">${game.name}</span>
                 <span class="suggestion-dev">${priceText}</span>
@@ -294,6 +294,16 @@ async function loadGameByQuery(query) {
             container: searchListRows,
             sidebar: searchFilterSidebar,
             rows: data.results,
+            hasMore: data.has_more,
+            nextOffset: data.next_offset,
+            // SearchList doesn't own fetch/query-string details --
+            // it just calls this when "Load more" is clicked and
+            // expects the same {results, has_more, next_offset} shape
+            // this endpoint already returns for the first page.
+            fetchMore: async (offset) => {
+                const res = await fetch(`/api/search-results/${encodeURIComponent(query)}?offset=${offset}`);
+                return res.json();
+            },
         });
     } catch (error) {
         console.error("Error loading search results:", error);
@@ -734,13 +744,32 @@ function renderMedia(game) {
         return `
         <button class="thumb ${isVideo ? "thumb--video" : ""} ${i === initialIndex ? "is-active" : ""}"
                 data-index="${i}" aria-label="${label}" title="${label}">
-            <img src="${isVideo ? item.movie.thumbnail : item.url}" alt="">
+            <img src="${isVideo ? item.movie.thumbnail : item.url}" alt="" loading="lazy">
             ${isVideo ? '<span class="thumb-play"><i class="fa-solid fa-play"></i></span>' : ""}
         </button>
     `;
     }).join("");
 
-    thumbStrip.addEventListener("click", (e) => {
+    // Duplicate-listener guard: renderMedia() rebuilds thumbStrip's
+    // innerHTML above (so its CHILD .thumb buttons never carry stale
+    // listeners), but thumbStrip/stripPrev/stripNext/watchBtn
+    // themselves are the same persistent DOM nodes across any repeat
+    // renderMedia() call, and innerHTML replacement doesn't touch
+    // listeners already attached to the container/buttons themselves.
+    // Same class of bug already fixed elsewhere in this file (see the
+    // screenshot lightbox / tap-to-toggle "wired exactly once"
+    // comments below) -- this is the one site that pattern was never
+    // applied to. Cloning-and-replacing right before each attachment
+    // strips any listener from a prior call in one line, without
+    // touching the closures below (showFeaturedMedia, mediaItems,
+    // etc. keep working exactly as they already do) -- not currently
+    // reachable under today's all-full-page-reload navigation, but
+    // matches this file's own established convention rather than
+    // leaving the one site it was missed.
+    const freshThumbStrip = thumbStrip.cloneNode(true);
+    thumbStrip.replaceWith(freshThumbStrip);
+
+    freshThumbStrip.addEventListener("click", (e) => {
         const btn = e.target.closest(".thumb");
         if (!btn) return;
         const index = Number(btn.dataset.index);
@@ -753,17 +782,24 @@ function renderMedia(game) {
             featuredImg.style.animation = "";
         }
 
-        thumbStrip.querySelectorAll(".thumb").forEach(t => t.classList.remove("is-active"));
+        freshThumbStrip.querySelectorAll(".thumb").forEach(t => t.classList.remove("is-active"));
         btn.classList.add("is-active");
     });
 
-    document.getElementById("stripPrev").addEventListener("click", () => thumbStrip.scrollBy({ left: -320, behavior: "smooth" }));
-    document.getElementById("stripNext").addEventListener("click", () => thumbStrip.scrollBy({ left: 320, behavior: "smooth" }));
+    const freshStripPrev = document.getElementById("stripPrev").cloneNode(true);
+    document.getElementById("stripPrev").replaceWith(freshStripPrev);
+    freshStripPrev.addEventListener("click", () => freshThumbStrip.scrollBy({ left: -320, behavior: "smooth" }));
 
-    const watchBtn = document.getElementById("watchTrailerBtn");
-    if (watchBtn) {
-        watchBtn.style.display = movies.length > 0 ? "" : "none";
-        watchBtn.addEventListener("click", () => {
+    const freshStripNext = document.getElementById("stripNext").cloneNode(true);
+    document.getElementById("stripNext").replaceWith(freshStripNext);
+    freshStripNext.addEventListener("click", () => freshThumbStrip.scrollBy({ left: 320, behavior: "smooth" }));
+
+    const watchBtnEl = document.getElementById("watchTrailerBtn");
+    if (watchBtnEl) {
+        const freshWatchBtn = watchBtnEl.cloneNode(true);
+        watchBtnEl.replaceWith(freshWatchBtn);
+        freshWatchBtn.style.display = movies.length > 0 ? "" : "none";
+        freshWatchBtn.addEventListener("click", () => {
             document.getElementById("mediaSection").scrollIntoView({ behavior: "smooth", block: "center" });
         });
     }
@@ -776,10 +812,14 @@ function renderMedia(game) {
    clicking the screenshot itself did nothing).
 
    Wired exactly ONCE, at script load, rather than inside renderMedia().
-   renderMedia() only ever replaces #thumbStrip's innerHTML; #featuredImg
-   and the expand button are the same DOM nodes for the lifetime of the
-   page, so binding here can't produce duplicate listeners on repeated
-   renders, and doesn't need to be re-run when renderMedia() runs again.
+   #featuredImg and the expand button are the same DOM nodes for the
+   lifetime of the page, so binding here can't produce duplicate
+   listeners on repeated renders, and doesn't need to be re-run when
+   renderMedia() runs again. (#thumbStrip itself now clones-and-
+   replaces its own node on each renderMedia() call specifically so
+   ITS listeners can't duplicate either -- see the comment at that
+   call site -- but #featuredImg/the expand button never needed that,
+   since they're never rebuilt.)
    The expand button now branches on which media is actually showing:
    screenshot -> lightbox, trailer -> fullscreen the video itself. It
    used to always open the lightbox and silently no-op on video (the
@@ -1008,6 +1048,44 @@ function initFeaturedPlayOverlay() {
     if (featuredImg) {
         featuredImg.addEventListener("load", () => {
             if (featuredVideo.style.display === "none") hide();
+        });
+    }
+
+    // Mobile tap-to-toggle: native <video controls> puts play/pause
+    // behind a small icon in the control bar -- fine with a mouse
+    // pointer, fiddly on a phone-sized trailer. pointer:coarse gated
+    // so this is additive on touch devices only and desktop's existing
+    // behavior (overlay click / native controls) is untouched.
+    // Bound once here alongside the rest of this function, so it can't
+    // double up across trailer switches for the same reason the
+    // overlay listeners above can't -- #featuredVideo is one DOM node
+    // for the page's lifetime, renderMedia()/showFeaturedMedia() only
+    // ever swap what's loaded into it.
+    //
+    // "pointerup" instead of "click" deliberately -- on several mobile
+    // browsers, the FIRST tap on a <video controls> element only
+    // reveals the (auto-hidden) native control bar and doesn't
+    // dispatch a click at all, so a click-only listener can silently
+    // eat the first tap every time controls have faded out. pointerup
+    // fires on that same first tap.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+        featuredVideo.addEventListener("pointerup", (e) => {
+            if (e.pointerType === "mouse") return; // desktop stays click/overlay-only
+
+            // The native control bar lives inside this same element,
+            // so a tap on it also reaches this listener. Ignore taps
+            // in that bottom strip and let the native controls handle
+            // themselves -- only a tap on the open video canvas above
+            // it should trigger our own toggle.
+            const rect = featuredVideo.getBoundingClientRect();
+            const NATIVE_CONTROLS_BAR_HEIGHT = 44;
+            if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
+
+            if (featuredVideo.paused) {
+                featuredVideo.play().catch(() => {});
+            } else {
+                featuredVideo.pause();
+            }
         });
     }
 }

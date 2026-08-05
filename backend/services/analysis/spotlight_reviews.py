@@ -17,6 +17,8 @@ hide that side of the spotlight rather than render an empty quote
 block or invent one.
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 from steam import get_top_helpful_review
 from formatters import trim_review_quote
 
@@ -27,9 +29,17 @@ def compute_spotlight_reviews(app_id, cc="US"):
     Each present side is a dict with:
       - quote: the trimmed, real review text
       - votes_up: how many players found it helpful (Steam's own count)
+
+    The positive/negative lookups are two independent Steam calls
+    (see get_top_helpful_review) with no shared state -- run
+    concurrently rather than one after the other, same reasoning as
+    every other independent-calls grouping in this codebase.
     """
-    positive = get_top_helpful_review(app_id, cc, voted_up=True)
-    negative = get_top_helpful_review(app_id, cc, voted_up=False)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        positive_future = executor.submit(get_top_helpful_review, app_id, cc, True)
+        negative_future = executor.submit(get_top_helpful_review, app_id, cc, False)
+        positive = positive_future.result()
+        negative = negative_future.result()
 
     def shape(review):
         if not review or not review.get("text"):
