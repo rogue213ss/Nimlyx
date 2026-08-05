@@ -203,6 +203,55 @@
     </div>
 </div>
 
+<!-- Skeleton loaders -- shown the instant loadGame() knows which
+     path it's about to fetch (app_id -> detail skeleton, free-text
+     query -> results-list skeleton), before the request even goes
+     out, and hidden the moment the real view takes over (or the
+     error state does). Deliberately shaped like each view's actual
+     final layout (hero block, panel blocks / row blocks) rather than
+     a generic spinner, so the swap from skeleton -> real content
+     doesn't jump the page around. Bare /search has no fetch blocking
+     its first paint (showLandingView() runs synchronously), so it
+     never shows either of these -- homepage-style instant loads stay
+     untouched, per "don't interfere with home page". Shimmer
+     animation + shapes defined in search.css under SKELETON LOADERS. -->
+<div class="page is-hidden" id="gameDetailSkeleton">
+    <section class="skeleton-hero">
+        <div class="skeleton-hero__panel">
+            <div class="skeleton-line skeleton-line--sm" style="width:120px;"></div>
+            <div class="skeleton-line skeleton-line--lg" style="width:60%;"></div>
+            <div class="skeleton-line skeleton-line--sm" style="width:40%;"></div>
+        </div>
+    </section>
+    <div class="panel">
+        <div class="skeleton-line skeleton-line--sm" style="width:100px; margin-bottom:20px;"></div>
+        <div class="skeleton-line" style="width:100%;"></div>
+        <div class="skeleton-line" style="width:90%;"></div>
+        <div class="skeleton-line" style="width:75%;"></div>
+    </div>
+    <div class="panel">
+        <div class="skeleton-line skeleton-line--sm" style="width:100px; margin-bottom:20px;"></div>
+        <div class="skeleton-media-row">
+            <div class="skeleton-block skeleton-block--media"></div>
+        </div>
+        <div class="skeleton-media-row">
+            <div class="skeleton-block skeleton-block--thumb"></div>
+            <div class="skeleton-block skeleton-block--thumb"></div>
+            <div class="skeleton-block skeleton-block--thumb"></div>
+        </div>
+    </div>
+</div>
+
+<div class="page is-hidden" id="searchResultsSkeleton">
+    <div class="skeleton-line skeleton-line--sm" style="width:80px; margin-bottom:18px;"></div>
+    <div class="skeleton-line skeleton-line--lg" style="width:280px; margin-bottom:28px;"></div>
+    <div class="skeleton-search-row"></div>
+    <div class="skeleton-search-row"></div>
+    <div class="skeleton-search-row"></div>
+    <div class="skeleton-search-row"></div>
+    <div class="skeleton-search-row"></div>
+</div>
+
 <!-- Hidden by default (same convention as #searchResultsView /
      #searchLandingView above) -- loadGame() in search.js is now the
      single source of truth for which of the three views is visible.
@@ -212,6 +261,7 @@
      shown at all -- that was the actual "empty main content" bug;
      showLandingView() now covers that case explicitly. -->
 <div id="gameDetailView" class="is-hidden">
+
 
 <!-- ================= HERO ================= -->
 <!-- NOTE ON "poster": search.js only ever sets .src on ONE image

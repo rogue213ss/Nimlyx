@@ -1078,3 +1078,71 @@
   font-size:.85rem; padding:8px 16px;
   white-space:nowrap;
 }
+/* ================================================================
+   SKELETON LOADERS
+   Shown by loadGame() the instant it knows which fetch is about to
+   go out (before the request itself starts), hidden the moment the
+   real view or error state takes over. Shaped to roughly match each
+   view's real layout (hero block + panel blocks for game-detail; row
+   blocks for search results) so the swap-in doesn't cause layout
+   jump. Built from a single shimmer animation reused across every
+   shape below, same "one texture, many blocks" idea as the rest of
+   this file's shared .panel/.trending-card components.
+   ================================================================ */
+@keyframes skeleton-shimmer{
+  0%{ background-position:-200% 0; }
+  100%{ background-position:200% 0; }
+}
+.skeleton-line, .skeleton-block, .skeleton-search-row, .skeleton-hero{
+  background:linear-gradient(100deg,
+    var(--home-glass-fill) 30%,
+    var(--home-glass-fill-strong) 50%,
+    var(--home-glass-fill) 70%);
+  background-size:200% 100%;
+  animation:skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius:var(--home-radius-md);
+}
+.skeleton-line{
+  height:14px;
+  margin-bottom:12px;
+}
+.skeleton-line--sm{ height:10px; }
+.skeleton-line--lg{ height:26px; margin-bottom:16px; }
+
+.skeleton-hero{
+  height:clamp(280px, 46vh, 420px);
+  border-radius:var(--home-radius-lg);
+  margin-top:64px; /* matches .panel:first-of-type's own rule, so the skeleton sits where the real hero/first panel will */
+  position:relative;
+  overflow:hidden;
+  display:flex; align-items:flex-end;
+}
+.skeleton-hero__panel{
+  position:relative; z-index:1;
+  width:100%; max-width:520px;
+  margin:0 clamp(20px,4vw,48px) 40px;
+  padding:24px;
+  background:rgba(10,10,13,.4);
+  border-radius:var(--home-radius-lg);
+}
+/* Inner lines sit on top of the shimmering hero background, so they
+   need their own (slightly lighter, non-animated) fill rather than
+   inheriting the shared shimmer -- two overlapping shimmer animations
+   at different phases reads as flickery, not smooth. */
+.skeleton-hero__panel .skeleton-line{
+  background:rgba(255,255,255,.08);
+  animation:none;
+}
+
+.skeleton-media-row{
+  display:flex; gap:12px;
+  margin-bottom:12px;
+}
+.skeleton-block{ flex:1; }
+.skeleton-block--media{ height:340px; }
+.skeleton-block--thumb{ height:80px; flex:0 0 140px; }
+
+.skeleton-search-row{
+  height:96px;
+  margin-bottom:16px;
+}

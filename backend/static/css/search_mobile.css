@@ -50,6 +50,14 @@
   .panel__title{ font-size:1.25rem; }
   .ai-tag{ margin-left:0; }
 
+  /* Skeleton hero mirrors .panel:first-of-type's margin-top at this
+     width so the loading state doesn't jump when the real hero swaps
+     in. Height also trimmed -- the real .hero has its own clamp() for
+     this, but the skeleton's fixed clamp was tuned for desktop. */
+  .skeleton-hero{ height:clamp(220px, 38vh, 320px); margin-top:44px; }
+  .skeleton-block--media{ height:220px; }
+  .skeleton-block--thumb{ flex-basis:100px; height:64px; }
+
   /* .page{gap:44px} above would otherwise win over search.css's
      .results-view{gap:28px} at this width (equal specificity, this
      file loads after search.css) and bring back the dead-space gap

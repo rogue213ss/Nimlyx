@@ -208,11 +208,24 @@ document.getElementById("gameInput").value = gameName || "";
 const searchResultsView = document.getElementById("searchResultsView");
 const gameDetailView = document.getElementById("gameDetailView");
 const searchLandingView = document.getElementById("searchLandingView");
+const gameDetailSkeleton = document.getElementById("gameDetailSkeleton");
+const searchResultsSkeleton = document.getElementById("searchResultsSkeleton");
 const searchListRows = document.getElementById("searchListRows");
 const searchFilterSidebar = document.getElementById("searchFilterSidebar");
 const searchResultsTitle = document.getElementById("searchResultsTitle");
 
+// Both skeletons are hidden together everywhere a real view or the
+// error state takes over -- callers never need to know which one (if
+// either) was showing, same reasoning as the existing pattern below
+// where every show*View() function blindly hides the other two views
+// rather than checking which was active first.
+function hideSkeletons() {
+    if (gameDetailSkeleton) gameDetailSkeleton.classList.add("is-hidden");
+    if (searchResultsSkeleton) searchResultsSkeleton.classList.add("is-hidden");
+}
+
 function showDetailView() {
+    hideSkeletons();
     if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.remove("is-hidden");
@@ -221,6 +234,7 @@ function showDetailView() {
 }
 
 function showResultsView() {
+    hideSkeletons();
     if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.remove("is-hidden");
@@ -233,6 +247,7 @@ function showResultsView() {
 // look like by default (an empty shell -- see the HTML comment there)
 // is what showed up. Now explicit, same pattern as the other two views.
 function showLandingView() {
+    hideSkeletons();
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
     if (searchLandingView) searchLandingView.classList.remove("is-hidden");
@@ -265,6 +280,7 @@ async function loadGameById(appId, packageId) {
 // same .discover-empty-state component Discover's own empty results
 // use, rather than a page-specific error block.
 function showGameError(message) {
+    hideSkeletons();
     if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
@@ -329,10 +345,24 @@ async function loadGameByQuery(query) {
 
 async function loadGame() {
     if (appIdParam) {
+        // Shown synchronously, before the fetch in loadGameById() goes
+        // out -- this is exactly the "blank page for a few seconds"
+        // gap that was reported (nothing rendered between the page
+        // shell and the real hero appearing).
+        if (gameDetailSkeleton) gameDetailSkeleton.classList.remove("is-hidden");
         await loadGameById(appIdParam, packageIdParam);
     } else if (gameName) {
+        if (searchResultsSkeleton) searchResultsSkeleton.classList.remove("is-hidden");
         await loadGameByQuery(gameName);
     } else {
+        // Bare /search has nothing to fetch before its first paint --
+        // showLandingView() runs synchronously below, so there's no
+        // gap for a skeleton to fill here. loadLandingTrending() below
+        // is a background enhancement to an already-visible page, not
+        // something blocking initial content, so it doesn't get one
+        // either -- same "don't show empty sections" rule that section
+        // already follows, just extended to "don't show a skeleton for
+        // a section that might render as nothing at all".
         showLandingView();
         loadLandingTrending();
     }
