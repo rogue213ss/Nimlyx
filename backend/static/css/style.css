@@ -130,6 +130,32 @@
 }
 .home-nav-burger span{ width:20px; height:2px; background:var(--home-text-primary); border-radius:1px; }
 
+/* Mobile-only quick-search icon -- search used to be reachable ONLY
+   by opening the full hamburger panel (nav links + search + region
+   picker all bundled behind one toggle), which buried the single
+   most-used action on the page behind an extra tap through unrelated
+   nav links. This is a second, independent checkbox/label pair (same
+   visually-hidden-checkbox + label pattern as .home-nav-burger above)
+   that reveals ONLY .home-search from inside the existing panel --
+   see the ::checked rules under RESPONSIVE below -- rather than
+   duplicating the search input as a second element (would collide
+   with #gameInput's id on search.html, where JS reads that id
+   directly). Hidden on desktop; .home-search already sits inline in
+   the header there. */
+.home-search-checkbox{
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+}
+.home-mobile-search-btn{
+  display:none; align-items:center; justify-content:center;
+  width:36px; height:36px; margin-left:auto;
+  padding:8px; cursor:pointer; border-radius:var(--home-radius-sm);
+  color:var(--home-text-primary);
+}
+.home-search-checkbox:focus-visible + .home-mobile-search-btn{
+  outline:2px solid var(--home-accent); outline-offset:2px;
+}
+
 .home-nav-panel{
   display:flex; align-items:center; gap:26px;
   margin-left:auto; flex:1; justify-content:flex-end;
@@ -691,6 +717,7 @@ main{ counter-reset: nimlyx-section; }
    assume this collapse happens at (see their region-picker rules). */
 @media (max-width:900px){
   .home-nav-burger{ display:flex; }
+  .home-mobile-search-btn{ display:flex; }
 
   .home-nav-panel{
     display:none;
@@ -703,6 +730,20 @@ main{ counter-reset: nimlyx-section; }
     padding:20px 32px 28px;
   }
   .home-nav-checkbox:checked ~ .home-nav-panel{ display:flex; }
+
+  /* Quick-search icon opens the SAME .home-nav-panel dropdown (no
+     second copy of the search markup, see the comment above) but
+     hides everything in it except .home-search -- so tapping the
+     search icon gets straight to a search box, not a full nav menu
+     with search buried at the bottom of it. The hamburger still opens
+     the full panel (nav links + search + region) exactly as before;
+     these two checkboxes are independent and don't affect each other. */
+  .home-search-checkbox:checked ~ .home-nav-panel{ display:flex; }
+  .home-search-checkbox:checked ~ .home-nav-panel .home-nav,
+  .home-search-checkbox:checked ~ .home-nav-panel .region-picker,
+  .home-search-checkbox:checked ~ .home-nav-panel > .home-btn-ghost{
+    display:none;
+  }
 
   .home-nav{ flex-direction:column; gap:2px; }
   .home-nav a{ padding:10px 0; }
