@@ -207,11 +207,13 @@ document.getElementById("gameInput").value = gameName || "";
 
 const searchResultsView = document.getElementById("searchResultsView");
 const gameDetailView = document.getElementById("gameDetailView");
+const searchLandingView = document.getElementById("searchLandingView");
 const searchListRows = document.getElementById("searchListRows");
 const searchFilterSidebar = document.getElementById("searchFilterSidebar");
 const searchResultsTitle = document.getElementById("searchResultsTitle");
 
 function showDetailView() {
+    if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.remove("is-hidden");
     const errorState = document.getElementById("gameErrorState");
@@ -219,8 +221,21 @@ function showDetailView() {
 }
 
 function showResultsView() {
+    if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.remove("is-hidden");
+    const errorState = document.getElementById("gameErrorState");
+    if (errorState) errorState.style.display = "none";
+}
+
+// Bare /search -- no ?q= or ?app_id=. Previously nothing in loadGame()
+// handled this case at all, so whatever #gameDetailView happened to
+// look like by default (an empty shell -- see the HTML comment there)
+// is what showed up. Now explicit, same pattern as the other two views.
+function showLandingView() {
+    if (searchResultsView) searchResultsView.classList.add("is-hidden");
+    if (gameDetailView) gameDetailView.classList.add("is-hidden");
+    if (searchLandingView) searchLandingView.classList.remove("is-hidden");
     const errorState = document.getElementById("gameErrorState");
     if (errorState) errorState.style.display = "none";
 }
@@ -250,6 +265,7 @@ async function loadGameById(appId, packageId) {
 // same .discover-empty-state component Discover's own empty results
 // use, rather than a page-specific error block.
 function showGameError(message) {
+    if (searchLandingView) searchLandingView.classList.add("is-hidden");
     if (searchResultsView) searchResultsView.classList.add("is-hidden");
     if (gameDetailView) gameDetailView.classList.add("is-hidden");
     const errorState = document.getElementById("gameErrorState");
@@ -316,10 +332,59 @@ async function loadGame() {
         await loadGameById(appIdParam, packageIdParam);
     } else if (gameName) {
         await loadGameByQuery(gameName);
+    } else {
+        showLandingView();
+        loadLandingTrending();
     }
 }
 
 loadGame();
+
+/* ==========================================================
+   SEARCH LANDING — TRENDING GAMES
+   Reuses /api/featured (already fetched by the homepage) rather than
+   any new/heavy endpoint, and reuses buildTrendingStyleCard() /
+   wireCarouselScroll() / renderCarouselSection() below -- the exact
+   same functions the More From Developer/Publisher carousels use --
+   instead of a second copy of that render logic. Whole section stays
+   is-hidden (renderCarouselSection's own "no games -> display:none"
+   behavior) if the fetch fails or top_sellers is empty -- never
+   shown empty.
+========================================================== */
+async function loadLandingTrending() {
+    try {
+        const response = await fetch("/api/featured");
+        if (!response.ok) return; // stays hidden
+        const data = await response.json();
+
+        // /api/featured's top_sellers shape (id/image/final_price/
+        // discount_percent) differs from what buildTrendingStyleCard
+        // expects (app_id/header_image/price/discount) because that
+        // function was built against the game-detail endpoint's
+        // developer_games/publisher_games shape -- mapped here rather
+        // than adding a second card-building function for one field
+        // naming difference.
+        const games = (data.top_sellers || []).slice(0, 10).map(g => ({
+            app_id: g.id,
+            name: g.name,
+            header_image: g.image,
+            price: g.final_price,
+            // Number(...) rather than assuming an already-clean int --
+            // same defensive stance formatters.py's parse_discount()
+            // takes server-side for this same Steam field elsewhere.
+            discount: Number(g.discount_percent) || 0,
+        }));
+
+        renderCarouselSection(
+            "landingTrendingSection", "landingTrendingScroll",
+            "landingTrendingPrev", "landingTrendingNext",
+            games, null, null, null
+        );
+    } catch (error) {
+        console.error("Error loading landing trending games:", error);
+        // stays hidden -- no error state needed for an optional section
+    }
+}
 
 /* ==========================================================
    MASTER RENDER
@@ -1051,24 +1116,35 @@ function initFeaturedPlayOverlay() {
         });
     }
 
-    // Mobile tap-to-toggle: native <video controls> puts play/pause
-    // behind a small icon in the control bar -- fine with a mouse
-    // pointer, fiddly on a phone-sized trailer. pointer:coarse gated
-    // so this is additive on touch devices only and desktop's existing
-    // behavior (overlay click / native controls) is untouched.
-    // Bound once here alongside the rest of this function, so it can't
-    // double up across trailer switches for the same reason the
-    // overlay listeners above can't -- #featuredVideo is one DOM node
-    // for the page's lifetime, renderMedia()/showFeaturedMedia() only
-    // ever swap what's loaded into it.
-    //
-    // "pointerup" instead of "click" deliberately -- on several mobile
-    // browsers, the FIRST tap on a <video controls> element only
-    // reveals the (auto-hidden) native control bar and doesn't
-    // dispatch a click at all, so a click-only listener can silently
-    // eat the first tap every time controls have faded out. pointerup
-    // fires on that same first tap.
+    // Mobile: single-tap play/pause (native <video controls>' own
+    // play/pause icon is fiddly on a phone-sized trailer) fought with
+    // the browser's own tap-to-reveal-controls gesture -- the first
+    // tap after controls auto-hid would both reveal the bar AND
+    // silently toggle playback, which read as "the video randomly
+    // paused/played itself" and was the annoying part. Replaced with
+    // a YouTube-style gesture instead: single tap does nothing extra
+    // (native controls still reveal/hide themselves for free, no code
+    // needed for that), double-tap on the left or right half seeks
+    // -5s/+5s. Desktop is untouched -- pointerType is checked below,
+    // and this whole gesture is additive on top of the click-to-play
+    // overlay/native controls desktop already had.
     if (window.matchMedia("(pointer: coarse)").matches) {
+        const seekBack = document.getElementById("featuredSeekBack");
+        const seekFwd = document.getElementById("featuredSeekFwd");
+        const SEEK_SECONDS = 5;
+        const DOUBLE_TAP_WINDOW_MS = 320;
+        let lastTapAt = 0;
+
+        function flashSeek(el) {
+            if (!el) return;
+            el.classList.add("is-active");
+            // Restart the fade if the same side is double-tapped again
+            // in quick succession, rather than the flash getting stuck
+            // mid-fade and looking unresponsive.
+            clearTimeout(el._flashTimer);
+            el._flashTimer = setTimeout(() => el.classList.remove("is-active"), 450);
+        }
+
         featuredVideo.addEventListener("pointerup", (e) => {
             if (e.pointerType === "mouse") return; // desktop stays click/overlay-only
 
@@ -1076,16 +1152,30 @@ function initFeaturedPlayOverlay() {
             // so a tap on it also reaches this listener. Ignore taps
             // in that bottom strip and let the native controls handle
             // themselves -- only a tap on the open video canvas above
-            // it should trigger our own toggle.
+            // it should count toward the seek gesture.
             const rect = featuredVideo.getBoundingClientRect();
             const NATIVE_CONTROLS_BAR_HEIGHT = 44;
             if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
 
-            if (featuredVideo.paused) {
-                featuredVideo.play().catch(() => {});
+            const now = Date.now();
+            const isDoubleTap = now - lastTapAt < DOUBLE_TAP_WINDOW_MS;
+            lastTapAt = now;
+            if (!isDoubleTap) return; // single tap: no-op, native controls handle their own reveal/hide
+
+            const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+            if (isLeftHalf) {
+                featuredVideo.currentTime = Math.max(0, featuredVideo.currentTime - SEEK_SECONDS);
+                flashSeek(seekBack);
             } else {
-                featuredVideo.pause();
+                const duration = featuredVideo.duration || Infinity;
+                featuredVideo.currentTime = Math.min(duration, featuredVideo.currentTime + SEEK_SECONDS);
+                flashSeek(seekFwd);
             }
+            // A double-tap is two consecutive taps -- without this the
+            // second tap of THIS double-tap can become the first tap of
+            // a following pair, making three quick taps register as two
+            // seeks instead of one.
+            lastTapAt = 0;
         });
     }
 }

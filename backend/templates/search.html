@@ -77,6 +77,93 @@
   </div>
 </header>
 
+<!-- ================= SEARCH LANDING PAGE =================
+     Shown only for a bare /search visit (no ?q= or ?app_id=) -- see
+     showLandingView() in search.js. Previously this case fell through
+     to nothing: #searchResultsView starts hidden and #gameDetailView
+     didn't, so a query-less visit rendered the empty game-detail shell
+     (blank hero, empty stats, etc.) instead of anything intentional.
+     Built entirely from EXISTING components already loaded on this
+     page -- .panel/.panel__head/.panel__eyebrow/.panel__title (used
+     by every other section here), .home-search's input styling, and
+     .trending-wrap/.trending-scroll/.trending-card (already reused
+     once for More From Developer/Publisher below) -- so this adds
+     zero new visual language to the page, just a new arrangement of
+     what's already established. -->
+<section class="page search-landing is-hidden" id="searchLandingView">
+
+    <!-- Hero: a plain <form method=get action=/search> -- no JS needed
+         to submit it, mirrors the exact pattern index.html's own hero
+         search box already uses. Landing on this page via the results
+         view (a query with no exact match) still routes through the
+         JS-driven #gameInput/#searchBtn in the navbar above; this
+         form is a second, independent entry point for the landing
+         page specifically, not a replacement for that logic. -->
+    <!-- Hero + Popular Searches are now ONE unified card (previously
+         two separate .panel blocks with a 32-64px gap between them).
+         No real per-game artwork exists for this page (it isn't tied
+         to one app_id), so the "artwork" is a CSS-only layered glow
+         (.search-landing-hero__art, defined in search.css) rather than
+         a fake <img src> that would 404 -- same "never fabricate"
+         rule the rest of this codebase follows for data, applied here
+         to visuals. .search-landing-hero__content is the readable
+         layer stacked above the glow/scrim. -->
+    <div class="panel search-landing-hero">
+        <div class="search-landing-hero__art" aria-hidden="true">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/1817070/header.jpg" alt="" loading="lazy">
+        </div>
+        <div class="search-landing-hero__content">
+            <span class="panel__eyebrow">Nimlyx Search</span>
+            <h1 class="search-landing-title">Find Your Next Game</h1>
+            <p class="search-landing-subtitle">Explore games, analyze player opinions, and discover what is worth playing.</p>
+            <form class="search-landing-box" action="/search" method="get" role="search">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" name="q" placeholder="Search games…" autocomplete="off" aria-label="Search games" autofocus>
+                <button type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </form>
+            <!-- Popular Searches: a fixed curated list, not backend-driven
+                 -- plain <a href="/search?q=..."> links straight to the
+                 existing results flow. No JS required, nothing to keep in
+                 sync with a data source. Sits directly under the search
+                 box now instead of in its own separate card below. -->
+            <div class="search-landing-chips">
+                <span class="search-landing-chips__label">Popular:</span>
+                <a class="search-landing-chip" href="/search?q=Cyberpunk+2077">Cyberpunk 2077</a>
+                <a class="search-landing-chip" href="/search?q=The+Witcher+3">The Witcher 3</a>
+                <a class="search-landing-chip" href="/search?q=Elden+Ring">Elden Ring</a>
+                <a class="search-landing-chip" href="/search?q=Red+Dead+Redemption+2">Red Dead Redemption 2</a>
+                <a class="search-landing-chip" href="/search?q=Assassin%27s+Creed">Assassin's Creed</a>
+                <a class="search-landing-chip" href="/search?q=Baldur%27s+Gate+3">Baldur's Gate 3</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trending Games: reuses /api/featured -- the exact endpoint the
+         homepage already calls for its own Trending Today rail -- so
+         this page adds zero new Steam requests. loadLandingTrending()
+         in search.js hides this whole section (not an empty state)
+         if that fetch fails or returns nothing, per "never show empty
+         sections". Markup/classes copied from the More From
+         Developer/Publisher carousels above, so this doesn't look or
+         behave like a new pattern on the page. -->
+    <section class="panel carousel-panel is-hidden" id="landingTrendingSection">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Discover</span>
+            <h2 class="panel__title">Trending Games</h2>
+        </div>
+        <div class="trending-wrap">
+            <button type="button" class="trending-arrow trending-arrow-left" id="landingTrendingPrev" aria-label="Scroll left">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="trending-scroll" id="landingTrendingScroll"></div>
+            <button type="button" class="trending-arrow trending-arrow-right" id="landingTrendingNext" aria-label="Scroll right">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    </section>
+
+</section>
+
 <!-- ================= SEARCH RESULTS (Sprint 3, refined) =================
      Shown instead of the single-game hero/detail sections below
      whenever the query didn't resolve to one obvious game. Uses
@@ -97,6 +184,7 @@
     </div>
 </section>
 
+
 <!-- ================= GAME LOAD ERROR =================
      Hidden by default. search.js shows this (and hides
      #gameDetailView) whenever /api/game-detail/<app_id> or
@@ -115,7 +203,15 @@
     </div>
 </div>
 
-<div id="gameDetailView">
+<!-- Hidden by default (same convention as #searchResultsView /
+     #searchLandingView above) -- loadGame() in search.js is now the
+     single source of truth for which of the three views is visible.
+     Previously this view had no is-hidden of its own, so a bare
+     /search visit (no branch in loadGame() handled that case) left
+     this EMPTY-but-visible shell on screen instead of nothing being
+     shown at all -- that was the actual "empty main content" bug;
+     showLandingView() now covers that case explicitly. -->
+<div id="gameDetailView" class="is-hidden">
 
 <!-- ================= HERO ================= -->
 <!-- NOTE ON "poster": search.js only ever sets .src on ONE image
@@ -202,6 +298,13 @@
             <button class="featured-play-overlay" id="featuredPlayOverlay" title="Play trailer" style="display:none;">
                 <i class="fa-solid fa-play"></i>
             </button>
+            <!-- Mobile double-tap-to-seek feedback (YouTube-style) --
+                 briefly flashed by initFeaturedPlayOverlay() in search.js
+                 on whichever half of the video was double-tapped. Hidden
+                 entirely on desktop (see search.css) since that
+                 interaction is touch-only. -->
+            <div class="featured-seek-flash featured-seek-flash--back" id="featuredSeekBack"><i class="fa-solid fa-backward"></i><span>5s</span></div>
+            <div class="featured-seek-flash featured-seek-flash--fwd" id="featuredSeekFwd"><i class="fa-solid fa-forward"></i><span>5s</span></div>
             <!-- Shown by showMediaError() in search.js when hls.js hits a
                  fatal, unrecoverable error (or the browser can play
                  neither hls.js nor native HLS at all) -- an honest failure

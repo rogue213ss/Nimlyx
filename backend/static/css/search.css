@@ -277,6 +277,171 @@
 }
 
 /* ================================================================
+   SEARCH LANDING PAGE (bare /search, no ?q=/?app_id=)
+   Deliberately built from the SAME tokens/components as the rest of
+   this page (.panel for both cards below, --home-* vars throughout)
+   rather than a one-off "landing page" look -- see the template
+   comment for why. .search-landing itself is just .page (already
+   defined above), so it gets the same max-width/centering/64px
+   section rhythm as every other view on this page for free.
+   ================================================================ */
+.search-landing-hero{
+  /* No extra padding-top/bottom here: .panel already supplies
+     clamp(28px,3.4vw,48px) on all sides. Adding page-level
+     padding-top/bottom on top of that double-stacked the vertical
+     space (up to 120px top+bottom on desktop), which is what read
+     as a giant empty gap inside the hero card. */
+  position:relative;
+  overflow:hidden; /* clips .search-landing-hero__art to the card's own rounded corners */
+  text-align:center;
+}
+/* Background "artwork" layer -- a single blurred game's Steam header
+   image (currently Marvel's Spider-Man Remastered, appid 1817070),
+   the same public Steam CDN source steam_images.py/steam.py already
+   pull game art from elsewhere in this app, so nothing here is
+   fabricated. Swap the <img src> in search.html to change the art. */
+.search-landing-hero__art{
+  position:absolute; inset:-6%;
+  z-index:0;
+  pointer-events:none;
+  display:flex;
+  overflow:hidden;
+  filter:blur(18px) saturate(115%);
+  opacity:.65;
+}
+.search-landing-hero__art img{
+  flex:1 1 100%;
+  width:100%; height:100%;
+  object-fit:cover;
+  object-position:center 30%;
+}
+/* Dark overlay for text readability on top of the artwork -- a
+   vignette pulling to the panel's own background color at the edges,
+   same "scrim over art" idea as .hero__scrim above. */
+.search-landing-hero::before{
+  content:"";
+  position:absolute; inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:radial-gradient(120% 100% at 50% 0%, rgba(10,10,13,.55) 0%, rgba(10,10,13,.88) 75%);
+}
+/* Color wash on top of the scrim, below the content -- pulls
+   whatever game art is placed here toward Nimlyx blue instead of
+   clashing with it (Spider-Man's red, for instance, fought the blue
+   accent everywhere else on the page). multiply darkens+tints rather
+   than flattening to a solid color, so the source art is still
+   visible underneath, just recolored toward the brand. Swapping the
+   art image later will still read as "on-brand" without needing a
+   matching-color game every time. */
+.search-landing-hero::after{
+  content:"";
+  position:absolute; inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:rgba(20,40,80,.55);
+  mix-blend-mode:multiply;
+}
+.search-landing-hero__content{
+  position:relative; z-index:2;
+  display:flex; flex-direction:column; align-items:center;
+}
+.search-landing-hero .panel__eyebrow{ flex-basis:auto; } /* override .panel__head's 100%-width rule -- this eyebrow stands alone, not paired with a .panel__title on the same row */
+/* .search-landing overrides the shared .page/.panel page-shell
+   rhythm (64px inter-section gap, 64px margin-top on the first
+   panel) that's tuned for denser, multi-panel pages like game-detail.
+   Same pattern as .results-view's own gap override above -- scoped
+   to this view only, so game-detail/discover/results are untouched.
+   Only one panel remains on this view now (hero+chips merged, Popular
+   Searches' separate card removed), so this mostly governs the gap
+   before the optional Trending Games carousel below. */
+.search-landing{ gap:32px; }
+.search-landing .panel:first-of-type{ margin-top:32px; }
+.search-landing-title{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:clamp(2.1rem, 4.4vw, 3.2rem);
+  letter-spacing:-0.02em; line-height:1.08;
+  margin:14px 0 16px;
+  color:#ffffff;
+}
+.search-landing-subtitle{
+  font-family:var(--home-font-body); font-size:1.02rem;
+  color:var(--home-text-muted);
+  max-width:520px;
+  margin-bottom:36px;
+}
+/* Same visual language as .home-search (navbar search box) -- glass
+   fill, same border/radius tokens -- just larger, since this is the
+   page's primary action rather than a compact nav-bar utility. A
+   real <form method=get>, not JS-driven, so Enter-to-submit and
+   keyboard/screen-reader behavior all come from the browser for
+   free -- no click/keydown wiring needed here. */
+.search-landing-box{
+  display:flex; align-items:center; gap:12px;
+  width:100%; max-width:560px;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+  padding:16px 22px;
+  transition:border-color .25s var(--home-ease), background .25s var(--home-ease), box-shadow .25s var(--home-ease);
+}
+.search-landing-box:focus-within{
+  border-color:var(--home-cta-blue);
+  background:var(--home-glass-fill-strong);
+  box-shadow:0 0 0 4px rgba(59,130,246,.14);
+}
+.search-landing-box svg{ flex-shrink:0; color:var(--home-text-faint); }
+.search-landing-box input{
+  flex:1; background:none; border:none; color:var(--home-text-primary);
+  font-family:var(--home-font-body); font-size:1rem;
+}
+.search-landing-box input::placeholder{ color:var(--home-text-faint); }
+.search-landing-box input:focus{ outline:none; }
+.search-landing-box button{
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  width:38px; height:38px; border-radius:var(--home-radius-md);
+  background:var(--home-cta-blue); color:#fff;
+  transition:background .2s var(--home-ease);
+}
+.search-landing-box button:hover{ background:var(--home-cta-blue-hover); }
+
+/* Popular Searches -- pill chips, same shape language as .meta-chip
+   (hero meta row) but sized/weighted for a clickable nav element
+   rather than a small inline data tag. */
+/* Popular Searches -- pill chips, same shape language as .meta-chip
+   (hero meta row) but sized/weighted for a clickable nav element
+   rather than a small inline data tag. Now lives directly under the
+   search box inside the hero (not a separate card below it), so it
+   reads as "search, then a shortcut" instead of its own section --
+   centered + wrapped, with a small inline label instead of a
+   panel__head eyebrow+title pair (that heading weight made sense for
+   a standalone card, not for a single line under the search box). */
+.search-landing-chips{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:10px;
+  margin-top:28px;
+}
+.search-landing-chips__label{
+  font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--home-text-faint);
+  margin-right:2px;
+}
+.search-landing-chip{
+  display:inline-flex; align-items:center;
+  font-family:var(--home-font-body); font-size:.9rem; font-weight:600;
+  color:var(--home-text-primary);
+  background:var(--home-glass-fill-strong);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:999px;
+  padding:10px 20px;
+  transition:border-color .2s var(--home-ease), background .2s var(--home-ease), transform .2s var(--home-ease);
+}
+.search-landing-chip:hover{
+  border-color:var(--home-cta-blue);
+  background:rgba(59,130,246,.12);
+  transform:translateY(-1px);
+}
+
+/* ================================================================
    ABOUT
    ================================================================ */
 .about-copy{
@@ -370,6 +535,94 @@
   background:rgba(10,14,20,.95);
   transform:translate(-50%,-50%) scale(1.08);
   box-shadow:0 0 32px 4px rgba(59,130,246,.75), 0 4px 16px rgba(0,0,0,.4);
+}
+
+/* Mobile Chrome/Android render their own big circular play/pause
+   button centered over a paused <video controls> element -- separate
+   from, and stacked underneath, our custom .featured-play-overlay
+   above. The two overlapping (native one blurred/soft-edged, ours
+   crisp with the blue ring) is exactly the doubled/smudged play
+   button look reported on mobile. Our overlay already covers this
+   control's job (tap to play), so the native one is pure visual
+   noise -- hide it, keep the rest of the native control bar
+   (scrubber/volume/fullscreen) untouched. Safari has no equivalent
+   pseudo-element; this is a no-op there, not a regression. */
+#featuredVideo::-webkit-media-controls-overlay-play-button{
+  display:none;
+}
+
+/* Seek-flash feedback for the mobile double-tap-to-seek gesture below
+   (search.js) -- a brief icon+"5s" flash on whichever half of the
+   video was double-tapped, same idea as YouTube's mobile seek
+   ripple. Hidden by default; search.js toggles .is-active for a beat.
+   Desktop never triggers this (the gesture is touch-only), but it's
+   still scoped out via display:none on non-coarse pointers below so
+   there's no dead DOM sitting visible-but-empty on desktop. */
+.featured-seek-flash{
+  position:absolute; top:50%; 
+  transform:translateY(-50%);
+  display:none;
+  flex-direction:column; align-items:center; gap:4px;
+  width:72px; height:72px;
+  border-radius:50%;
+  background:rgba(10,14,20,.7);
+  color:var(--home-text-primary);
+  font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
+  opacity:0;
+  pointer-events:none;
+  z-index:3;
+  transition:opacity .2s var(--home-ease);
+}
+.featured-seek-flash i{ font-size:1.15rem; }
+.featured-seek-flash--back{ left:12%; justify-content:center; }
+.featured-seek-flash--fwd{ right:12%; justify-content:center; }
+.featured-seek-flash.is-active{ opacity:1; }
+@media (pointer:coarse){
+  .featured-seek-flash{ display:flex; }
+}
+
+/* Mobile Chrome/Android render their own big circular play/pause
+   button centered over a paused <video controls> element -- separate
+   from, and stacked underneath, our custom .featured-play-overlay
+   above. The two overlapping (native one blurred/soft-edged, ours
+   crisp with the blue ring) is exactly the doubled/smudged play
+   button look reported on mobile. Our overlay already covers this
+   control's job (tap to play), so the native one is pure visual
+   noise -- hide it, keep the rest of the native control bar
+   (scrubber/volume/fullscreen) untouched. Safari has no equivalent
+   pseudo-element; this is a no-op there, not a regression. */
+#featuredVideo::-webkit-media-controls-overlay-play-button{
+  display:none;
+}
+
+/* Seek-flash feedback for the mobile double-tap-to-seek gesture below
+   (search.js) -- a brief icon+"5s" flash on whichever half of the
+   video was double-tapped, same idea as YouTube's mobile seek
+   ripple. Hidden by default; search.js toggles .is-active for a beat.
+   Desktop never triggers this (the gesture is touch-only), but it's
+   still scoped out via display:none on non-coarse pointers below so
+   there's no dead DOM sitting visible-but-empty on desktop. */
+.featured-seek-flash{
+  position:absolute; top:50%; 
+  transform:translateY(-50%);
+  display:none;
+  flex-direction:column; align-items:center; gap:4px;
+  width:72px; height:72px;
+  border-radius:50%;
+  background:rgba(10,14,20,.7);
+  color:var(--home-text-primary);
+  font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
+  opacity:0;
+  pointer-events:none;
+  z-index:3;
+  transition:opacity .2s var(--home-ease);
+}
+.featured-seek-flash i{ font-size:1.15rem; }
+.featured-seek-flash--back{ left:12%; justify-content:center; }
+.featured-seek-flash--fwd{ right:12%; justify-content:center; }
+.featured-seek-flash.is-active{ opacity:1; }
+@media (pointer:coarse){
+  .featured-seek-flash{ display:flex; }
 }
 
 .featured-media-error{

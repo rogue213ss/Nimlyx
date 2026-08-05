@@ -63,6 +63,34 @@
   .thumb{ width:110px; height:64px; }
   .strip-nav{ display:none; }
 
+  /* Search landing: hero copy/box shrink in step with the rest of
+     this breakpoint's scaling (hero__title, panel padding, etc
+     above); chips wrapping is already handled by flex-wrap, so
+     nothing extra needed there. No padding-top/bottom on the hero
+     itself -- .panel already gives 22px on all sides at this width
+     (line 49); adding 32px on top of that was the same double-padding
+     bug as desktop, just smaller. .page{gap:44px} (line 47) also
+     needs the same scoped override .results-view gets at line 57, or
+     the gap before the Trending Games carousel stays too wide at this
+     width. Hero + Popular Searches are one merged card now, so there's
+     no second .panel gap to worry about here anymore. */
+  .search-landing{ gap:24px; }
+  .search-landing .panel:first-of-type{ margin-top:24px; }
+  .search-landing-title{ font-size:1.7rem; }
+  .search-landing-subtitle{ font-size:.92rem; margin-bottom:26px; }
+  .search-landing-box{ padding:12px 16px; }
+  .search-landing-chips{ margin-top:20px; gap:8px; }
+  .search-landing-chips__label{ flex-basis:100%; margin-bottom:2px; } /* own line on narrow widths so it doesn't eat into chip-wrap space */
+  .search-landing-chip{ padding:8px 16px; font-size:.85rem; }
+  /* Ambient blur is expensive on low-power mobile GPUs -- trim it
+     down rather than dropping it, so the effect survives but costs less. */
+  .search-landing-hero__art{ filter:blur(12px) saturate(115%); }
+  /* Header art is a wide 460x215 banner -- on a narrow mobile card its
+     subject (centered in the original image) drifts off to one side
+     once cropped to the card's taller aspect ratio. Recenter it here;
+     desktop's wider card doesn't need this. */
+  .search-landing-hero__art img{ object-position:center center; }
+
   /* Desktop's 84px play button (search.css) is tuned against the
      desktop-width .featured-shot -- at phone widths it dominates the
      trailer instead of reading as a control. This file is the
@@ -129,4 +157,8 @@
   .purchase-option{ padding:14px 16px; }
   .purchase-option__side{ flex-wrap:wrap; gap:10px; }
   .purchase-option__cta{ width:100%; justify-content:center; }
+
+  .search-landing-title{ font-size:1.45rem; }
+  .search-landing-subtitle{ font-size:.88rem; }
+  .search-landing-chips{ gap:8px; }
 }
