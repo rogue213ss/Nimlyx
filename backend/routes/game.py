@@ -12,6 +12,7 @@ from services.analysis.community_pulse import compute_pulse
 from services.analysis.tag_honesty import compute_tag_honesty
 from services.analysis.spotlight_reviews import compute_spotlight_reviews
 from services.game.related_games import get_developer_games, get_publisher_games
+from services.game.similar_games import fetch_genre_candidates, merge_similar_games
 from services.game.requirements import parse_requirements
 
 game_bp = Blueprint("game", __name__)
@@ -324,6 +325,12 @@ def build_game_detail(app_id, cc):
     # developer.
     same_credit = bool(developers) and bool(publishers) and developers[0].strip().lower() == publishers[0].strip().lower()
 
+    # Same list clean_data["genres"] below builds -- computed once,
+    # here, so Similar Games' genre-tag matching (see
+    # services/game/similar_games.py) reuses it instead of reading
+    # raw["genres"] a second time.
+    genres_list = [g["description"] for g in raw.get("genres", []) if g.get("description")]
+
     def _fetch_review_summary_and_trajectory():
         # Kept together, sequential: compute_trajectory needs
         # review_summary's result as its all-time comparison side
@@ -348,7 +355,7 @@ def build_game_detail(app_id, cc):
         honesty = compute_tag_honesty(app_id, game_categories, cc)
         return pulse, honesty
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         summary_trajectory_future = executor.submit(_fetch_review_summary_and_trajectory)
         pulse_honesty_future = executor.submit(_fetch_pulse_and_honesty)
         # Spotlight's own 2 calls (positive/negative helpful review)
@@ -360,12 +367,23 @@ def build_game_detail(app_id, cc):
             executor.submit(get_publisher_games, publishers, app_id, cc)
             if not same_credit else None
         )
+        # Similar Games (Sprint 5) -- the ONE new Steam call this
+        # feature adds (genre-tag scrape). Independent of every other
+        # group above (only needs genres_list, already computed), so
+        # it runs in this same pool rather than after it -- max_workers
+        # bumped 5->6 specifically so this doesn't queue behind the
+        # others and add to the page's wall-clock time. The dev/pub
+        # overlap half of Similar Games is merged in AFTER this
+        # executor block, once developer_games/publisher_games below
+        # have resolved -- see merge_similar_games() call further down.
+        similar_genre_future = executor.submit(fetch_genre_candidates, app_id, genres_list, cc)
 
         review_summary, reputation_trajectory = summary_trajectory_future.result()
         community_pulse, tag_honesty = pulse_honesty_future.result()
         spotlight_reviews = spotlight_future.result()
         developer_games = dev_future.result()
         publisher_games = pub_future.result() if pub_future else []
+        similar_genre_candidates = similar_genre_future.result()
 
     nimlyx_score = None
     if review_summary:
@@ -392,6 +410,16 @@ def build_game_detail(app_id, cc):
     # fails to load.
     requirements = parse_requirements(raw.get("pc_requirements"))
 
+    # Similar Games (Sprint 5) -- pure in-memory merge, no I/O. Genre
+    # candidates were already fetched concurrently above;
+    # developer_games/publisher_games were already fetched for their
+    # own carousels regardless of this feature. Nothing here re-fetches
+    # anything. See services/game/similar_games.py for the merge rules.
+    similar_games = merge_similar_games(
+        similar_genre_candidates, app_id,
+        developer_games=developer_games, publisher_games=publisher_games,
+    )
+
     clean_data = {
         "app_id": app_id,
         # Generic Steam reviews surface for this app — used by the
@@ -404,7 +432,7 @@ def build_game_detail(app_id, cc):
         "steam_reviews_url": f"https://steamcommunity.com/app/{app_id}/reviews/",
         "name": raw.get("name"),
         "header_image": raw.get("header_image"),
-        "genres": [g["description"] for g in raw.get("genres", [])],
+        "genres": genres_list,
         "price": raw.get("price_overview", {}).get("final_formatted", "Free"),
         # Original (pre-discount) price, only meaningful alongside
         # `discount` below -- frontend only renders it when discount > 0.
@@ -450,6 +478,7 @@ def build_game_detail(app_id, cc):
         ],
         "developer_games": developer_games,
         "publisher_games": publisher_games,
+        "similar_games": similar_games,
         "purchase_options": purchase_options,
         # Normalized {minimum: {...}, recommended: {...}} -- see
         # services/game/requirements.py. This is the ONLY requirements

@@ -502,6 +502,51 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
     return games[:count]
 
 
+def fetch_games_by_tags(tag_ids, exclude_app_id=None, count=10, cc="US"):
+    """Similar Games foundation (Sprint 5). Same /search/results/ scrape
+    fetch_games_by_credit() and fetch_discover_games() already share,
+    filtered by Steam's own tags= facet -- the exact same param the
+    Discover wizard already uses successfully (see GENRE_TAG_IDS).
+
+    tag_ids must be Steam community TAG ids, not appdetails' genre id
+    field -- those are two different Steam ID spaces (see
+    services/game/similar_games.py's docstring for the full reasoning).
+    Callers are expected to only pass tag_ids already proven correct
+    via GENRE_TAG_IDS -- this function itself does no mapping/guessing,
+    it only queries whatever ids it's given.
+
+    category1=998 (Games only) applies here exactly as it does in
+    every other scrape in this file -- DLC/soundtracks/software are
+    excluded server-side, not via client-side filtering.
+
+    Returns [] (not an error) if tag_ids is empty -- there's nothing
+    honest to query Steam for without at least one real tag id.
+    """
+    if not tag_ids:
+        return []
+
+    cache_key = ("tag_games", tuple(sorted(tag_ids)), count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        games = cached
+    else:
+        params = {
+            "query": "",
+            "start": 0,
+            "count": count + 1,  # +1 headroom for excluding the source game itself
+            "category1": 998,
+            "cc": cc,
+            "l": "english",
+            "tags": ",".join(str(t) for t in tag_ids),
+        }
+        games = _scrape_search_results(params, cc)
+        _cache_set(cache_key, games)
+
+    if exclude_app_id:
+        games = [g for g in games if g.get("id") != str(exclude_app_id)]
+    return games[:count]
+
+
 def fetch_search_by_term(term, start=0, count=30, cc="US"):
     """Search's backend, replacing storesearch (see the /api/search-
     results docstring in routes/game.py for the full history -- in

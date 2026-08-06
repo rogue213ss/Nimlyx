@@ -431,6 +431,7 @@ function renderGame(game) {
     renderRequirements(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
+    renderSimilarGames(game);
     initScrollReveal();
 }
 
@@ -575,6 +576,27 @@ function renderPublisherGames(game) {
         "publisherGamesSection", "publisherGamesCarousel", "publisherGamesPrev", "publisherGamesNext",
         game.publisher_games, "publisherGamesEyebrow", "publisherGamesTitle", name
     );
+}
+
+/* ---------------- SIMILAR GAMES (Sprint 5) ----------------
+   game.similar_games is already fully computed backend-side (genre-tag
+   + developer/publisher overlap, deduped, capped) -- see
+   services/game/similar_games.py. This just renders it, reusing the
+   exact same card/carousel components as Developer/Publisher above.
+   Doesn't use renderCarouselSection's "More from ${name}" template
+   since there's no single credited name here -- title is static. */
+function renderSimilarGames(game) {
+    const section = document.getElementById("similarGamesSection");
+    const games = game.similar_games;
+    if (!games || !games.length) {
+        if (section) section.style.display = "none";
+        return;
+    }
+    if (section) section.style.display = "";
+    const carousel = document.getElementById("similarGamesCarousel");
+    carousel.innerHTML = "";
+    games.forEach(g => carousel.appendChild(buildTrendingStyleCard(g)));
+    wireCarouselScroll("similarGamesCarousel", "similarGamesPrev", "similarGamesNext");
 }
 
 /* ---------------- HERO ---------------- */
