@@ -178,6 +178,16 @@ PLATFORM_OS_PARAM = {
     "steam-deck": "win",
 }
 
+# How many rows fetch_games_by_credit() (More From Developer/
+# Publisher) requests from Steam in a single /search/results/ request.
+# Same number fetch_discover_games() already uses successfully -- one
+# request, no true start= pagination needed, Steam's search page
+# handles a buffer this size fine in one round trip. Kept as a shared
+# constant (not folded inline) so both places asking "how big can one
+# request safely be" stay in sync if that ever needs revisiting.
+_CREDIT_GAMES_FETCH_BUFFER = 100
+
+
 
 # ==========================================================
 # SHARED SCRAPER — used by /api/browse, /api/verdicts, and home()
@@ -474,13 +484,37 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
     own "more like this" list -- Steam's own developer/publisher
     search naturally includes the game itself.
 
-    count defaults to 10, matching the Sprint 4 spec's "6-10 games"
-    for these carousels -- small enough that no pagination or infinite
-    scroll is needed, unlike Discover's much larger buffer."""
+    count is the DISPLAY count returned to the caller (Sprint 4 spec's
+    "6-10 games" for these carousels) -- it is NOT how many rows get
+    requested from Steam. See _CREDIT_GAMES_FETCH_BUFFER below for why
+    those are now two separate numbers.
+
+    BUFFER FIX (was: single page, count+1 rows only): this used to ask
+    Steam for exactly `count + 1` rows and never request more --for a
+    prolific studio (e.g. Ubisoft, dozens of Steam titles) that meant
+    "More From Developer" only ever had Steam's top ~10 results in
+    that category to choose from, most of which aren't even that
+    studio's own catalog once exclude_app_id and downstream filtering
+    trim it further. This wasn't Steam under-returning or rate
+    limiting -- it was this function never asking for more than one
+    small page. Same _scrape_search_results() core, same
+    /search/results/ endpoint that genuinely supports a larger
+    single-request page size -- fetch_discover_games already proves
+    this works (it requests up to 100 rows in ONE request, no true
+    multi-page start= looping needed). This function now does the
+    same: request a bigger buffer once, cache it, then slice to the
+    caller's display count -- zero additional Steam calls per request,
+    just a bigger single response.
+    """
     if field not in ("developer", "publisher") or not value:
         return []
 
-    cache_key = ("credit_games", field, value, count, cc)
+    # Buffer size is intentionally independent of `count` (and of the
+    # cache key below) -- this means a developer carousel wanting 10
+    # and, say, a future "See More" page wanting 30 both reuse the
+    # exact same cached Steam response instead of triggering two
+    # separate scrapes for the same developer/publisher.
+    cache_key = ("credit_games", field, value, cc)
     cached = _cache_get(cache_key, ttl_seconds=600)
     if cached is not None:
         games = cached
@@ -488,56 +522,11 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
         params = {
             "query": "",
             "start": 0,
-            "count": count + 1,  # +1 headroom for excluding the source game itself
+            "count": _CREDIT_GAMES_FETCH_BUFFER,
             "category1": 998,
             "cc": cc,
             "l": "english",
             field: value,
-        }
-        games = _scrape_search_results(params, cc)
-        _cache_set(cache_key, games)
-
-    if exclude_app_id:
-        games = [g for g in games if g.get("id") != str(exclude_app_id)]
-    return games[:count]
-
-
-def fetch_games_by_tags(tag_ids, exclude_app_id=None, count=10, cc="US"):
-    """Similar Games foundation (Sprint 5). Same /search/results/ scrape
-    fetch_games_by_credit() and fetch_discover_games() already share,
-    filtered by Steam's own tags= facet -- the exact same param the
-    Discover wizard already uses successfully (see GENRE_TAG_IDS).
-
-    tag_ids must be Steam community TAG ids, not appdetails' genre id
-    field -- those are two different Steam ID spaces (see
-    services/game/similar_games.py's docstring for the full reasoning).
-    Callers are expected to only pass tag_ids already proven correct
-    via GENRE_TAG_IDS -- this function itself does no mapping/guessing,
-    it only queries whatever ids it's given.
-
-    category1=998 (Games only) applies here exactly as it does in
-    every other scrape in this file -- DLC/soundtracks/software are
-    excluded server-side, not via client-side filtering.
-
-    Returns [] (not an error) if tag_ids is empty -- there's nothing
-    honest to query Steam for without at least one real tag id.
-    """
-    if not tag_ids:
-        return []
-
-    cache_key = ("tag_games", tuple(sorted(tag_ids)), count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=600)
-    if cached is not None:
-        games = cached
-    else:
-        params = {
-            "query": "",
-            "start": 0,
-            "count": count + 1,  # +1 headroom for excluding the source game itself
-            "category1": 998,
-            "cc": cc,
-            "l": "english",
-            "tags": ",".join(str(t) for t in tag_ids),
         }
         games = _scrape_search_results(params, cc)
         _cache_set(cache_key, games)

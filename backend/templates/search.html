@@ -525,30 +525,6 @@
         </div>
     </section>
 
-    <!-- ================= SIMILAR GAMES =================
-         Sprint 5 foundation. "More Like This" -- deterministic
-         genre-tag + developer/publisher overlap matching, computed
-         backend-side (see services/game/similar_games.py). Same
-         Trending-card carousel component as Developer/Publisher
-         above -- zero new CSS, zero new card markup. Whole section
-         hidden by search.js when game.similar_games is empty (e.g. a
-         game whose genres don't map to a known tag, or a Steam lookup
-         failure -- never rendered as an empty/broken strip). -->
-    <section class="panel carousel-panel reveal" id="similarGamesSection">
-        <div class="panel__head">
-            <span class="panel__eyebrow">More like this</span>
-            <h2 class="panel__title">Similar Games</h2>
-        </div>
-        <div class="trending-wrap">
-            <button type="button" class="trending-arrow trending-arrow-left" id="similarGamesPrev" aria-label="Scroll left">
-                <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <div class="trending-scroll" id="similarGamesCarousel"></div>
-            <button type="button" class="trending-arrow trending-arrow-right" id="similarGamesNext" aria-label="Scroll right">
-                <i class="fa-solid fa-chevron-right"></i>
-            </button>
-        </div>
-    </section>
 
 </main>
 
