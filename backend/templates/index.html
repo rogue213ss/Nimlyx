@@ -90,8 +90,8 @@
   <div class="home-hero-track">
     {% for game in featured_games %}
     <div class="home-hero-slide{% if loop.first %} is-active{% endif %}"
-         style="background-image:url('{{ game.header_image }}');"
-         data-bg-candidates='{{ game.image_candidates | tojson }}'
+         {% if loop.first %}style="background-image:url('{{ game.header_image }}');"{% endif %}
+         data-bg-candidates='{{ (game.image_candidates + [game.header_image]) | tojson }}'
          data-name="{{ game.name }}"
          data-analyze-url="{{ game.analyze_url }}"
          data-insight="{{ game.insight }}"
