@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search_list.css') }}">
 </head>
-<body class="home-page">
+<body class="home-page search-page">
 
 <!-- ================= HEADER =================
      Now the literal, UNMODIFIED .home-header markup from index.html /
@@ -126,8 +126,9 @@
             <p class="search-landing-subtitle">Explore games, analyze player opinions, and discover what is worth playing.</p>
             <form class="search-landing-box" action="/search" method="get" role="search">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" name="q" placeholder="Search games…" autocomplete="off" aria-label="Search games" autofocus>
+                <input type="text" id="landingGameInput" name="q" placeholder="Search games…" autocomplete="off" aria-label="Search games" autofocus>
                 <button type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <div id="landingSuggestions" class="suggestions-dropdown"></div>
             </form>
             <!-- Popular Searches: a fixed curated list, not backend-driven
                  -- plain <a href="/search?q=..."> links straight to the
@@ -560,6 +561,7 @@
      mp4/webm) -- see _build_movie_entry in routes/game.py. Pinned to
      the major version (@1), per hls.js's own docs, so patch/minor
      releases apply automatically but a future breaking v2 won't. -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <script src="{{ url_for('static', filename='js/search_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>

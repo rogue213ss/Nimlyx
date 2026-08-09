@@ -152,76 +152,161 @@ function searchGame(name) {
 })();
 
 /* ==========================================================
-   SEARCH BUTTON
+   GLOBAL HEADER SEARCH (UNIVERSAL DESKTOP vs MOBILE)
 ========================================================== */
 
-const searchBtn = document.getElementById("searchBtn");
-if (searchBtn) {
-    searchBtn.addEventListener("click", () => {
-        const gameName = document.getElementById("gameInput").value.trim();
-        if (!gameName) return;
-        window.location.href = `/search?q=${encodeURIComponent(gameName)}`;
-    });
+if (typeof window.searchGame !== "function") {
+    window.searchGame = function searchGame(name) {
+        window.location.href = `/search?q=${encodeURIComponent(name)}`;
+    };
 }
 
-document.getElementById("gameInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && searchBtn) {
-        searchBtn.click();
-    }
-});
-
-/* ==========================================================
-   SEARCH SUGGESTIONS (debounced)
-========================================================== */
-
-let debounceTimer;
-
-document.getElementById("gameInput").addEventListener("input", (e) => {
-    clearTimeout(debounceTimer);
-    const query = e.target.value;
-
-    if (query.length < 2) {
-        document.getElementById("suggestions").innerHTML = "";
-        return;
+(function () {
+    function isMobileViewport() {
+        return window.matchMedia("(max-width: 900px)").matches;
     }
 
-    debounceTimer = setTimeout(() => {
-        fetchSuggestions(query);
-    }, 400);
-});
+    function redirectToSearchPage() {
+        if (window.location.pathname !== "/search" || window.location.search !== "") {
+            window.location.href = "/search";
+        }
+    }
 
-async function fetchSuggestions(query) {
-    const response = await fetch(`/api/search/${query}`);
-    const data = await response.json();
+    // 1. Mobile Header Search Icon & Label Interaction
+    document.addEventListener("click", (e) => {
+        const mobileSearchBtn = e.target.closest(".home-mobile-search-btn");
+        if (mobileSearchBtn && isMobileViewport()) {
+            e.preventDefault();
+            e.stopPropagation();
+            const searchToggle = document.getElementById("homeSearchToggle");
+            if (searchToggle) searchToggle.checked = false;
+            redirectToSearchPage();
+        }
+    });
 
-    const suggestionsBox = document.getElementById("suggestions");
-    suggestionsBox.innerHTML = "";
+    // 2. Header Search Input Events (Mobile Redirection vs Desktop Autocomplete)
+    const gameInputEl = document.getElementById("gameInput");
+    if (gameInputEl) {
+        const handleMobileHeaderInteraction = (e) => {
+            if (isMobileViewport()) {
+                e.preventDefault();
+                gameInputEl.blur();
+                const suggestionsBox = document.getElementById("suggestions");
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                redirectToSearchPage();
+                return true;
+            }
+            return false;
+        };
 
-    if (!data.items || data.items.length === 0) return;
+        gameInputEl.addEventListener("focus", handleMobileHeaderInteraction);
+        gameInputEl.addEventListener("click", handleMobileHeaderInteraction);
 
-    const topResults = data.items.slice(0, 5);
+        const searchForm = gameInputEl.closest("form.home-search");
+        if (searchForm) {
+            searchForm.addEventListener("submit", (e) => {
+                if (isMobileViewport()) {
+                    e.preventDefault();
+                    redirectToSearchPage();
+                }
+            });
+        }
+    }
 
-    topResults.forEach(game => {
-        const item = document.createElement("div");
-        item.className = "suggestion-item";
-
-        const priceText = game.price
-            ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
-            : "N/A";
-
-        item.innerHTML = `
-            <img src="${game.tiny_image}" alt="${game.name}">
-            <div class="suggestion-info">
-                <span class="suggestion-name">${game.name}</span>
-                <span class="suggestion-dev">${priceText}</span>
-            </div>
-        `;
-
-        item.addEventListener("click", () => {
-            suggestionsBox.innerHTML = "";
-            searchGame(game.name);
+    // 3. Search Button Click (Desktop vs Mobile)
+    const searchBtn = document.getElementById("searchBtn");
+    if (searchBtn) {
+        searchBtn.addEventListener("click", (e) => {
+            if (isMobileViewport()) {
+                e.preventDefault();
+                redirectToSearchPage();
+                return;
+            }
+            const gameName = document.getElementById("gameInput").value.trim();
+            if (!gameName) return;
+            window.location.href = `/search?q=${encodeURIComponent(gameName)}`;
         });
+    }
 
-        suggestionsBox.appendChild(item);
-    });
-}
+    // 4. Enter Key (Desktop vs Mobile)
+    if (gameInputEl) {
+        gameInputEl.addEventListener("keydown", (e) => {
+            if (isMobileViewport()) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    redirectToSearchPage();
+                }
+                return;
+            }
+            if (e.key === "Enter" && searchBtn) {
+                searchBtn.click();
+            }
+        });
+    }
+
+    // 5. Autocomplete Suggestions (Debounced - Desktop Only)
+    let debounceTimer;
+
+    if (gameInputEl) {
+        gameInputEl.addEventListener("input", (e) => {
+            const suggestionsBox = document.getElementById("suggestions");
+            if (isMobileViewport()) {
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                return;
+            }
+            clearTimeout(debounceTimer);
+            const query = e.target.value;
+
+            if (query.length < 2) {
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetchSuggestions(query);
+            }, 400);
+        });
+    }
+
+    async function fetchSuggestions(query) {
+        if (isMobileViewport()) return;
+        try {
+            const response = await fetch(`/api/search/${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            const suggestionsBox = document.getElementById("suggestions");
+            if (!suggestionsBox) return;
+            suggestionsBox.innerHTML = "";
+
+            if (!data.items || data.items.length === 0) return;
+
+            const topResults = data.items.slice(0, 5);
+
+            topResults.forEach(game => {
+                const item = document.createElement("div");
+                item.className = "suggestion-item";
+
+                const priceText = game.price
+                    ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+                    : "N/A";
+
+                item.innerHTML = `
+                    <img src="${game.tiny_image}" alt="${game.name}">
+                    <div class="suggestion-info">
+                        <span class="suggestion-name">${game.name}</span>
+                        <span class="suggestion-dev">${priceText}</span>
+                    </div>
+                `;
+
+                item.addEventListener("click", () => {
+                    suggestionsBox.innerHTML = "";
+                    window.searchGame(game.name);
+                });
+
+                suggestionsBox.appendChild(item);
+            });
+        } catch (err) {
+            console.error("Error fetching suggestions:", err);
+        }
+    }
+})();

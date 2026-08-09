@@ -358,3 +358,8 @@ def discover():
 @pages_bp.route("/search")
 def search_page():
     return render_template("search.html")
+
+
+@pages_bp.route("/about")
+def about_page():
+    return render_template("about.html")

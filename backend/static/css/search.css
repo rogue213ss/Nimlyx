@@ -292,7 +292,7 @@
      space (up to 120px top+bottom on desktop), which is what read
      as a giant empty gap inside the hero card. */
   position:relative;
-  overflow:hidden; /* clips .search-landing-hero__art to the card's own rounded corners */
+  overflow:visible; /* overflow:visible allows #landingSuggestions dropdown to render unclipped */
   text-align:center;
 }
 /* Background "artwork" layer -- a single blurred game's Steam header
@@ -301,11 +301,12 @@
    pull game art from elsewhere in this app, so nothing here is
    fabricated. Swap the <img src> in search.html to change the art. */
 .search-landing-hero__art{
-  position:absolute; inset:-6%;
+  position:absolute; inset:0;
   z-index:0;
   pointer-events:none;
   display:flex;
   overflow:hidden;
+  border-radius:inherit;
   filter:blur(18px) saturate(115%);
   opacity:.65;
 }
@@ -323,6 +324,7 @@
   position:absolute; inset:0;
   z-index:1;
   pointer-events:none;
+  border-radius:inherit;
   background:radial-gradient(120% 100% at 50% 0%, rgba(10,10,13,.55) 0%, rgba(10,10,13,.88) 75%);
 }
 /* Color wash on top of the scrim, below the content -- pulls
@@ -338,6 +340,7 @@
   position:absolute; inset:0;
   z-index:1;
   pointer-events:none;
+  border-radius:inherit;
   background:rgba(20,40,80,.55);
   mix-blend-mode:multiply;
 }
@@ -376,6 +379,7 @@
    keyboard/screen-reader behavior all come from the browser for
    free -- no click/keydown wiring needed here. */
 .search-landing-box{
+  position:relative !important;
   display:flex; align-items:center; gap:12px;
   width:100%; max-width:560px;
   background:var(--home-glass-fill);
@@ -451,6 +455,43 @@
 }
 .about-copy p{ margin:0; }
 .about-copy p + p{ margin-top:16px; }
+
+/* ================================================================
+   NIMLYX — SEARCH / GAME DETAIL PAGE (BASE DESKTOP)
+   ================================================================ */
+
+/* Hide global header search controls on the dedicated Search page (both desktop & mobile) */
+.search-page .home-header .home-search,
+.search-page .home-header .home-mobile-search-btn,
+.search-page .home-header .home-search-checkbox {
+  display: none !important;
+}
+
+/* Dedicated Search Landing Page Box & Autocomplete Suggestions */
+.search-landing-box {
+  position: relative !important;
+}
+
+.search-landing-box .suggestions-dropdown,
+#landingSuggestions.suggestions-dropdown {
+  position: absolute !important;
+  top: calc(100% + 10px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  background: #131318 !important;
+  border: 1px solid var(--home-glass-border-strong) !important;
+  border-radius: var(--home-radius-lg) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8) !important;
+  z-index: 1000 !important;
+}
+
+.search-landing-box .suggestion-info {
+  flex: 1;
+  min-width: 0;
+}
 
 /* ================================================================
    SCREENSHOTS
