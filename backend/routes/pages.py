@@ -357,7 +357,35 @@ def discover():
 
 @pages_bp.route("/search")
 def search_page():
-    return render_template("search.html")
+    try:
+        cc = get_region_code()
+        top_sellers_raw = fetch_browse_category("topsellers", cc=cc)
+        
+        trending_games = []
+        for g in top_sellers_raw[:10]:
+            discount_raw = g.get("discount_percent") or ""
+            # Filter non-digits safely if discount_raw is string
+            discount_digits = "".join(filter(str.isdigit, str(discount_raw)))
+            discount = int(discount_digits) if discount_digits else 0
+            
+            price_raw = g.get("final_price") or 0
+            is_free = price_raw == "0" or price_raw == 0
+            
+            trending_games.append({
+                "app_id": g.get("id"),
+                "name": g.get("name"),
+                "header_image": hero_image_url(g.get("id"), g.get("image")),
+                "image_candidates": build_image_candidates(g.get("id")),
+                "analyze_url": f"/search?app_id={g.get('id')}",
+                "price_formatted": "Free" if is_free else format_price(price_raw),
+                "discount": discount
+            })
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Failed to fetch trending games for search page")
+        trending_games = []
+
+    return render_template("search.html", trending_games=trending_games)
 
 
 @pages_bp.route("/about")

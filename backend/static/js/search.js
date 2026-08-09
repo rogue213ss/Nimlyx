@@ -440,6 +440,14 @@ function showLandingView() {
     if (searchLandingView) searchLandingView.classList.remove("is-hidden");
     const errorState = document.getElementById("gameErrorState");
     if (errorState) errorState.style.display = "none";
+
+    // Wire SSR trending carousel once
+    const landingTrendingSection = document.getElementById("landingTrendingSection");
+    if (landingTrendingSection && !landingTrendingSection.dataset.wired) {
+        // wireCarouselScroll handles null checks internally if the elements are missing
+        wireCarouselScroll("landingTrendingScroll", "landingTrendingPrev", "landingTrendingNext");
+        landingTrendingSection.dataset.wired = "true";
+    }
 }
 
 /** Canonical loader — always by app_id. Used for /search?app_id=
@@ -544,14 +552,10 @@ async function loadGame() {
     } else {
         // Bare /search has nothing to fetch before its first paint --
         // showLandingView() runs synchronously below, so there's no
-        // gap for a skeleton to fill here. loadLandingTrending() below
-        // is a background enhancement to an already-visible page, not
-        // something blocking initial content, so it doesn't get one
-        // either -- same "don't show empty sections" rule that section
-        // already follows, just extended to "don't show a skeleton for
-        // a section that might render as nothing at all".
+        // gap for a skeleton to fill here.
+        // Trending Games are now server-side rendered (SSR) directly into search.html
+        // so we just show the landing view immediately.
         showLandingView();
-        loadLandingTrending();
     }
 }
 
@@ -559,49 +563,10 @@ loadGame();
 
 /* ==========================================================
    SEARCH LANDING — TRENDING GAMES
-   Reuses /api/featured (already fetched by the homepage) rather than
-   any new/heavy endpoint, and reuses buildTrendingStyleCard() /
-   wireCarouselScroll() / renderCarouselSection() below -- the exact
-   same functions the More From Developer/Publisher carousels use --
-   instead of a second copy of that render logic. Whole section stays
-   is-hidden (renderCarouselSection's own "no games -> display:none"
-   behavior) if the fetch fails or top_sellers is empty -- never
-   shown empty.
+   Reuses buildTrendingStyleCard() / wireCarouselScroll() / 
+   renderCarouselSection() below. The trending list itself is now
+   rendered server-side into search.html to eliminate a client round-trip.
 ========================================================== */
-async function loadLandingTrending() {
-    try {
-        const response = await fetch("/api/featured");
-        if (!response.ok) return; // stays hidden
-        const data = await response.json();
-
-        // /api/featured's top_sellers shape (id/image/final_price/
-        // discount_percent) differs from what buildTrendingStyleCard
-        // expects (app_id/header_image/price/discount) because that
-        // function was built against the game-detail endpoint's
-        // developer_games/publisher_games shape -- mapped here rather
-        // than adding a second card-building function for one field
-        // naming difference.
-        const games = (data.top_sellers || []).slice(0, 10).map(g => ({
-            app_id: g.id,
-            name: g.name,
-            header_image: g.image,
-            price: g.final_price,
-            // Number(...) rather than assuming an already-clean int --
-            // same defensive stance formatters.py's parse_discount()
-            // takes server-side for this same Steam field elsewhere.
-            discount: Number(g.discount_percent) || 0,
-        }));
-
-        renderCarouselSection(
-            "landingTrendingSection", "landingTrendingScroll",
-            "landingTrendingPrev", "landingTrendingNext",
-            games, null, null, null
-        );
-    } catch (error) {
-        console.error("Error loading landing trending games:", error);
-        // stays hidden -- no error state needed for an optional section
-    }
-}
 
 /* ==========================================================
    MASTER RENDER

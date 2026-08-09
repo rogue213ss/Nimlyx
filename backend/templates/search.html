@@ -147,15 +147,10 @@
         </div>
     </div>
 
-    <!-- Trending Games: reuses /api/featured -- the exact endpoint the
-         homepage already calls for its own Trending Today rail -- so
-         this page adds zero new Steam requests. loadLandingTrending()
-         in search.js hides this whole section (not an empty state)
-         if that fetch fails or returns nothing, per "never show empty
-         sections". Markup/classes copied from the More From
-         Developer/Publisher carousels above, so this doesn't look or
-         behave like a new pattern on the page. -->
-    <section class="panel carousel-panel is-hidden" id="landingTrendingSection">
+    {% if trending_games %}
+    <!-- Trending Games: reuses fetch_browse_category("topsellers") on backend 
+         rather than hitting /api/featured client-side. -->
+    <section class="panel carousel-panel" id="landingTrendingSection">
         <div class="panel__head">
             <span class="panel__eyebrow">Discover</span>
             <h2 class="panel__title">Trending Games</h2>
@@ -164,14 +159,32 @@
             <button type="button" class="trending-arrow trending-arrow-left" id="landingTrendingPrev" aria-label="Scroll left">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
-            <div class="trending-scroll" id="landingTrendingScroll"></div>
+            <div class="trending-scroll" id="landingTrendingScroll">
+                {% for game in trending_games %}
+                <a class="trending-card" href="{{ game.analyze_url }}">
+                    <div class="trending-media">
+                        <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy">
+                        <div class="trending-media-overlay"></div>
+                    </div>
+                    <div class="trending-info">
+                        <h3 class="trending-title">{{ game.name }}</h3>
+                        <span class="trending-price">
+                            {% if game.discount > 0 %}
+                            -{{ game.discount }}% &middot; {{ game.price_formatted }}
+                            {% else %}
+                            {{ game.price_formatted }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
             <button type="button" class="trending-arrow trending-arrow-right" id="landingTrendingNext" aria-label="Scroll right">
                 <i class="fa-solid fa-chevron-right"></i>
             </button>
         </div>
     </section>
-
-</section>
+    {% endif %}
 
 <!-- ================= SEARCH RESULTS (Sprint 3, refined) =================
      Shown instead of the single-game hero/detail sections below
@@ -562,6 +575,7 @@
      the major version (@1), per hls.js's own docs, so patch/minor
      releases apply automatically but a future breaking v2 won't. -->
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/image-upgrade.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <script src="{{ url_for('static', filename='js/search_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
