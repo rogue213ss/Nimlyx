@@ -467,6 +467,13 @@
   display: none !important;
 }
 
+@media (max-width: 900px) {
+  .search-page .home-header .home-nav-burger {
+    margin-left: auto !important;
+    align-self: center !important;
+  }
+}
+
 /* Dedicated Search Landing Page Box & Autocomplete Suggestions */
 .search-landing-box {
   position: relative !important;
