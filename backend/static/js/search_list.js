@@ -36,6 +36,7 @@ const SearchList = (function () {
     let nextOffsetState = null;
     let fetchMoreFn = null;
     let loadingMore = false;
+    let currentGenreRequestId = 0;
 
     /* ------------------------------------------------------------
        FILTER STATE
@@ -172,12 +173,51 @@ const SearchList = (function () {
             nextOffsetState = data.next_offset ?? null;
 
             if (chipsContainerEl) buildFilterGroups(); // pick up any new genres from the appended rows
+            
+            fetchGenresForRows(newRows, currentGenreRequestId);
         } catch (error) {
             console.error("Error loading more search results:", error);
             hasMoreState = false; // don't leave a dead "Load more" button behind on failure
         } finally {
             loadingMore = false;
             renderRows();
+        }
+    }
+
+    async function fetchGenresForRows(rowsToFetch, requestId) {
+        if (!rowsToFetch || rowsToFetch.length === 0) return;
+        
+        const appIds = rowsToFetch.map(r => r.app_id);
+        
+        try {
+            const res = await fetch("/api/search-genres", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ app_ids: appIds })
+            });
+            
+            if (!res.ok) return;
+            const genresById = await res.json();
+            
+            if (requestId !== currentGenreRequestId) return; // Stale request, search changed
+            
+            let updated = false;
+            rowsToFetch.forEach(row => {
+                if (genresById[row.app_id] && genresById[row.app_id].length > 0) {
+                    row.genres = genresById[row.app_id];
+                    updated = true;
+                }
+            });
+            
+            if (updated) {
+                if (chipsContainerEl) {
+                    buildFilterGroups();
+                    renderAddFilterPanel();
+                }
+                renderRows();
+            }
+        } catch (e) {
+            console.error("Failed to load genres for search results", e);
         }
     }
 
@@ -452,6 +492,9 @@ const SearchList = (function () {
        PUBLIC INIT
     ------------------------------------------------------------ */
     function init({ container, sidebar, rows, hasMore, nextOffset, fetchMore }) {
+        currentGenreRequestId++;
+        const reqId = currentGenreRequestId;
+
         containerEl = container;
         allRows = rows || [];
         seenAppIds = new Set(allRows.map(r => r.app_id));
@@ -467,6 +510,8 @@ const SearchList = (function () {
 
         if (sidebar) wireSidebar(sidebar);
         renderRows();
+        
+        fetchGenresForRows(allRows, reqId);
     }
 
     return { init };

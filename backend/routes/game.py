@@ -115,23 +115,12 @@ def search_results(query):
         has_more = len(games) == BATCH_SIZE
         next_offset = offset + BATCH_SIZE if has_more else None
 
-        # Genre data isn't in this scrape's HTML (same acknowledged gap
-        # to_discover_card()/fetch_discover_games() already document for
-        # Discover's own cards) -- so it's fetched here, concurrently,
-        # purely to populate the Genre filter sidebar. Deliberately
-        # NOT a gate: unlike the old storesearch verification pass,
-        # nothing here can remove a result -- a failed/slow lookup just
-        # leaves that one row's genre pills empty. Bounded to whatever
-        # this one batch is (BATCH_SIZE, not a whole franchise), so this
-        # can't reintroduce the rate-limit pressure the old per-search
-        # verification pass caused.
-        def fetch_genres(app_id):
-            raw = get_appdetails(app_id, cc)
-            return [g["description"] for g in (raw or {}).get("genres", [])]
-
-        app_ids = [g.get("id") for g in games if g.get("id")]
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+        # Genre data is now lazy-loaded via /api/search-genres to decouple
+        # its high-latency (30 concurrent appdetails lookups on cold cache)
+        # from the critical rendering path. The search rows render
+        # immediately with genres=[], and search_list.js populates them
+        # async.
+        genres_by_id = {}
 
         normalized_query = clean_search_term(query).lower()
         results = []
@@ -191,6 +180,34 @@ def search_results(query):
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e), "results": [], "exact_match_app_id": None, "has_more": False, "next_offset": None}), 500
+
+
+@game_bp.route("/api/search-genres", methods=["POST"])
+def search_genres_api():
+    try:
+        data = request.get_json() or {}
+        app_ids = data.get("app_ids", [])
+        
+        if not app_ids or not isinstance(app_ids, list):
+            return jsonify({}), 400
+
+        # Safety cap to prevent abuse
+        app_ids = app_ids[:50]
+        
+        cc = get_region_code()
+        
+        def fetch_genres(app_id):
+            raw = get_appdetails(app_id, cc)
+            return [g["description"] for g in (raw or {}).get("genres", [])]
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+
+        return jsonify(genres_by_id)
+        
+    except Exception as e:
+        print(f"Error fetching search genres: {e}")
+        return jsonify({}), 500
 
 
 @game_bp.route("/api/game-detail/<app_id>")
