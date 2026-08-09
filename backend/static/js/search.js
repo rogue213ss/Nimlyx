@@ -207,44 +207,56 @@ if (typeof window.searchGame !== "function") {
         }
     }
 
+    const suggestionCache = new Map();
+
     async function fetchSuggestions(query) {
         activeSuggestionIndex = -1;
+        
+        const suggestionsBox = document.getElementById("suggestions");
+        if (!suggestionsBox) return;
+
+        if (suggestionCache.has(query)) {
+            renderSuggestions(suggestionCache.get(query), suggestionsBox);
+            return;
+        }
+
         try {
             const response = await fetch(`/api/search/${encodeURIComponent(query)}`);
             const data = await response.json();
-
-            const suggestionsBox = document.getElementById("suggestions");
-            if (!suggestionsBox) return;
-            suggestionsBox.innerHTML = "";
-
-            if (!data.items || data.items.length === 0) return;
-
-            data.items.slice(0, 5).forEach(game => {
-                const item = document.createElement("div");
-                item.className = "suggestion-item";
-
-                const priceText = game.price
-                    ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
-                    : "N/A";
-
-                item.innerHTML = `
-                    <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
-                    <div class="suggestion-info">
-                        <span class="suggestion-name">${game.name}</span>
-                        <span class="suggestion-dev">${priceText}</span>
-                    </div>
-                `;
-
-                item.addEventListener("click", () => {
-                    suggestionsBox.innerHTML = "";
-                    window.searchGame(game.name);
-                });
-
-                suggestionsBox.appendChild(item);
-            });
+            suggestionCache.set(query, data);
+            renderSuggestions(data, suggestionsBox);
         } catch (err) {
             console.error("Error fetching suggestions:", err);
         }
+    }
+
+    function renderSuggestions(data, suggestionsBox) {
+        suggestionsBox.innerHTML = "";
+        if (!data.items || data.items.length === 0) return;
+
+        data.items.slice(0, 5).forEach(game => {
+            const item = document.createElement("div");
+            item.className = "suggestion-item";
+
+            const priceText = game.price
+                ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+                : "N/A";
+
+            item.innerHTML = `
+                <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
+                <div class="suggestion-info">
+                    <span class="suggestion-name">${game.name}</span>
+                    <span class="suggestion-dev">${priceText}</span>
+                </div>
+            `;
+
+            item.addEventListener("click", () => {
+                suggestionsBox.innerHTML = "";
+                window.searchGame(game.name);
+            });
+
+            suggestionsBox.appendChild(item);
+        });
     }
 
     // ==========================================================
@@ -318,41 +330,50 @@ if (typeof window.searchGame !== "function") {
 
     async function fetchLandingSuggestions(query) {
         landingActiveIndex = -1;
+        if (!landingSuggestionsBox) return;
+
+        if (suggestionCache.has(query)) {
+            renderLandingSuggestions(suggestionCache.get(query));
+            return;
+        }
+
         try {
             const response = await fetch(`/api/search/${encodeURIComponent(query)}`);
             const data = await response.json();
-
-            if (!landingSuggestionsBox) return;
-            landingSuggestionsBox.innerHTML = "";
-
-            if (!data.items || data.items.length === 0) return;
-
-            data.items.slice(0, 5).forEach(game => {
-                const item = document.createElement("div");
-                item.className = "suggestion-item";
-
-                const priceText = game.price
-                    ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
-                    : "N/A";
-
-                item.innerHTML = `
-                    <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
-                    <div class="suggestion-info">
-                        <span class="suggestion-name">${game.name}</span>
-                        <span class="suggestion-dev">${priceText}</span>
-                    </div>
-                `;
-
-                item.addEventListener("click", () => {
-                    landingSuggestionsBox.innerHTML = "";
-                    window.searchGame(game.name);
-                });
-
-                landingSuggestionsBox.appendChild(item);
-            });
+            suggestionCache.set(query, data);
+            renderLandingSuggestions(data);
         } catch (err) {
             console.error("Error fetching landing suggestions:", err);
         }
+    }
+
+    function renderLandingSuggestions(data) {
+        landingSuggestionsBox.innerHTML = "";
+        if (!data.items || data.items.length === 0) return;
+
+        data.items.slice(0, 5).forEach(game => {
+            const item = document.createElement("div");
+            item.className = "suggestion-item";
+
+            const priceText = game.price
+                ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+                : "N/A";
+
+            item.innerHTML = `
+                <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
+                <div class="suggestion-info">
+                    <span class="suggestion-name">${game.name}</span>
+                    <span class="suggestion-dev">${priceText}</span>
+                </div>
+            `;
+
+            item.addEventListener("click", () => {
+                landingSuggestionsBox.innerHTML = "";
+                window.searchGame(game.name);
+            });
+
+            landingSuggestionsBox.appendChild(item);
+        });
     }
 })();
 

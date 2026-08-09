@@ -53,9 +53,20 @@ def verdicts():
 @browse_bp.route("/api/featured")
 def featured_games_api():
     cc = get_region_code()
+    cache_key = ("featured_categories", cc)
+    
+    from steam import _cache_get, _cache_set
+    cached = _cache_get(cache_key, ttl_seconds=180)
+    if cached is not None:
+        return jsonify(cached)
+
     url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
-    response = requests.get(url)
-    data = response.json()
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
     def clean_items(category):
         items = data.get(category, {}).get("items", [])
@@ -90,9 +101,12 @@ def featured_games_api():
         for g in top_sellers[:5]
     ]
 
-    return jsonify({
+    result = {
         "hero": hero,
         "top_sellers": top_sellers,
         "new_releases": clean_items("new_releases"),
         "specials": clean_items("specials")
-    })
+    }
+    
+    _cache_set(cache_key, result)
+    return jsonify(result)
