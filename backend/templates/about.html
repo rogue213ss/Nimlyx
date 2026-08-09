@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About Nimlyx — Analytics, Discovery & PC Gaming Insights</title>
+<meta name="description" content="Learn about Nimlyx: an independent Steam analytics and discovery platform providing data-driven game evaluations, sentiment tracking, and hardware insights.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+</head>
+<body class="home-page">
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeSearchToggle" class="home-search-checkbox">
+    <label for="homeSearchToggle" class="home-mobile-search-btn" aria-label="Search">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </label>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+        <label for="homeSearchToggle" class="home-search-close-btn" aria-label="Close search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </label>
+        <div id="suggestions" class="suggestions-dropdown"></div>
+      </form>
+    </div>
+  </div>
+</header>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <main class="about-page">
+    
+    <!-- HERO SECTION -->
+    <section class="about-hero">
+      <div class="home-container about-hero-inner">
+        <span class="about-eyebrow">NIMLYX METHODOLOGY & MISSION</span>
+        <h1 class="about-title">Analyze. Explore. <span class="about-title-accent">Discover.</span></h1>
+        <p class="about-lead">
+          Nimlyx is a modern Steam analytics and discovery platform designed for PC gamers. We translate complex store metrics, review data, and community feedback into clear, objective insights.
+        </p>
+      </div>
+    </section>
+
+    <!-- CORE PILLARS GRID -->
+    <section class="about-section">
+      <div class="home-container">
+        <div class="about-section-head">
+          <span class="about-section-subtitle">Core Philosophy</span>
+          <h2 class="about-section-title">What Nimlyx Does</h2>
+        </div>
+
+        <div class="about-grid-three">
+          <div class="about-card">
+            <div class="about-card-icon">🧠</div>
+            <div class="about-card-badge">01 · EVALUATE</div>
+            <h3 class="about-card-title">Analyze</h3>
+            <p class="about-card-text">
+              We look beyond basic review percentages. By applying statistical Wilson confidence intervals, tracking reputation trajectories over time, and auditing tag accuracy, Nimlyx reveals true game quality.
+            </p>
+          </div>
+
+          <div class="about-card">
+            <div class="about-card-icon">🧭</div>
+            <div class="about-card-badge">02 · NAVIGATE</div>
+            <h3 class="about-card-title">Explore</h3>
+            <p class="about-card-text">
+              Explore rich developer and publisher credits, high-resolution media galleries, regional pricing, purchase options, and parsed PC system requirements formatted for easy comparison.
+            </p>
+          </div>
+
+          <div class="about-card">
+            <div class="about-card-icon">⚡</div>
+            <div class="about-card-badge">03 · FIND</div>
+            <h3 class="about-card-title">Discover</h3>
+            <p class="about-card-text">
+              Find your next favorite game with an intelligent discovery engine. Filter by budget thresholds, specific gameplay styles, and community review ratings without endless store scrolling.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEEP DIVE SECTIONS -->
+    <section class="about-section">
+      <div class="home-container">
+        <div class="about-two-col">
+          
+          <div class="about-box">
+            <h3 class="about-box-title">📊 How Game Analysis Works</h3>
+            <p>
+              Steam hosts tens of thousands of titles, but raw user ratings can often be misleading due to review volume biases, sudden review bombs, or vague store tags.
+            </p>
+            <p>
+              Nimlyx processes store signals through an independent analytical lens:
+            </p>
+            <ul class="about-list">
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Wilson Score Weighting:</strong> Balances sample size against positive ratios to prevent low-volume games from skewing top ranks.</span>
+              </li>
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Reputation Trajectory:</strong> Compares recent review trends against overall history to detect post-launch updates or declining developer support.</span>
+              </li>
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Tag Honesty Audit:</strong> Cross-checks store page tags against actual game category data to ensure accurate genre expectations.</span>
+              </li>
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Spotlight Reviews:</strong> Extracts top-voted positive and negative community feedback to highlight what players actually care about.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="about-box">
+            <h3 class="about-box-title">💻 Hardware & Requirements</h3>
+            <p>
+              Knowing whether a game will run comfortably on your PC is just as important as knowing if it's worth buying.
+            </p>
+            <p>
+              The hardware compatibility system is an evolving part of Nimlyx, built around normalized hardware data and structured system requirements:
+            </p>
+            <ul class="about-list">
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Requirement Normalization:</strong> Raw system requirement text from store listings is parsed into structured minimum and recommended targets.</span>
+              </li>
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Hardware Comparison:</strong> Verified CPU and GPU specifications provide a consistent foundation for comparing your hardware against game requirements.</span>
+              </li>
+              <li class="about-list-item">
+                <span class="about-list-bullet">›</span>
+                <span><strong>Targeted V1 Scope:</strong> Hardware indexing focuses on consumer Intel Core processors from 2nd Gen onward and AMD Ryzen processors from Ryzen 1000 onward, covering both desktop and mobile CPUs.</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA TRANSPARENCY & METHODOLOGY -->
+    <section class="about-section">
+      <div class="home-container">
+        <div class="about-callout">
+          <h3 class="about-callout-title">🛡 Data Transparency & Commitment</h3>
+          <p>
+            Nimlyx is committed to providing objective, reliable analytics for PC gamers. We believe data integrity and methodology transparency are essential for trustworthy game discovery.
+          </p>
+          <p>
+            Nimlyx prioritizes official manufacturer sources for hardware specifications. When a manufacturer does not provide a specification, Nimlyx does not invent or estimate it.
+          </p>
+          <div class="about-highlight-box">
+            <strong>Editorial Independence:</strong> Nimlyx does not rank games based on sponsored placement. All scores, verdicts, and discovery categories are generated purely from public data and algorithmic criteria.
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================
+       FOOTER
+       ============================================ -->
+  <footer class="home-footer">
+    <div class="home-container home-footer-inner">
+      <div class="home-footer-brand">
+        <div class="home-footer-logo">
+          <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+            <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+          </svg>
+          Nimlyx
+        </div>
+        <span class="home-footer-tag">Steam Data · Regional Pricing · Not affiliated with Valve</span>
+      </div>
+      <div class="home-footer-links">
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </div>
+    </div>
+    <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
