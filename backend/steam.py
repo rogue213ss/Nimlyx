@@ -560,7 +560,7 @@ def fetch_search_by_term(term, start=0, count=30, cc="US"):
     results PAGE uses to page through results, so different start
     values genuinely return different games."""
     cache_key = ("term_search", term, start, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=120)
+    cached = _cache_get(cache_key, ttl_seconds=86400)
     if cached is not None:
         return cached
 
