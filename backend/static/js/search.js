@@ -1284,6 +1284,19 @@ function initFeaturedPlayOverlay() {
     function show() { overlay.style.display = ""; }
     function hide() { overlay.style.display = "none"; }
 
+    function togglePlayPause(e) {
+        if (e && e.clientY) {
+            const rect = featuredVideo.getBoundingClientRect();
+            const NATIVE_CONTROLS_BAR_HEIGHT = 44;
+            if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
+        }
+        if (featuredVideo.paused) {
+            featuredVideo.play().catch(() => {});
+        } else {
+            featuredVideo.pause();
+        }
+    }
+
     // "loadstart" fires whenever a new trailer is loaded into the
     // element -- whether that's hls.js calling loadSource() or Safari's
     // native path setting .src directly -- which is exactly when the
@@ -1293,63 +1306,45 @@ function initFeaturedPlayOverlay() {
     featuredVideo.addEventListener("play", hide);
     featuredVideo.addEventListener("pause", show);
     featuredVideo.addEventListener("ended", show);
+
     overlay.addEventListener("click", () => {
-        // .play() returns a promise that rejects if playback can't
-        // start (e.g. the source failed to load in the moment between
-        // the overlay appearing and being clicked) -- the fatal-error
-        // path in showFeaturedMedia() already handles telling the user
-        // via the error state, so this just needs to not leave an
-        // unhandled rejection sitting in the console on top of that.
         featuredVideo.play().catch(() => {});
     });
 
+    // Clicking the video canvas directly toggles play ↔ pause
+    featuredVideo.addEventListener("click", (e) => {
+        // Pointer coarse (mobile touch) handles single vs double tap separately below
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+        togglePlayPause(e);
+    });
+
     // Switching to the featured screenshot needs the overlay gone too
-    // -- same belt-and-suspenders reasoning as the glow reset above,
-    // since showFeaturedMedia() hides #featuredVideo itself rather
-    // than firing any event this overlay already listens for.
     if (featuredImg) {
         featuredImg.addEventListener("load", () => {
             if (featuredVideo.style.display === "none") hide();
         });
     }
 
-    // Mobile: single-tap play/pause (native <video controls>' own
-    // play/pause icon is fiddly on a phone-sized trailer) fought with
-    // the browser's own tap-to-reveal-controls gesture -- the first
-    // tap after controls auto-hid would both reveal the bar AND
-    // silently toggle playback, which read as "the video randomly
-    // paused/played itself" and was the annoying part. Replaced with
-    // a YouTube-style gesture instead: single tap does nothing extra
-    // (native controls still reveal/hide themselves for free, no code
-    // needed for that), double-tap on the left or right half seeks
-    // -5s/+5s. Desktop is untouched -- pointerType is checked below,
-    // and this whole gesture is additive on top of the click-to-play
-    // overlay/native controls desktop already had.
+    // Mobile touch interaction: single tap toggles play/pause,
+    // double-tap on left/right half seeks -5s/+5s (YouTube-style)
     if (window.matchMedia("(pointer: coarse)").matches) {
         const seekBack = document.getElementById("featuredSeekBack");
         const seekFwd = document.getElementById("featuredSeekFwd");
         const SEEK_SECONDS = 5;
-        const DOUBLE_TAP_WINDOW_MS = 320;
+        const DOUBLE_TAP_WINDOW_MS = 300;
         let lastTapAt = 0;
+        let tapTimer = null;
 
         function flashSeek(el) {
             if (!el) return;
             el.classList.add("is-active");
-            // Restart the fade if the same side is double-tapped again
-            // in quick succession, rather than the flash getting stuck
-            // mid-fade and looking unresponsive.
             clearTimeout(el._flashTimer);
             el._flashTimer = setTimeout(() => el.classList.remove("is-active"), 450);
         }
 
         featuredVideo.addEventListener("pointerup", (e) => {
-            if (e.pointerType === "mouse") return; // desktop stays click/overlay-only
+            if (e.pointerType === "mouse") return;
 
-            // The native control bar lives inside this same element,
-            // so a tap on it also reaches this listener. Ignore taps
-            // in that bottom strip and let the native controls handle
-            // themselves -- only a tap on the open video canvas above
-            // it should count toward the seek gesture.
             const rect = featuredVideo.getBoundingClientRect();
             const NATIVE_CONTROLS_BAR_HEIGHT = 44;
             if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
@@ -1357,22 +1352,26 @@ function initFeaturedPlayOverlay() {
             const now = Date.now();
             const isDoubleTap = now - lastTapAt < DOUBLE_TAP_WINDOW_MS;
             lastTapAt = now;
-            if (!isDoubleTap) return; // single tap: no-op, native controls handle their own reveal/hide
 
-            const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
-            if (isLeftHalf) {
-                featuredVideo.currentTime = Math.max(0, featuredVideo.currentTime - SEEK_SECONDS);
-                flashSeek(seekBack);
+            if (isDoubleTap) {
+                clearTimeout(tapTimer);
+                lastTapAt = 0;
+                const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+                if (isLeftHalf) {
+                    featuredVideo.currentTime = Math.max(0, featuredVideo.currentTime - SEEK_SECONDS);
+                    flashSeek(seekBack);
+                } else {
+                    const duration = featuredVideo.duration || Infinity;
+                    featuredVideo.currentTime = Math.min(duration, featuredVideo.currentTime + SEEK_SECONDS);
+                    flashSeek(seekFwd);
+                }
             } else {
-                const duration = featuredVideo.duration || Infinity;
-                featuredVideo.currentTime = Math.min(duration, featuredVideo.currentTime + SEEK_SECONDS);
-                flashSeek(seekFwd);
+                clearTimeout(tapTimer);
+                tapTimer = setTimeout(() => {
+                    lastTapAt = 0;
+                    togglePlayPause(e);
+                }, DOUBLE_TAP_WINDOW_MS);
             }
-            // A double-tap is two consecutive taps -- without this the
-            // second tap of THIS double-tap can become the first tap of
-            // a following pair, making three quick taps register as two
-            // seeks instead of one.
-            lastTapAt = 0;
         });
     }
 }
