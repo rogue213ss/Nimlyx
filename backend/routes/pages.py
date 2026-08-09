@@ -363,3 +363,8 @@ def search_page():
 @pages_bp.route("/about")
 def about_page():
     return render_template("about.html")
+
+
+@pages_bp.route("/privacy")
+def privacy_page():
+    return render_template("privacy.html")

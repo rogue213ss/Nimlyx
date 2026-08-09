@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx Privacy Policy</title>
+<meta name="description" content="Privacy Policy for Nimlyx. Learn about how we handle data, use local storage, and interact with third-party APIs like Steam.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+</head>
+<body class="home-page">
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeSearchToggle" class="home-search-checkbox">
+    <label for="homeSearchToggle" class="home-mobile-search-btn" aria-label="Search">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </label>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+        <label for="homeSearchToggle" class="home-search-close-btn" aria-label="Close search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </label>
+        <div id="suggestions" class="suggestions-dropdown"></div>
+      </form>
+    </div>
+  </div>
+</header>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <main class="about-page">
+    
+    <!-- HERO SECTION -->
+    <section class="about-hero">
+      <div class="home-container about-hero-inner">
+        <span class="about-eyebrow">LEGAL & PRIVACY</span>
+        <h1 class="about-title">Privacy <span class="about-title-accent">Policy</span></h1>
+        <p class="about-lead">
+          We believe in objective analytics, not tracking. Nimlyx is designed to provide powerful game discovery without collecting your personal information.
+        </p>
+      </div>
+    </section>
+
+    <section class="about-section">
+      <div class="home-container">
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">1. Introduction</h2>
+          <p>
+            Welcome to Nimlyx. We respect your privacy and are committed to protecting it. This Privacy Policy explains how we operate, what limited data is involved when you use our platform, and our commitment to avoiding unnecessary tracking. 
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">2. Information We Collect</h2>
+          <p>
+            <strong>We do not collect personal information.</strong> Nimlyx does not require user accounts, does not offer a login system, and does not ask for your name, email address, or any other personally identifiable information.
+          </p>
+          <ul class="about-list">
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>No Accounts:</strong> You browse Nimlyx entirely anonymously.</span>
+            </li>
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>No IP Logging for Tracking:</strong> We do not log IP addresses to track individual users, track behavior across sessions, or build user profiles.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">3. Cookies and Local Storage</h2>
+          <p>
+            Nimlyx does not use tracking cookies or advertising cookies. 
+          </p>
+          <p>
+            We use a browser feature called <strong>Local Storage</strong> strictly for performance caching. Specifically, we store the results of image availability checks in your browser (e.g., whether a high-resolution game header image successfully loaded or failed). This prevents your browser from repeatedly trying to load broken images on future visits, saving bandwidth and speeding up your experience. This data is kept entirely on your device and is never sent back to our servers.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">4. Analytics and Third-Party Tracking</h2>
+          <p>
+            We do <strong>not</strong> use third-party analytics services (such as Google Analytics) or any other external tracking scripts that monitor your behavior on our site. Your browsing activity on Nimlyx remains your business alone.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">5. Steam and Third-Party Data</h2>
+          <p>
+            Nimlyx is a discovery platform that aggregates publicly available game information. As part of its functionality, Nimlyx servers retrieve data from external APIs, primarily:
+          </p>
+          <ul class="about-list">
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>Steam:</strong> We retrieve public store listings, community reviews, player counts, pricing data, and game images from Steam's public APIs.</span>
+            </li>
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>IGDB:</strong> We occasionally retrieve high-quality promotional artwork for select titles using the IGDB API.</span>
+            </li>
+          </ul>
+          <p>
+            Nimlyx does not own this data. All game images, titles, and store descriptions belong to their respective publishers and Valve Corporation. Nimlyx is not affiliated with, endorsed by, or sponsored by Valve Corporation or Steam. We do not extract or display any private Steam user profile data or review author names.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">6. Data Security and Retention</h2>
+          <p>
+            Because we do not collect personal data or operate user accounts, there is no user data for us to retain or secure. Our database solely caches public game information and verified hardware specifications to ensure fast page loads.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">7. Children's Privacy</h2>
+          <p>
+            Nimlyx does not knowingly collect any information from anyone, including children under the age of 13. Given that we do not offer accounts or data collection forms, children can browse our public game catalog anonymously like any other visitor.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">8. Changes to This Privacy Policy</h2>
+          <p>
+            We may update our Privacy Policy occasionally to reflect changes in how Nimlyx operates. Any changes will be posted on this page. Because we have no way to contact you directly, we encourage you to review this policy periodically.
+          </p>
+        </div>
+        
+        <div class="about-box">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">9. Contact</h2>
+          <p>
+            If you have any questions or concerns about our privacy practices, please contact us or open an issue on our project repository.
+          </p>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================
+       FOOTER
+       ============================================ -->
+  <footer class="home-footer">
+    <div class="home-container home-footer-inner">
+      <div class="home-footer-brand">
+        <div class="home-footer-logo">
+          <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+            <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+          </svg>
+          Nimlyx
+        </div>
+        <span class="home-footer-tag">Steam Data · Regional Pricing · Not affiliated with Valve</span>
+      </div>
+      <div class="home-footer-links">
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </div>
+    </div>
+    <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
