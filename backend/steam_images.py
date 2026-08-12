@@ -52,7 +52,14 @@ def default_header_image(app_id):
     succeed), this is available even when Steam's appdetails endpoint is
     down, slow, or rate-limited. This is the actual "100% guaranteed"
     fallback: every listed game has this asset, and getting it costs
-    nothing but a string format."""
+    nothing but a string format.
+
+    Deliberately STEAM_CDN, not STEAM_LIBRARY_CDN: header.jpg under
+    STEAM_LIBRARY_CDN (the newer store_item_assets pipeline) does NOT
+    exist for every app -- older or smaller listings frequently 404
+    there. The classic STEAM_CDN path is the one Steam has generated
+    for every store listing since the page was created, which is what
+    "guaranteed" actually requires here."""
     if not app_id:
         return None
     return f"{STEAM_CDN}/{app_id}/header.jpg"

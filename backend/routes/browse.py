@@ -1,6 +1,5 @@
 import requests
-from flask import Blueprint, jsonify
-
+from flask import Blueprint, jsonify, render_template
 from region import get_region_code
 from steam import fetch_browse_category
 
@@ -110,3 +109,66 @@ def featured_games_api():
     
     _cache_set(cache_key, result)
     return jsonify(result)
+
+
+@browse_bp.route("/api/feed/row/<category>")
+def feed_row(category):
+    """
+    Returns an HTML snippet for a specific homepage feed row.
+    Uses serve-stale-while-revalidating cache logic to guarantee fast responses.
+    """
+    from flask import request
+    from steam import fetch_homepage_row
+    from formatters import format_price
+    cc = get_region_code()
+    
+    seen_param = request.args.get("seen", "")
+    seen_ids = set([s.strip() for s in seen_param.split(",") if s.strip()])
+    
+    # fetch_homepage_row uses background thread caching.
+    games = fetch_homepage_row(category, cc=cc, seen_ids=seen_ids)
+    
+    if games is None:
+        # True cold start. We could return a loading skeleton, but it's easier 
+        # for AJAX to just retry or leave the skeleton that's already in the DOM.
+        return "", 202 
+
+    # to_discover_card() deliberately leaves `price` as the raw
+    # unformatted cents value (it's a shared contract with Search,
+    # whose own JS formats it client-side) -- but this route renders
+    # server-side Jinja with no such formatting pass, so without this
+    # every card here would show "1999" instead of "$19.99".
+    #
+    # IMPORTANT: `games` here is the same list/dicts held by
+    # fetch_homepage_row's shared, cross-request cache (see
+    # serve_stale_or_rebuild -- it returns cached["data"] by
+    # reference, not a copy). Mutating g["price"] in place would
+    # format it correctly once, then corrupt the cached raw value for
+    # every subsequent request in this cache's TTL window (re-running
+    # format_price on an already-formatted "$19.99" string isn't
+    # all-digits, so it would silently fall back to "Free" for every
+    # user). Building fresh dict copies for the template keeps the
+    # cached originals untouched.
+    games = [dict(g, price=format_price(g.get("price"))) for g in games]
+
+    # For Phase 1 prototype, we map the visual treatments.
+    title = ""
+    variant = "feed-variant-standard"
+    
+    if category == "specials":
+        title = "Biggest Deals"
+        variant = "feed-variant-deal"
+    elif category == "action":
+        title = "Action"
+        variant = "feed-variant-standard"
+    else:
+        title = category.title()
+
+    html = render_template(
+        "components/feed_row.html",
+        title=title,
+        games=games,
+        variant=variant,
+        category=category
+    )
+    return html

@@ -229,9 +229,8 @@
    ================================================================ */
 .home-hero{
   position:relative;
-  height:56vh; min-height:460px;
+  height:75vh; min-height:600px;
   overflow:hidden;
-  border-bottom:1px solid var(--home-glass-border);
 }
 .home-hero-track{ position:absolute; inset:0; }
 .home-hero-slide{
@@ -246,18 +245,14 @@
 .home-hero-overlay{
   position:absolute; inset:0;
   background:
-    /* Cinematic left-to-right scrim — the text zone (left ~55%) sits
-       on a near-opaque field regardless of what's behind it; the
-       right side stays clear so the artwork still reads. */
+    /* Cinematic left-to-right scrim */
     linear-gradient(90deg,
-      rgba(6,6,8,0.97) 0%,
-      rgba(6,6,8,0.9) 30%,
-      rgba(6,6,8,0.55) 55%,
-      rgba(6,6,8,0.08) 78%,
+      rgba(6,6,8,0.95) 0%,
+      rgba(6,6,8,0.7) 35%,
+      rgba(6,6,8,0.3) 60%,
       rgba(6,6,8,0) 100%),
-    /* Light bottom fade so the hero still grounds into the section
-       below it, independent of the left-right text scrim. */
-    linear-gradient(180deg, rgba(10,10,13,0) 65%, rgba(10,10,13,0.9) 100%);
+    /* Heavy bottom fade so the hero grounds seamlessly into the background */
+    linear-gradient(180deg, rgba(10,10,13,0) 40%, rgba(10,10,13,1) 100%);
 }
 
 .home-hero-content{
@@ -281,6 +276,23 @@
   color:#ffffff;
   text-shadow:0 2px 24px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.8);
   transition:opacity .3s ease;
+}
+
+.hero-insight-integration{
+  max-width: 600px;
+  margin-bottom: 24px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.hero-insight-integration .home-insight-headline{
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.hero-insight-integration .home-insight-why{
+  font-size: 0.95rem;
+  color: var(--home-text-secondary);
+  line-height: 1.5;
 }
 .home-hero-indicators{ display:flex; gap:8px; margin-top:26px; }
 .home-hero-dot{
@@ -389,8 +401,8 @@ main{ counter-reset: nimlyx-section; }
   order:-1;
 }
 .home-eyebrow{
-  display:block; font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.1em;
-  text-transform:uppercase; color:var(--home-text-faint); margin-bottom:8px;
+  display:block; font-family:var(--home-font-mono); font-size:.72rem; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--home-cta-blue); margin-bottom:10px;
 }
 .home-section-title{
   font-family:var(--home-font-display); font-size:1.65rem; font-weight:600; letter-spacing:-0.01em;
@@ -463,12 +475,12 @@ main{ counter-reset: nimlyx-section; }
   padding:5px 11px; border-radius:var(--home-radius-sm);
   margin-bottom:15px;
 }
-.badge-worth  { background:var(--home-verdict-worth-bg);  color:var(--home-verdict-worth);  border:1px solid var(--home-verdict-worth-line); }
-.badge-hidden { background:var(--home-verdict-hidden-bg); color:var(--home-verdict-hidden); border:1px solid var(--home-verdict-hidden-line); }
-.badge-fresh  { background:var(--home-verdict-fresh-bg);  color:var(--home-verdict-fresh);  border:1px solid var(--home-verdict-fresh-line); }
-.badge-critic { background:var(--home-verdict-critic-bg); color:var(--home-verdict-critic); border:1px solid var(--home-verdict-critic-line); }
-.badge-split  { background:var(--home-verdict-split-bg);  color:var(--home-verdict-split);  border:1px solid var(--home-verdict-split-line); }
-.badge-fallback{ background:var(--home-verdict-fallback-bg); color:var(--home-verdict-fallback); border:1px solid var(--home-verdict-fallback-line); }
+.badge-worth  { background:var(--home-verdict-worth-bg);  color:var(--home-verdict-worth);  border-left:3px solid var(--home-verdict-worth-line); }
+.badge-hidden { background:var(--home-verdict-hidden-bg); color:var(--home-verdict-hidden); border-left:3px solid var(--home-verdict-hidden-line); }
+.badge-fresh  { background:var(--home-verdict-fresh-bg);  color:var(--home-verdict-fresh);  border-left:3px solid var(--home-verdict-fresh-line); }
+.badge-critic { background:var(--home-verdict-critic-bg); color:var(--home-verdict-critic); border-left:3px solid var(--home-verdict-critic-line); }
+.badge-split  { background:var(--home-verdict-split-bg);  color:var(--home-verdict-split);  border-left:3px solid var(--home-verdict-split-line); }
+.badge-fallback{ background:var(--home-verdict-fallback-bg); color:var(--home-verdict-fallback); border-left:3px solid var(--home-verdict-fallback-line); }
 
 .pick-lead{
   position:relative; display:block;
@@ -617,67 +629,150 @@ main{ counter-reset: nimlyx-section; }
   .trending-arrow-right{ right:4px; }
 }
 
-.trending-card{
-  position:relative;
-  flex:0 0 340px;
-  border-radius:var(--home-radius-lg);
-  overflow:hidden;
-  border:1px solid var(--home-glass-border);
-  background:var(--home-bg-card);
-  transition:border-color .25s var(--home-ease), transform .25s var(--home-ease);
-}
-.trending-card:hover{ border-color:var(--home-glass-border-strong); transform:translateY(-2px); }
-.trending-rank{
-  position:absolute; top:12px; left:12px; z-index:2;
-  font-family:var(--home-font-mono); font-weight:700; font-size:.8rem;
-  width:28px; height:28px; border-radius:50%;
-  background:rgba(10,10,13,0.75); border:1px solid var(--home-glass-border-strong);
-  color:var(--home-text-primary);
-  display:flex; align-items:center; justify-content:center;
-}
-.trending-media{ position:relative; width:100%; aspect-ratio:16/8; overflow:hidden; }
-.trending-media img{ width:100%; height:100%; object-fit:cover; transition:transform .5s var(--home-ease); }
-.trending-card:hover .trending-media img{ transform:scale(1.04); }
-.trending-media-overlay{
-  position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(10,10,13,0.9) 0%, rgba(10,10,13,0) 55%);
-}
-.trending-info{ padding:14px 16px 16px; display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
-.trending-title{
-  font-family:var(--home-font-display); font-size:.98rem; font-weight:600;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-.trending-price{ font-family:var(--home-font-mono); font-size:.83rem; color:var(--home-text-muted); flex-shrink:0; }
 
 /* ================================================================
-   NEW RELEASES — dense numbered list, no imagery emphasis. Reads
-   like a ledger, not a gallery — the opposite visual weight from
-   Trending's big landscape imagery, on purpose.
+   TRENDING TODAY (Asymmetric Showcase - Phase 2)
+   Left column dominates with #1 rank. Right column vertical list.
    ================================================================ */
-.release-list{ display:flex; flex-direction:column; }
-.release-row{
-  display:grid;
-  grid-template-columns:34px 46px 1fr auto;
-  align-items:center; gap:16px;
-  padding:15px 8px;
-  border-bottom:1px solid var(--home-glass-border);
-  transition:background .2s var(--home-ease);
+.trending-asymmetric {
+  display: grid;
+  grid-template-columns: 4fr 5fr;
+  gap: 24px;
 }
-.release-row:first-child{ border-top:1px solid var(--home-glass-border); }
-.release-row:hover{ background:var(--home-glass-fill); }
-.release-num{
-  font-family:var(--home-font-mono); font-size:.85rem; font-weight:700;
-  color:var(--home-text-faint); text-align:center;
+@media (max-width: 860px) {
+  .trending-asymmetric {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
-.release-art{ width:46px; height:46px; border-radius:var(--home-radius-sm); overflow:hidden; background:var(--home-bg-elevated); }
-.release-art img{ width:100%; height:100%; object-fit:cover; }
-.release-info{ min-width:0; display:flex; flex-direction:column; gap:2px; }
-.release-name{
-  font-weight:500; font-size:.92rem; color:var(--home-text-primary);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+.trending-feature {
+  display: flex; flex-direction: column;
+  position: relative;
+  border-radius: var(--home-radius-lg);
+  overflow: hidden;
+  background: var(--home-bg-card);
+  transition: transform .25s var(--home-ease);
 }
-.release-meta{ font-family:var(--home-font-mono); font-size:.7rem; color:var(--home-text-faint); letter-spacing:.02em; }
-.release-price{ font-family:var(--home-font-mono); font-size:.85rem; color:var(--home-text-muted); flex-shrink:0; }
+.trending-feature:hover { transform: translateY(-2px); }
+.trending-feature-media {
+  position: relative;
+  width: 100%; aspect-ratio: 16/9;
+  overflow: hidden;
+}
+.trending-feature-media img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform .5s var(--home-ease);
+}
+.trending-feature:hover .trending-feature-media img { transform: scale(1.04); }
+.trending-rank-huge {
+  position: absolute; top: 16px; left: 16px; z-index: 2;
+  font-family: var(--home-font-display); font-weight: 800; font-size: 2.2rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+.trending-feature-info {
+  padding: 18px 20px;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+}
+.trending-feature-title {
+  font-family: var(--home-font-display); font-size: 1.3rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trending-feature-price {
+  color: var(--home-text-secondary); font-family: var(--home-font-mono); font-size: 1rem;
+}
+
+.trending-list {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.trending-list-item {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px;
+  border-radius: var(--home-radius-md);
+  background: var(--home-bg-card);
+  transition: background .2s var(--home-ease);
+}
+.trending-list-item:hover { background: rgba(255,255,255,0.04); }
+.trending-list-rank {
+  font-family: var(--home-font-mono); font-weight: 700; font-size: 1.1rem;
+  color: var(--home-text-tertiary);
+  width: 30px; text-align: center; flex: none;
+}
+.trending-list-media {
+  width: 110px; aspect-ratio: 16/7.5;
+  border-radius: 4px; overflow: hidden; flex: none;
+}
+.trending-list-media img { width: 100%; height: 100%; object-fit: cover; }
+.trending-list-info {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.trending-list-title {
+  font-family: var(--home-font-display); font-size: 1rem; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trending-list-price {
+  color: var(--home-text-secondary); font-family: var(--home-font-mono); font-size: 0.9rem;
+}
+
+/* ================================================================
+   NEW RELEASES (Timeline Stream - Phase 2)
+   Chronological layout replacing standard list.
+   ================================================================ */
+.timeline-stream {
+  display: flex; flex-direction: column;
+  position: relative;
+  padding-left: 24px;
+}
+.timeline-stream::before {
+  content: "";
+  position: absolute; top: 10px; bottom: 20px; left: 8px;
+  width: 2px;
+  background: var(--home-glass-border-strong);
+}
+.timeline-node {
+  position: relative;
+  padding-bottom: 24px;
+}
+.timeline-marker {
+  position: absolute; top: 18px; left: -21px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--home-bg);
+  border: 2px solid var(--home-cta-blue);
+  z-index: 2;
+}
+.timeline-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--home-radius-md);
+  background: var(--home-bg-elevated);
+  border: 1px solid transparent;
+  transition: border-color .2s var(--home-ease), background .2s var(--home-ease);
+}
+.timeline-card:hover {
+  background: var(--home-bg-card);
+  border-color: var(--home-glass-border-strong);
+}
+.timeline-art {
+  width: 60px; aspect-ratio: 16/9;
+  border-radius: 4px; overflow: hidden; flex: none;
+}
+.timeline-art img { width: 100%; height: 100%; object-fit: cover; }
+.timeline-info {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.timeline-date {
+  font-family: var(--home-font-mono); font-size: 0.75rem; font-weight: 700;
+  color: var(--home-cta-blue); text-transform: uppercase; letter-spacing: 0.05em;
+}
+.timeline-name {
+  font-weight: 500; font-size: 1rem; color: var(--home-text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.timeline-price {
+  font-family: var(--home-font-mono); font-size: 0.95rem; color: var(--home-text-secondary);
+}
 
 /* ================================================================
    FOOTER
@@ -691,6 +786,241 @@ main{ counter-reset: nimlyx-section; }
 .home-footer-links a{ font-size:.82rem; color:var(--home-text-muted); transition:color .2s var(--home-ease); }
 .home-footer-links a:hover{ color:var(--home-text-primary); }
 .home-footer-copy{ font-family:var(--home-font-mono); font-size:.72rem; color:var(--home-text-faint); margin-top:18px; letter-spacing:.02em; }
+
+/* ================================================================
+   NIMLYX — UNIFIED HOMEPAGE CARD SYSTEM
+   ================================================================
+   One base component (.nimlyx-card) reused by Discover, Trending,
+   Deals, New Releases, and Action instead of each section inventing
+   its own card markup/classes. Sections still compose differently
+   (Trending's rank showcase vs. everything else's horizontal row)
+   but every individual game card now shares the same DNA: dark
+   glass surface, consistent corner radius, consistent hover glow,
+   consistent title typography, and -- the important part -- a
+   dedicated, legible "why this game is here" line rather than a
+   tiny corner badge.
+
+   Contextual info lives in .nimlyx-card-context: an icon/label
+   pairing sized and positioned like a real piece of card content,
+   not an afterthought. Each section passes it different data (rank,
+   discount, recency, genre, Nimlyx verdict) but it always renders
+   the same way, which is what makes the reason-to-care read as
+   "part of the design" instead of decoration.
+   ================================================================ */
+
+.nimlyx-section{ padding:72px 0; position:relative; }
+.nimlyx-section--elevated{ background:var(--home-bg-elevated); }
+.nimlyx-section--glow{ overflow:hidden; }
+.nimlyx-section--glow::before{
+  content:""; position:absolute; top:-8%; left:50%; transform:translateX(-50%);
+  width:1000px; height:520px; max-width:150%;
+  background:radial-gradient(ellipse at center, var(--home-glow-blue-subtle) 0%, transparent 68%);
+  pointer-events:none; z-index:0;
+}
+.nimlyx-section--glow > .home-container{ position:relative; z-index:1; }
+.nimlyx-section-head{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:24px; margin-bottom:36px; flex-wrap:wrap;
+}
+.nimlyx-section-head h2{
+  font-family:var(--home-font-display); font-size:2.75rem; font-weight:700;
+  letter-spacing:-0.015em; line-height:1.08; margin:10px 0 0 0; color:var(--home-text-primary);
+}
+.nimlyx-section-sub{
+  display:block; font-size:.95rem; color:var(--home-text-muted); margin-top:8px;
+}
+
+/* Horizontal scrolling row shell, reused by Discover/Deals/New
+   Releases/Action. Native scroll + snap so it's cheap and works
+   without JS; arrow controls are optional sugar, not required. */
+.nimlyx-row{
+  display:flex; gap:18px; overflow-x:auto; padding-bottom:6px;
+  scroll-snap-type:x proximity; scrollbar-width:none; -ms-overflow-style:none;
+  -webkit-overflow-scrolling:touch;
+}
+.nimlyx-row::-webkit-scrollbar{ display:none; }
+.nimlyx-row > *{ scroll-snap-align:start; flex-shrink:0; }
+
+/* Horizontal navigation controls -- wraps a .nimlyx-row so arrows can
+   sit just outside its edges. New class names deliberately, so
+   nothing here touches the Search page's .trending-arrow system. */
+.nimlyx-row-wrap{ position:relative; }
+.nimlyx-row-arrow{
+  position:absolute; top:50%; transform:translateY(-50%); z-index:5;
+  width:40px; height:40px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; cursor:pointer;
+  background:rgba(10,10,14,0.82); border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  box-shadow:0 10px 24px -10px rgba(0,0,0,0.6);
+  transition:background .2s var(--home-ease), border-color .2s var(--home-ease),
+             color .2s var(--home-ease), opacity .2s var(--home-ease), transform .2s var(--home-ease);
+}
+.nimlyx-row-arrow:hover{
+  background:var(--home-cta-blue); border-color:var(--home-cta-blue); color:#fff;
+  transform:translateY(-50%) scale(1.06);
+}
+.nimlyx-row-arrow.is-disabled{ opacity:0; pointer-events:none; }
+.nimlyx-row-arrow--prev{ left:-20px; }
+.nimlyx-row-arrow--next{ right:-20px; }
+.nimlyx-row-wrap.no-row-scroll .nimlyx-row-arrow{ display:none; }
+@media (max-width:1300px){
+  .nimlyx-row-arrow--prev{ left:2px; }
+  .nimlyx-row-arrow--next{ right:2px; }
+}
+@media (max-width:700px){
+  .nimlyx-row-arrow{ display:none !important; }
+}
+
+.nimlyx-card{
+  position:relative; display:block; overflow:hidden;
+  border-radius:var(--home-radius-lg);
+  background:var(--home-bg-card);
+  border:1px solid var(--home-glass-border);
+  transition:transform .3s var(--home-ease), border-color .3s var(--home-ease),
+             box-shadow .3s var(--home-ease);
+}
+.nimlyx-card:hover{
+  transform:translateY(-3px);
+  border-color:var(--home-glass-border-strong);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,0.55), 0 0 30px var(--home-glow-blue-subtle);
+}
+.nimlyx-card-media{
+  position:relative; width:100%; overflow:hidden; background:var(--home-bg-elevated);
+}
+/* Fallback look for when every Steam image URL 404s (no CDN path is
+   actually guaranteed -- confirmed on a recent app_id even on the
+   "classic" path). The <img> gets hidden via onerror in the
+   template, revealing this instead of a broken-image icon. */
+.nimlyx-card-media::before{
+  content:""; position:absolute; inset:0;
+  background:
+    radial-gradient(circle at 50% 42%, var(--home-glass-fill-strong) 0%, transparent 60%),
+    var(--home-bg-elevated);
+}
+.nimlyx-card-media::after{
+  content:"◆"; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:1.4rem; color:var(--home-text-faint); opacity:.5;
+}
+.nimlyx-card-media img{ position:relative; z-index:1; }
+.nimlyx-card-media img[data-broken="true"]{ display:none; }
+.nimlyx-card-media img{
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition:transform .5s var(--home-ease);
+}
+.nimlyx-card:hover .nimlyx-card-media img{ transform:scale(1.06); }
+.nimlyx-card-overlay{
+  position:absolute; inset:0;
+  background:linear-gradient(to top, rgba(5,5,8,0.92) 0%, rgba(5,5,8,0.35) 45%, rgba(5,5,8,0) 75%);
+}
+.nimlyx-card-body{ position:relative; z-index:2; }
+.nimlyx-card-title{
+  font-family:var(--home-font-display); font-weight:600; color:#fff;
+  line-height:1.32; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* The "why this game is here" line -- always present, never a tiny
+   corner badge. Icon + label read as one legible piece of card
+   content, sized close to the title rather than buried in it. */
+.nimlyx-card-context{
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
+  letter-spacing:.01em; margin-top:5px;
+}
+.nimlyx-card-context .dot{ color:var(--home-text-faint); }
+.nimlyx-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 12px 4px 10px; border-radius:3px;
+  font-size:.76rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+  background:var(--home-glass-fill-strong);
+  border-left:3px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+}
+.nimlyx-chip--blue{ background:rgba(59,130,246,0.16); border-left-color:var(--home-cta-blue); color:#9dc4fc; }
+
+/* ---- Portrait (Discover picks, Action) ---- */
+.nimlyx-card--portrait{ width:216px; }
+.nimlyx-card--portrait .nimlyx-card-media{ aspect-ratio:3/4; }
+.nimlyx-card--portrait .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
+.nimlyx-card--portrait .nimlyx-card-title{ font-size:1.02rem; white-space:normal; -webkit-line-clamp:2; line-clamp:2; display:-webkit-box; -webkit-box-orient:vertical; }
+
+/* ---- Wide (Deals) -- discount + price are the dominant elements ---- */
+.nimlyx-card--wide{ width:340px; }
+.nimlyx-card--wide .nimlyx-card-media{ aspect-ratio:16/9; }
+.nimlyx-card--wide .nimlyx-card-discount{
+  position:absolute; top:14px; left:14px; z-index:2;
+  font-family:var(--home-font-display); font-weight:800; font-size:1.6rem;
+  color:#fff; background:var(--home-cta-blue);
+  padding:5px 13px; border-radius:var(--home-radius-sm);
+  box-shadow:0 8px 20px -6px rgba(59,130,246,0.6);
+}
+.nimlyx-card--wide .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
+.nimlyx-card--wide .nimlyx-card-title{ font-size:1.05rem; margin-bottom:6px; }
+.nimlyx-card--wide .nimlyx-card-prices{ display:flex; align-items:baseline; gap:9px; font-family:var(--home-font-mono); }
+.nimlyx-card--wide .price-now{ font-size:1.15rem; font-weight:700; color:#fff; }
+.nimlyx-card--wide .price-was{ font-size:.82rem; color:var(--home-text-faint); text-decoration:line-through; }
+
+/* ---- Compact (Trending list rows, New Releases row) -- horizontal
+   thumbnail + info, used both inside a fixed row and inside the
+   Trending vertical stack. ---- */
+.nimlyx-card--compact{
+  display:flex; align-items:center; gap:14px; padding:10px;
+  background:var(--home-bg-card); border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+}
+.nimlyx-card--compact:hover{ transform:none; background:var(--home-glass-fill-strong); border-color:var(--home-glass-border-strong); box-shadow:none; }
+.nimlyx-card--compact .nimlyx-card-media{ width:128px; aspect-ratio:16/9; border-radius:var(--home-radius-sm); flex-shrink:0; }
+.nimlyx-card--compact .nimlyx-card-media img{ transition:none; }
+.nimlyx-card--compact:hover .nimlyx-card-media img{ transform:none; }
+.nimlyx-card--compact .nimlyx-card-overlay{ display:none; }
+.nimlyx-card--compact .nimlyx-card-body{ min-width:0; flex:1; }
+.nimlyx-card--compact .nimlyx-card-title{ font-size:.98rem; }
+.nimlyx-row .nimlyx-card--compact{ width:300px; }
+
+/* Rank numeral -- Trending's own visual language, large and part of
+   the composition rather than a tucked-away label. */
+.nimlyx-rank{
+  font-family:var(--home-font-display); font-weight:800; color:var(--home-text-faint);
+  flex-shrink:0; text-align:center;
+}
+.nimlyx-card--compact .nimlyx-rank{ font-size:1.6rem; width:34px; }
+
+/* ---- Trending Today composition: big #1 feature + ranked list ---- */
+.trending-showcase{ display:grid; grid-template-columns:1.15fr 1fr; gap:24px; align-items:stretch; }
+.trending-showcase-feature{ width:100%; height:100%; min-height:360px; }
+.trending-showcase-feature .nimlyx-card-media{ position:absolute; inset:0; aspect-ratio:auto; }
+.trending-showcase-feature .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
+.trending-showcase-feature .nimlyx-rank{
+  position:absolute; top:16px; left:16px; z-index:2; font-size:3.4rem;
+  color:rgba(255,255,255,0.16); line-height:1;
+}
+.trending-showcase-feature .nimlyx-card-title{ font-size:1.4rem; white-space:normal; }
+.trending-showcase-list{ display:flex; flex-direction:column; gap:10px; }
+
+@media (max-width:860px){
+  .trending-showcase{ grid-template-columns:1fr; }
+}
+
+/* ---- Why Nimlyx -- lighter than every card row around it, no
+   glass box, editorial spacing only. ---- */
+.nimlyx-why-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:36px; }
+.nimlyx-why-card{ padding:0; }
+.nimlyx-why-icon{ color:var(--home-cta-blue); margin-bottom:14px; }
+.nimlyx-why-title{
+  font-family:var(--home-font-mono); font-size:.82rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; color:var(--home-text-primary); margin:0 0 8px 0;
+}
+.nimlyx-why-desc{ font-size:.92rem; line-height:1.55; color:var(--home-text-muted); margin:0; }
+
+@media (max-width:760px){
+  .nimlyx-why-grid{ grid-template-columns:1fr; gap:24px; }
+}
+
+.nimlyx-section--closing{
+  border-top:1px solid var(--home-glass-border);
+  padding-top:64px; padding-bottom:48px;
+}
+.nimlyx-why-intro{ max-width:600px; margin:0 auto; text-align:center; }
+.nimlyx-section--closing .nimlyx-why-intro .home-eyebrow{ display:flex; justify-content:center; }
 
 /* ================================================================
    REDUCED MOTION
@@ -715,6 +1045,72 @@ main{ counter-reset: nimlyx-section; }
    not a spacing tweak, the collapse simply never existed. 900px
    matches the breakpoint style_mobile.css/search_mobile.css already
    assume this collapse happens at (see their region-picker rules). */
+/* ============================================
+   FEED ROW VARIANTS (Phase 2)
+   ============================================ */
+.deal-board-scroll {
+  display: flex; gap: 14px; overflow-x: auto;
+  scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;
+  padding-bottom: 8px; /* Breathing room */
+}
+.deal-board-scroll::-webkit-scrollbar { display: none; }
+
+.deal-badge-pct {
+  background: #4ade80; color: #000;
+  font-family: var(--home-font-mono); font-weight: 800; font-size: 0.95rem;
+  padding: 2px 6px; border-radius: 4px; margin-right: 8px;
+}
+.deal-badge-price {
+  color: #fff; font-family: var(--home-font-mono); font-weight: 700; font-size: 1.05rem;
+}
+.deal-info {
+  padding: 0 4px;
+}
+.deal-title {
+  font-family: var(--home-font-display); font-size: 0.95rem; font-weight: 600;
+  color: #fff; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Dense Genre Tape */
+.genre-tape-scroll {
+  display: flex; gap: 10px; overflow-x: auto;
+  scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;
+}
+.genre-tape-scroll::-webkit-scrollbar { display: none; }
+.genre-card {
+  flex: 0 0 140px;
+  position: relative; border-radius: var(--home-radius-sm); overflow: hidden;
+  transition: transform .2s var(--home-ease);
+}
+.genre-card:hover { transform: translateY(-2px); }
+.genre-media { width: 100%; aspect-ratio: 2/3; position: relative; }
+.genre-media img { width: 100%; height: 100%; object-fit: cover; }
+.genre-media-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10,10,13,0.9) 0%, rgba(10,10,13,0) 50%);
+}
+.genre-info {
+  position: absolute; bottom: 0; left: 0; right: 0; padding: 10px;
+}
+.genre-title {
+  font-family: var(--home-font-display); font-size: 0.9rem; font-weight: 600;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+@media (max-width: 860px) {
+  /* 2-row layout on mobile for density */
+  .deal-board-scroll {
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-auto-flow: column;
+    gap: 12px;
+  }
+  .deal-card {
+    flex: none; width: 200px;
+  }
+}
+
 @media (max-width:900px){
   .home-nav-burger{ display:flex; }
   .home-mobile-search-btn{ display:flex; }
@@ -820,4 +1216,109 @@ main{ counter-reset: nimlyx-section; }
 .home-insight-why{ grid-column:1; grid-row:4; }
   .trending-card{ flex-basis:270px; }
   .release-row{ grid-template-columns:26px 40px 1fr auto; gap:12px; }
+}/* ================================================================
+   NIMLYX V3 HOMEPAGE GLASSMORPHISM FOUNDATION
+   ================================================================ */
+
+:root {
+  /* Legacy aliases -- kept so nothing that still references these
+     names breaks, but every value now points at the ONE real token
+     set defined in the top :root block instead of maintaining a
+     second, drifted color/motion system. */
+  --home-obsidian: var(--home-bg-base);
+  --home-obsidian-elevated: var(--home-bg-elevated);
+  --home-glass-base: var(--home-glass-fill);
+  --home-glass-hover: var(--home-glass-fill-strong);
+  --home-border-glass: var(--home-glass-border);
+  --home-border-glass-hover: var(--home-glass-border-strong);
+  --home-glow-blue-subtle: rgba(59, 130, 246, 0.12);
+  --home-transition-smooth: all .3s var(--home-ease);
+  /* Was referenced (timeline connector, deal-card skeleton border,
+     trending-arrow border) but never actually defined anywhere --
+     an invalid var() reference silently drops the whole declaration,
+     which is why those borders/lines were never visible. */
+  --home-border-glass-strong: var(--home-glass-border-strong);
+  --home-text-secondary: var(--home-text-muted);
+  --home-text-tertiary: var(--home-text-faint);
+  --home-bg: var(--home-bg-base);
+}
+
+.glass-panel {
+  background: var(--home-glass-base);
+  border: 1px solid var(--home-border-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--home-radius-lg);
+  transition: var(--home-transition-smooth);
+}
+
+.glass-panel:hover {
+  background: var(--home-glass-hover);
+  border-color: var(--home-border-glass-hover);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 16px var(--home-glow-blue-subtle);
+}
+
+.atmospheric-bg {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+}
+
+.home-why { padding: 80px 0; position: relative; }
+.why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 40px; }
+.why-card { padding: 32px; text-align: left; border-radius: var(--home-radius-lg); background: linear-gradient(180deg, var(--home-glass-base) 0%, transparent 100%); border-top: 1px solid var(--home-border-glass); transition: var(--home-transition-smooth); }
+.why-card:hover { background: linear-gradient(180deg, var(--home-glass-hover) 0%, transparent 100%); border-top-color: var(--home-border-glass-hover); transform: translateY(-4px); }
+.why-icon { font-size: 24px; color: var(--home-cta-blue); margin-bottom: 20px; }
+.why-title { font-family: var(--home-font-display); font-size: 1.25rem; font-weight: 600; margin: 0 0 12px 0; color: #fff; }
+.why-desc { font-size: 0.95rem; color: var(--home-text-muted); line-height: 1.6; margin: 0; }
+
+.home-discover { padding: 60px 0; }
+.discover-masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows: 240px; gap: 24px; margin-top: 32px; }
+.discover-card { position: relative; border-radius: var(--home-radius-md); overflow: hidden; display: block; transition: var(--home-transition-smooth); }
+.discover-card.large { grid-column: span 2; grid-row: span 2; }
+.discover-card:hover { transform: scale(1.02); z-index: 2; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px var(--home-glow-blue-subtle); }
+.discover-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: var(--home-transition-smooth); }
+.discover-card:hover .discover-art { transform: scale(1.05); }
+.discover-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; }
+.discover-title { font-family: var(--home-font-display); font-size: 1.2rem; font-weight: 600; color: #fff; margin: 0 0 8px 0; }
+.discover-card.large .discover-title { font-size: 1.75rem; }
+.discover-meta { font-size: 0.85rem; color: var(--home-text-muted); display: flex; gap: 12px; align-items: center; }
+
+.home-trending { padding: 60px 0; }
+
+.home-deals { padding: 60px 0; position: relative; }
+.deals-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.03) 0%, transparent 80%); pointer-events: none; z-index: -1; }
+.deals-track { display: grid; grid-template-rows: 1fr; grid-auto-flow: column; grid-auto-columns: 400px; gap: 24px; overflow-x: auto; padding-bottom: 24px; margin-top: 32px; scrollbar-width: none; }
+.deals-track::-webkit-scrollbar { display: none; }
+.deal-card { border-radius: var(--home-radius-lg); overflow: hidden; background: var(--home-glass-base); border: 1px solid var(--home-border-glass); transition: var(--home-transition-smooth); display: flex; flex-direction: column; height: 100%; }
+.deal-card:hover { background: var(--home-glass-hover); border-color: var(--home-border-glass-hover); transform: translateY(-4px); }
+.deal-art-wrap { position: relative; width: 100%; aspect-ratio: 16/9; }
+.deal-art { width: 100%; height: 100%; object-fit: cover; }
+.deal-badge { position: absolute; top: 12px; right: 12px; background: var(--home-cta-blue); color: #fff; font-family: var(--home-font-mono); font-weight: 700; font-size: 1.1rem; padding: 4px 10px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.deal-info { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+.deal-title { font-family: var(--home-font-display); font-weight: 600; font-size: 1.1rem; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+.deal-prices { text-align: right; }
+.deal-price-old { font-size: 0.8rem; color: var(--home-text-faint); text-decoration: line-through; display: block; }
+.deal-price-new { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+.home-new { padding: 60px 0; }
+
+.home-action { padding: 60px 0; }
+.action-grid { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 24px; margin-top: 32px; scrollbar-width: none; }
+.action-grid::-webkit-scrollbar { display: none; }
+.action-card { flex: 0 0 220px; aspect-ratio: 2/3; border-radius: var(--home-radius-md); position: relative; overflow: hidden; transition: var(--home-transition-smooth); }
+.action-card:hover { transform: translateY(-8px); box-shadow: 0 16px 32px rgba(0,0,0,0.5), 0 0 20px rgba(59, 130, 246, 0.15); }
+.action-art { width: 100%; height: 100%; object-fit: cover; }
+.action-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%); display: flex; flex-direction: column; justify-content: flex-end; padding: 16px; opacity: 0.8; transition: var(--home-transition-smooth); }
+.action-card:hover .action-overlay { opacity: 1; }
+.action-title { font-family: var(--home-font-display); font-weight: 600; font-size: 1rem; color: #fff; margin: 0; }
+
+@media (max-width: 768px) {
+  .why-grid { grid-template-columns: 1fr; }
+  .discover-masonry { grid-template-columns: 1fr 1fr; }
+  .discover-card.large { grid-column: span 2; grid-row: span 1; }
+  .deals-track { grid-template-rows: 1fr 1fr; grid-auto-columns: 300px; gap: 16px; }
+  .action-card { flex: 0 0 160px; }
 }
