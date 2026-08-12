@@ -482,6 +482,19 @@ main{ counter-reset: nimlyx-section; }
 .badge-split  { background:var(--home-verdict-split-bg);  color:var(--home-verdict-split);  border-left:3px solid var(--home-verdict-split-line); }
 .badge-fallback{ background:var(--home-verdict-fallback-bg); color:var(--home-verdict-fallback); border-left:3px solid var(--home-verdict-fallback-line); }
 
+/* The badge-* verdict colors above are shared with Search/game-grid
+   pill styling (search.css, search_list.css, game_grid.css), which
+   sit on solid surfaces and read fine at low opacity there. On the
+   homepage these same classes sit directly on photographic card art
+   and need real contrast, so this scoped override only fires when
+   .nimlyx-chip and a badge-* class are combined -- i.e. only on
+   Discover cards -- leaving badge-* untouched everywhere else. */
+.nimlyx-chip.badge-worth  { background:rgba(9,32,22,0.72); }
+.nimlyx-chip.badge-hidden { background:rgba(8,30,34,0.72); }
+.nimlyx-chip.badge-fresh  { background:rgba(19,22,44,0.72); }
+.nimlyx-chip.badge-critic { background:rgba(38,20,10,0.72); }
+.nimlyx-chip.badge-split  { background:rgba(30,24,9,0.72); }
+
 .pick-lead{
   position:relative; display:block;
   border-radius:var(--home-radius-lg);
@@ -911,12 +924,18 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-card:hover .nimlyx-card-media img{ transform:scale(1.06); }
 .nimlyx-card-overlay{
   position:absolute; inset:0;
-  background:linear-gradient(to top, rgba(5,5,8,0.92) 0%, rgba(5,5,8,0.35) 45%, rgba(5,5,8,0) 75%);
+  background:linear-gradient(to top,
+    rgba(4,4,7,0.97) 0%,
+    rgba(4,4,7,0.86) 22%,
+    rgba(4,4,7,0.55) 45%,
+    rgba(4,4,7,0.18) 68%,
+    rgba(4,4,7,0.02) 100%);
 }
 .nimlyx-card-body{ position:relative; z-index:2; }
 .nimlyx-card-title{
   font-family:var(--home-font-display); font-weight:600; color:#fff;
   line-height:1.32; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  text-shadow:0 1px 3px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.5);
 }
 /* The "why this game is here" line -- always present, never a tiny
    corner badge. Icon + label read as one legible piece of card
@@ -925,22 +944,27 @@ main{ counter-reset: nimlyx-section; }
   display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
   letter-spacing:.01em; margin-top:5px;
+  text-shadow:0 1px 4px rgba(0,0,0,0.7);
 }
 .nimlyx-card-context .dot{ color:var(--home-text-faint); }
 .nimlyx-chip{
   display:inline-flex; align-items:center; gap:6px;
   padding:4px 12px 4px 10px; border-radius:3px;
   font-size:.76rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-  background:var(--home-glass-fill-strong);
+  background:rgba(6,6,9,0.62); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
   border-left:3px solid var(--home-glass-border-strong);
   color:var(--home-text-primary);
 }
-.nimlyx-chip--blue{ background:rgba(59,130,246,0.16); border-left-color:var(--home-cta-blue); color:#9dc4fc; }
+.nimlyx-chip--blue{ background:rgba(15,35,70,0.7); border-left-color:var(--home-cta-blue); color:#9dc4fc; }
 
 /* ---- Portrait (Discover picks, Action) ---- */
 .nimlyx-card--portrait{ width:216px; }
 .nimlyx-card--portrait .nimlyx-card-media{ aspect-ratio:3/4; }
-.nimlyx-card--portrait .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
+.nimlyx-card--portrait .nimlyx-card-body{
+  position:absolute; left:0; right:0; bottom:0; padding:18px 22px 20px;
+  background:linear-gradient(to top, rgba(6,6,9,0.72) 0%, rgba(6,6,9,0.55) 60%, transparent 100%);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
 .nimlyx-card--portrait .nimlyx-card-title{ font-size:1.02rem; white-space:normal; -webkit-line-clamp:2; line-clamp:2; display:-webkit-box; -webkit-box-orient:vertical; }
 
 /* ---- Wide (Deals) -- discount + price are the dominant elements ---- */
@@ -953,7 +977,11 @@ main{ counter-reset: nimlyx-section; }
   padding:5px 13px; border-radius:var(--home-radius-sm);
   box-shadow:0 8px 20px -6px rgba(59,130,246,0.6);
 }
-.nimlyx-card--wide .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
+.nimlyx-card--wide .nimlyx-card-body{
+  position:absolute; left:0; right:0; bottom:0; padding:18px 22px 20px;
+  background:linear-gradient(to top, rgba(6,6,9,0.72) 0%, rgba(6,6,9,0.55) 60%, transparent 100%);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
 .nimlyx-card--wide .nimlyx-card-title{ font-size:1.05rem; margin-bottom:6px; }
 .nimlyx-card--wide .nimlyx-card-prices{ display:flex; align-items:baseline; gap:9px; font-family:var(--home-font-mono); }
 .nimlyx-card--wide .price-now{ font-size:1.15rem; font-weight:700; color:#fff; }

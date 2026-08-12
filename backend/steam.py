@@ -82,6 +82,63 @@ def _cache_set(key, value):
 
 
 # ==========================================================
+# ASYNC FEED CACHE — serve-stale-while-revalidating
+#
+# Shared generic pattern for the homepage endless feed.
+# Guarantees that any cached row (even if stale) returns instantly
+# without blocking the request. A background thread updates the
+# cache for the next visitor.
+# A BoundedSemaphore ensures we never fire more than 5 parallel
+# background Steam scrapes across the entire application.
+# ==========================================================
+_async_feed_cache = {}
+_async_feed_lock = threading.Lock()
+_async_feed_in_progress = set()
+_steam_scrape_semaphore = threading.BoundedSemaphore(5)
+
+def _rebuild_async_feed(cache_key, fetch_func):
+    try:
+        # Acquire semaphore to protect Steam from simultaneous overwhelming requests
+        with _steam_scrape_semaphore:
+            data = fetch_func()
+        with _async_feed_lock:
+            _async_feed_cache[cache_key] = {"data": data, "fetched_at": time.time()}
+    except Exception:
+        # If scrape fails, silently leave the stale cache so we don't break the UI
+        pass
+    finally:
+        with _async_feed_lock:
+            _async_feed_in_progress.discard(cache_key)
+
+def serve_stale_or_rebuild(cache_key, fetch_func, ttl_seconds=1800):
+    """
+    Returns (data, is_building).
+    If cache hit (fresh): returns data instantly.
+    If cache hit (stale): kicks off background thread, returns stale data instantly.
+    If cache miss (cold): kicks off background thread, returns None.
+    """
+    with _async_feed_lock:
+        cached = _async_feed_cache.get(cache_key)
+        building = cache_key in _async_feed_in_progress
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= ttl_seconds
+        if is_stale and not building:
+            with _async_feed_lock:
+                _async_feed_in_progress.add(cache_key)
+            threading.Thread(target=_rebuild_async_feed, args=(cache_key, fetch_func), daemon=True).start()
+        return cached["data"]
+
+    # Cold miss
+    if not building:
+        with _async_feed_lock:
+            _async_feed_in_progress.add(cache_key)
+        threading.Thread(target=_rebuild_async_feed, args=(cache_key, fetch_func), daemon=True).start()
+    
+    return None
+
+
+# ==========================================================
 # DISCOVER WIZARD — filter mappings
 # Steam's own tag IDs, used to translate the wizard's plain-English
 # answers (from discover.html / discover.js) into the store's search
@@ -276,6 +333,8 @@ def fetch_browse_category(category, count=25, cc="US"):
             "final_price": final_price,
             "original_price": original_price,
             "discount_percent": discount_percent,
+            "review_percent": parse_review_percent(game),
+            "review_summary": parse_review_summary(game),
             "platforms": platforms
         })
 
@@ -294,6 +353,20 @@ def parse_review_percent(game_anchor):
     tooltip = summary.get("data-tooltip-html", "")
     match = re.search(r"(\d{1,3})%", tooltip)
     return int(match.group(1)) if match else None
+
+
+def parse_review_summary(game_anchor):
+    """Pulls the textual review summary from the tooltip, e.g. "Very Positive".
+    Returns None if missing."""
+    summary = game_anchor.find("span", class_="search_review_summary")
+    if not summary:
+        return None
+
+    tooltip = summary.get("data-tooltip-html", "")
+    # Example: "Very Positive<br>87% of the..."
+    if "<br>" in tooltip:
+        return tooltip.split("<br>")[0].strip()
+    return None
 
 
 def _scrape_search_results(params, cc):
@@ -405,6 +478,7 @@ def _scrape_search_results(params, cc):
             "original_price": original_price,
             "discount_percent": discount_percent,
             "review_percent": parse_review_percent(row),
+            "review_summary": parse_review_summary(row),
             "platforms": platforms,
         })
 
@@ -852,6 +926,9 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
         else:
             price = price_overview.get("final_formatted")  # None if unavailable -- never invented
 
+        genres_data = raw.get("genres") or []
+        genres = [g.get("description") for g in genres_data]
+
         verified.append({
             "id": candidate["id"],
             "name": raw.get("name") or candidate["name"],
@@ -859,6 +936,7 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
             "release_date": release_date_obj,
             "recency_label": recency_label,
             "price": price,
+            "primary_genre": genres[0] if genres else None,
         })
 
     verified.sort(key=lambda g: g["release_date"], reverse=True)
@@ -1388,7 +1466,97 @@ def clean_search_term(name):
     # underlying defect wasn't.
     cleaned = re.sub(r"[’']", "", name)
     # Remaining punctuation (colons, hyphens, etc.) still becomes a
-    # space -- those genuinely do separate meaningful words for search.
     cleaned = re.sub(r"[^\w\s]", " ", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
+
+
+def fetch_homepage_row(category_id, cc="US", seen_ids=None):
+    """
+    Phase 1 mapping for homepage rows.
+    Uses serve-stale-while-revalidating cache logic and avoids N+1 appdetails hits.
+    """
+    if seen_ids is None:
+        seen_ids = set()
+
+    def _fetch():
+        if category_id == "specials":
+            # fetch_browse_category scrapes "specials", returning valid list of dicts
+            from formatters import to_discover_card
+            from steam_images import default_header_image, build_image_candidates
+            
+            # Fetch a larger list to ensure we have enough after filtering
+            raw = fetch_browse_category("specials", cc=cc)
+            
+            paid_specials = []
+            for g in raw:
+                app_id = str(g.get("id", ""))
+                if not app_id or app_id in seen_ids:
+                    continue
+                    
+                final_price = g.get("final_price")
+                if final_price in (0, "0", None, ""):
+                    continue
+                    
+                discount_raw = g.get("discount_percent") or ""
+                discount_digits = "".join(filter(str.isdigit, str(discount_raw)))
+                discount = int(discount_digits) if discount_digits else 0
+                if discount == 0:
+                    continue
+                    
+                g["_discount_num"] = discount
+                paid_specials.append(g)
+            
+            # Prioritize higher discounts, preserving Steam's popularity order for ties
+            paid_specials.sort(key=lambda g: g["_discount_num"], reverse=True)
+
+            for g in paid_specials:
+                app_id = g.get("id")
+                g["final_price"] = g.get("final_price") or "0"
+                # A real, Steam-scraped image (guaranteed to exist --
+                # fetch_browse_category already skips any row without
+                # one) beats a guessed CDN path. default_header_image()
+                # only fills in when scraping genuinely came up empty.
+                g["header_default"] = g.get("image") or default_header_image(app_id)
+                g["image_candidates"] = build_image_candidates(app_id)
+            return [to_discover_card(g) for g in paid_specials]
+
+        elif category_id == "action":
+            # fetch_discover_games only scrapes, no N+1 price lookups
+            # Fetch a larger buffer so we have enough games after filtering
+            raw = fetch_discover_games(genre="action", count=30, cc=cc)
+            from formatters import to_discover_card
+            from steam_images import default_header_image, build_image_candidates
+            
+            # Prepare minimal card structure (same as discover.py but skipping live prices)
+            filtered_action = []
+            for g in raw:
+                app_id = str(g.get("id", ""))
+                if not app_id or app_id in seen_ids:
+                    continue
+                    
+                # Fallback prices to scraped values
+                g["final_price"] = g.get("final_price") or "0"
+                g["discount_percent"] = g.get("discount_percent") or 0
+                g["header_default"] = g.get("image") or default_header_image(g.get("id"))
+                g["image_candidates"] = build_image_candidates(g.get("id"))
+                filtered_action.append(g)
+            return [to_discover_card(g) for g in filtered_action]
+        else:
+            return []
+            
+    cache_key = f"feed_row_{category_id}_{cc}"
+    # specials can be cached for 15 mins, action for longer. Default 1800s (30m)
+    all_games = serve_stale_or_rebuild(cache_key, _fetch)
+    
+    if not all_games:
+        return all_games
+
+    # Filter out seen_ids
+    filtered_games = [g for g in all_games if str(g.get("app_id")) not in seen_ids]
+    
+    # Safety valve: if filtering removes too many games (less than 4), fall back to original
+    if len(filtered_games) < 4:
+        filtered_games = all_games
+        
+    return filtered_games[:10]  # Slice to top 10 for the row

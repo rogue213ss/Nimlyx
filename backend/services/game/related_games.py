@@ -41,7 +41,7 @@ def _credit_games(field, names, exclude_app_id, cc, count):
 
     for g in games:
         app_id = g.get("id")
-        g["header_default"] = default_header_image(app_id) or g.get("image")
+        g["header_default"] = g.get("image") or default_header_image(app_id)
         g["image_candidates"] = build_image_candidates(app_id)
 
     return [to_discover_card(g) for g in games]

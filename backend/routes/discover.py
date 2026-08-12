@@ -146,7 +146,7 @@ def discover_api():
             # render immediately. Higher-res candidates are cheap
             # unverified CDN-convention URLs -- the frontend probes
             # them and only swaps one in on a real, successful load.
-            g["header_default"] = default_header_image(app_id) or g.get("image")
+            g["header_default"] = g.get("image") or default_header_image(app_id)
             g["image_candidates"] = build_image_candidates(app_id)
 
         cards = [to_discover_card(g) for g in page_games]
