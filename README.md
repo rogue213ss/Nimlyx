@@ -1,4 +1,4 @@
-```markdown
+
 # 🎮 Nimlyx
 
 A modern Steam analytics and game discovery platform built with Flask, Python, JavaScript, and Steam's public APIs.
