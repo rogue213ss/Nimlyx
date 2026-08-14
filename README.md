@@ -151,19 +151,15 @@ Nimlyx uses a modular Flask backend designed around Steam data retrieval, proces
 
 # 📸 Screenshots
 
-<img width="1420" height="742" alt="Nimlyx Homepage" src="https://github.com/user-attachments/assets/aae6147b-3ee2-4a50-bdae-bc0f5ccb2240" />
+<img width="1419" height="752" alt="image" src="https://github.com/user-attachments/assets/91582cbc-8d01-4769-85f2-eb47c64c2adf" />
+<img width="1411" height="681" alt="image" src="https://github.com/user-attachments/assets/4c0d7e7c-772f-44d2-a17a-ee8bdfb38127" />
+<img width="1407" height="575" alt="image" src="https://github.com/user-attachments/assets/0fd3c083-26a7-4375-bb6c-3362a8e0c50f" />
+<img width="1285" height="659" alt="image" src="https://github.com/user-attachments/assets/d2149f6f-cd9a-4f1f-9f17-3b248db38e7d" />
+<img width="1405" height="740" alt="image" src="https://github.com/user-attachments/assets/3d1026a2-3879-47a7-8157-8b16e0077aee" />
+<img width="1347" height="753" alt="image" src="https://github.com/user-attachments/assets/927a5ec0-cdc4-4442-acfa-4aa005df7040" />
+<img width="1272" height="749" alt="image" src="https://github.com/user-attachments/assets/4eb79e8a-fded-43b7-9ec6-f4878cde1183" />
+<img width="1312" height="769" alt="image" src="https://github.com/user-attachments/assets/ba32f176-0a6b-4296-8626-4f3e255d5864" />
 
-<img width="1407" height="748" alt="Nimlyx Search" src="https://github.com/user-attachments/assets/f7ed22e4-76fb-4ae9-8805-c89f8b4ce454" />
-
-<img width="1410" height="749" alt="Nimlyx Discover" src="https://github.com/user-attachments/assets/97b9e978-e733-4b5f-b0f7-27e46281a559" />
-
-<img width="1367" height="753" alt="Nimlyx Game Page" src="https://github.com/user-attachments/assets/2b81d4b7-48ff-4fd7-80c3-83a425787c3e" />
-
-<img width="1406" height="743" alt="Nimlyx Analysis" src="https://github.com/user-attachments/assets/1eff09a3-ace5-49bb-ae71-77de33b5bc48" />
-
-<img width="1407" height="744" alt="Nimlyx Discovery" src="https://github.com/user-attachments/assets/53519c10-cda5-45e1-817b-66bec4716346" />
-
-<img width="1404" height="715" alt="Nimlyx Interface" src="https://github.com/user-attachments/assets/2b5b5856-e236-40e3-93a6-8ae773ca83b1" />
 
 ---
 
