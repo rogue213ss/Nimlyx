@@ -974,6 +974,18 @@ main{ counter-reset: nimlyx-section; }
    backdrop-filter blur -- legibility comes from the gradient/opacity
    alone. ---- */
 .nimlyx-card--wide{ width:340px; }
+.nimlyx-card--wide,
+.nimlyx-card--wide .nimlyx-card-media,
+.nimlyx-card--wide .nimlyx-card-media img,
+.nimlyx-card--wide .nimlyx-card-overlay,
+.nimlyx-card--wide .nimlyx-card-body{
+  /* Explicit guarantee, not just an absence of a rule: the artwork
+     on this card must never be blurred, by any mechanism, even if a
+     future shared-class change would otherwise introduce one here. */
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  filter:none;
+}
 .nimlyx-card--wide .nimlyx-card-media{ aspect-ratio:16/9; }
 .nimlyx-card--wide .nimlyx-card-media .nimlyx-card-overlay{
   background:linear-gradient(to top,
@@ -981,24 +993,34 @@ main{ counter-reset: nimlyx-section; }
     rgba(6,6,9,0.55) 30%,
     rgba(6,6,9,0) 42%);
 }
-.nimlyx-card--wide .nimlyx-card-discount{
-  position:absolute; left:14px; bottom:calc(32% - 15px); z-index:3;
-  font-family:var(--home-font-display); font-weight:800; font-size:1.5rem;
-  color:#fff; background:var(--home-cta-blue);
-  padding:5px 13px; border-radius:var(--home-radius-sm);
-  box-shadow:0 8px 20px -6px rgba(59,130,246,0.6);
-}
 .nimlyx-card--wide .nimlyx-card-body{
-  position:absolute; left:0; right:0; bottom:0; height:32%;
-  display:flex; flex-direction:column; justify-content:center; gap:2px;
-  padding:8px 20px; overflow:hidden;
+  position:absolute; left:0; right:0; bottom:0; min-height:32%;
+  display:flex; flex-direction:column; justify-content:center; gap:8px;
+  padding:14px 18px 16px; overflow:hidden;
   background:rgba(6,6,9,0.9);
   border-top:1px solid var(--home-glass-border);
 }
 .nimlyx-card--wide .nimlyx-card-title{ font-size:1.02rem; margin:0; }
-.nimlyx-card--wide .nimlyx-card-prices{ display:flex; align-items:baseline; gap:9px; font-family:var(--home-font-mono); }
+/* Badge + sale price + original price, one flex row -- nothing here
+   is position:absolute, so there is nothing for these three pieces
+   to collide with. margin-right:auto on the badge pins it to the
+   left while the price pair sits together on the right; flex-wrap
+   lets it degrade gracefully on very narrow cards instead of
+   clipping. */
+.nimlyx-card--wide .nimlyx-card-prices{
+  display:flex; align-items:center; flex-wrap:wrap; gap:10px;
+  font-family:var(--home-font-mono);
+}
+.nimlyx-card--wide .nimlyx-card-discount{
+  display:inline-flex; align-items:center;
+  font-family:var(--home-font-display); font-weight:800; font-size:1.15rem; line-height:1;
+  color:#fff; background:var(--home-cta-blue);
+  padding:6px 12px; border-radius:var(--home-radius-sm);
+  box-shadow:0 6px 16px -4px rgba(59,130,246,0.55);
+  margin-right:auto;
+}
 .nimlyx-card--wide .price-now{ font-size:1.1rem; font-weight:700; color:#fff; }
-.nimlyx-card--wide .price-was{ font-size:.8rem; color:var(--home-text-faint); text-decoration:line-through; }
+.nimlyx-card--wide .price-was{ font-size:.8rem; color:var(--home-text-faint); text-decoration:line-through; opacity:.8; }
 
 /* ---- Compact (Trending list rows, New Releases row) -- horizontal
    thumbnail + info, used both inside a fixed row and inside the

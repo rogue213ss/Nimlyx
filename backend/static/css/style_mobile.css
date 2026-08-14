@@ -145,6 +145,6 @@
   .nimlyx-card--compact .nimlyx-card-media{ width:96px; }
   .nimlyx-card--compact .nimlyx-card-title{ font-size:.88rem; }
   .nimlyx-card-context{ font-size:.7rem; }
-  .nimlyx-card--wide .nimlyx-card-discount{ font-size:1.2rem; padding:4px 10px; }
+  .nimlyx-card--wide .nimlyx-card-discount{ font-size:1rem; padding:5px 10px; }
   .nimlyx-row{ gap:12px; padding:2px 12px 8px 2px; }
 }

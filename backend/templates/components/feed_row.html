@@ -32,12 +32,10 @@
           <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
           <div class="nimlyx-card-overlay"></div>
         </div>
-        {% if game.discount %}
-        <div class="nimlyx-card-discount">-{{ game.discount }}%</div>
-        {% endif %}
         <div class="nimlyx-card-body">
           <h3 class="nimlyx-card-title">{{ game.name }}</h3>
           <div class="nimlyx-card-prices">
+            {% if game.discount %}<span class="nimlyx-card-discount">-{{ game.discount }}%</span>{% endif %}
             <span class="price-now">{{ game.price | default('—', true) }}</span>
             {% if game.original_price %}<span class="price-was">{{ game.original_price }}</span>{% endif %}
           </div>
