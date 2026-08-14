@@ -1485,8 +1485,15 @@ def fetch_homepage_row(category_id, cc="US", seen_ids=None):
             from formatters import to_discover_card
             from steam_images import default_header_image, build_image_candidates
             
-            # Fetch a larger list to ensure we have enough after filtering
-            raw = fetch_browse_category("specials", cc=cc)
+            # Fetch a much larger raw pool (60, not the function's
+            # default of 25) specifically for this homepage row.
+            # Steam's specials listing mixes in a lot of DLC/software
+            # that category1=998 (below) then strips back out, so a
+            # small raw sample was leaving too few base-game deals to
+            # survive filtering -- this was the actual cause of the
+            # row only showing ~3 cards, not any filter being too
+            # strict. All filtering below is unchanged.
+            raw = fetch_browse_category("specials", count=60, cc=cc)
             
             paid_specials = []
             for g in raw:

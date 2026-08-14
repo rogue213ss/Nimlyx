@@ -482,18 +482,13 @@ main{ counter-reset: nimlyx-section; }
 .badge-split  { background:var(--home-verdict-split-bg);  color:var(--home-verdict-split);  border-left:3px solid var(--home-verdict-split-line); }
 .badge-fallback{ background:var(--home-verdict-fallback-bg); color:var(--home-verdict-fallback); border-left:3px solid var(--home-verdict-fallback-line); }
 
-/* The badge-* verdict colors above are shared with Search/game-grid
-   pill styling (search.css, search_list.css, game_grid.css), which
-   sit on solid surfaces and read fine at low opacity there. On the
-   homepage these same classes sit directly on photographic card art
-   and need real contrast, so this scoped override only fires when
-   .nimlyx-chip and a badge-* class are combined -- i.e. only on
-   Discover cards -- leaving badge-* untouched everywhere else. */
-.nimlyx-chip.badge-worth  { background:rgba(9,32,22,0.72); }
-.nimlyx-chip.badge-hidden { background:rgba(8,30,34,0.72); }
-.nimlyx-chip.badge-fresh  { background:rgba(19,22,44,0.72); }
-.nimlyx-chip.badge-critic { background:rgba(38,20,10,0.72); }
-.nimlyx-chip.badge-split  { background:rgba(30,24,9,0.72); }
+/* NOTE: the badge-* verdict colors (worth/hidden/fresh/critic/split)
+   are shared with Search/game-grid pill styling (search.css,
+   search_list.css, game_grid.css) and are used here unmodified.
+   They no longer need a homepage-specific override -- that override
+   existed only because chips used to sit directly on photographic
+   card artwork; now the info bar is a solid surface below the image,
+   so the shared low-opacity tint reads fine on its own. */
 
 .pick-lead{
   position:relative; display:block;
@@ -847,7 +842,7 @@ main{ counter-reset: nimlyx-section; }
    Releases/Action. Native scroll + snap so it's cheap and works
    without JS; arrow controls are optional sugar, not required. */
 .nimlyx-row{
-  display:flex; gap:18px; overflow-x:auto; padding-bottom:6px;
+  display:flex; gap:22px; overflow-x:auto; padding:2px 58px 8px 2px;
   scroll-snap-type:x proximity; scrollbar-width:none; -ms-overflow-style:none;
   -webkit-overflow-scrolling:touch;
 }
@@ -935,7 +930,6 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-card-title{
   font-family:var(--home-font-display); font-weight:600; color:#fff;
   line-height:1.32; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  text-shadow:0 1px 3px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.5);
 }
 /* The "why this game is here" line -- always present, never a tiny
    corner badge. Icon + label read as one legible piece of card
@@ -943,49 +937,68 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-card-context{
   display:flex; align-items:center; gap:6px; flex-wrap:wrap;
   font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
-  letter-spacing:.01em; margin-top:5px;
-  text-shadow:0 1px 4px rgba(0,0,0,0.7);
+  letter-spacing:.01em; margin-top:5px; color:var(--home-text-muted);
 }
 .nimlyx-card-context .dot{ color:var(--home-text-faint); }
 .nimlyx-chip{
-  display:inline-flex; align-items:center; gap:6px;
-  padding:4px 12px 4px 10px; border-radius:3px;
-  font-size:.76rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
-  background:rgba(6,6,9,0.62); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
-  border-left:3px solid var(--home-glass-border-strong);
-  color:var(--home-text-primary);
+  display:inline-flex; align-items:center; gap:5px;
+  padding:2px 8px 2px 7px; border-radius:2px;
+  font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
+  border-left:2px solid var(--home-glass-border-strong);
+  color:var(--home-text-muted);
 }
-.nimlyx-chip--blue{ background:rgba(15,35,70,0.7); border-left-color:var(--home-cta-blue); color:#9dc4fc; }
+.nimlyx-chip--blue{ border-left-color:var(--home-cta-blue); color:#9dc4fc; }
 
-/* ---- Portrait (Discover picks, Action) ---- */
-.nimlyx-card--portrait{ width:216px; }
-.nimlyx-card--portrait .nimlyx-card-media{ aspect-ratio:3/4; }
+/* ---- Portrait (Discover picks, Action) ----
+   Artwork is the dominant element (~78% of card height); the info
+   bar is a real block below it, not an overlay on top of it. */
+.nimlyx-card--portrait{ width:216px; display:flex; flex-direction:column; }
+.nimlyx-card--portrait .nimlyx-card-media{ aspect-ratio:3/3.45; }
+.nimlyx-card--portrait .nimlyx-card-media .nimlyx-card-overlay{
+  /* A thin atmospheric fade at the very bottom edge of the artwork
+     only -- grounds the image against the info bar below it. Not a
+     legibility mechanism anymore; text doesn't sit on the photo. */
+  background:linear-gradient(to bottom, transparent 84%, rgba(4,4,7,0.4) 100%);
+}
 .nimlyx-card--portrait .nimlyx-card-body{
-  position:absolute; left:0; right:0; bottom:0; padding:18px 22px 20px;
-  background:linear-gradient(to top, rgba(6,6,9,0.72) 0%, rgba(6,6,9,0.55) 60%, transparent 100%);
-  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  position:static; padding:11px 14px 13px;
+  border-top:1px solid var(--home-glass-border);
 }
-.nimlyx-card--portrait .nimlyx-card-title{ font-size:1.02rem; white-space:normal; -webkit-line-clamp:2; line-clamp:2; display:-webkit-box; -webkit-box-orient:vertical; }
+.nimlyx-card--portrait .nimlyx-card-title{ font-size:.98rem; }
 
-/* ---- Wide (Deals) -- discount + price are the dominant elements ---- */
+/* ---- Wide (Deals) -- discount + price are the dominant elements.
+   Artwork stays clear across the top ~70%; only the bottom ~32% is
+   glass. Deliberately its own overlay (not the base
+   .nimlyx-card-overlay, which is tuned for the taller portrait
+   cards and was burying most of the artwork here) and no
+   backdrop-filter blur -- legibility comes from the gradient/opacity
+   alone. ---- */
 .nimlyx-card--wide{ width:340px; }
 .nimlyx-card--wide .nimlyx-card-media{ aspect-ratio:16/9; }
+.nimlyx-card--wide .nimlyx-card-media .nimlyx-card-overlay{
+  background:linear-gradient(to top,
+    rgba(6,6,9,0.95) 0%,
+    rgba(6,6,9,0.55) 30%,
+    rgba(6,6,9,0) 42%);
+}
 .nimlyx-card--wide .nimlyx-card-discount{
-  position:absolute; top:14px; left:14px; z-index:2;
-  font-family:var(--home-font-display); font-weight:800; font-size:1.6rem;
+  position:absolute; left:14px; bottom:calc(32% - 15px); z-index:3;
+  font-family:var(--home-font-display); font-weight:800; font-size:1.5rem;
   color:#fff; background:var(--home-cta-blue);
   padding:5px 13px; border-radius:var(--home-radius-sm);
   box-shadow:0 8px 20px -6px rgba(59,130,246,0.6);
 }
 .nimlyx-card--wide .nimlyx-card-body{
-  position:absolute; left:0; right:0; bottom:0; padding:18px 22px 20px;
-  background:linear-gradient(to top, rgba(6,6,9,0.72) 0%, rgba(6,6,9,0.55) 60%, transparent 100%);
-  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  position:absolute; left:0; right:0; bottom:0; height:32%;
+  display:flex; flex-direction:column; justify-content:center; gap:2px;
+  padding:8px 20px; overflow:hidden;
+  background:rgba(6,6,9,0.9);
+  border-top:1px solid var(--home-glass-border);
 }
-.nimlyx-card--wide .nimlyx-card-title{ font-size:1.05rem; margin-bottom:6px; }
+.nimlyx-card--wide .nimlyx-card-title{ font-size:1.02rem; margin:0; }
 .nimlyx-card--wide .nimlyx-card-prices{ display:flex; align-items:baseline; gap:9px; font-family:var(--home-font-mono); }
-.nimlyx-card--wide .price-now{ font-size:1.15rem; font-weight:700; color:#fff; }
-.nimlyx-card--wide .price-was{ font-size:.82rem; color:var(--home-text-faint); text-decoration:line-through; }
+.nimlyx-card--wide .price-now{ font-size:1.1rem; font-weight:700; color:#fff; }
+.nimlyx-card--wide .price-was{ font-size:.8rem; color:var(--home-text-faint); text-decoration:line-through; }
 
 /* ---- Compact (Trending list rows, New Releases row) -- horizontal
    thumbnail + info, used both inside a fixed row and inside the
