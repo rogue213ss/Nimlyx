@@ -1277,7 +1277,6 @@ main{ counter-reset: nimlyx-section; }
 .home-insight-headline{ grid-column:1; grid-row:2; }
 .home-insight-why-label{ grid-column:1; grid-row:3; }
 .home-insight-why{ grid-column:1; grid-row:4; }
-  .trending-card{ flex-basis:270px; }
   .release-row{ grid-template-columns:26px 40px 1fr auto; gap:12px; }
 }/* ================================================================
    NIMLYX V3 HOMEPAGE GLASSMORPHISM FOUNDATION

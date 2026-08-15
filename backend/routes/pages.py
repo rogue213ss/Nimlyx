@@ -280,7 +280,17 @@ def home():
                 "id": g.get("id"),
                 "name": g.get("name"),
                 "header_image": hero_image_url(g.get("id"), g.get("image")),
-                "image_candidates": build_image_candidates(g.get("id")),
+                # Rank #1 renders as a full-height feature card (see
+                # .trending-showcase-feature); ranks 2-6 are small
+                # landscape thumbnails. They need differently-shaped
+                # source art -- library_hero.jpg (~3:1 panoramic) was
+                # winning the upgrade race for every rank including
+                # #1, then getting force-cropped into a tall box,
+                # cutting off most of the actual artwork. Only the
+                # feature slot asks for portrait-first candidates.
+                "image_candidates": build_image_candidates(
+                    g.get("id"), orientation="portrait" if i == 0 else "landscape"
+                ),
                 # Same fix as HeroCandidate._build_base_dict -- link by
                 # the app_id Steam's top-sellers list already gave us.
                 "analyze_url": f"/search?app_id={g.get('id')}",
@@ -376,3 +386,8 @@ def about_page():
 @pages_bp.route("/privacy")
 def privacy_page():
     return render_template("privacy.html")
+
+
+@pages_bp.route("/terms")
+def terms_page():
+    return render_template("terms.html")

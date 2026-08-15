@@ -80,7 +80,7 @@ def _asset_exists(url, timeout=3):
         return False
 
 
-def build_image_candidates(app_id):
+def build_image_candidates(app_id, orientation="landscape"):
     """Cheap, UNVERIFIED higher-resolution candidate URLs, built purely
     from Steam's CDN naming convention -- zero HTTP calls made here.
 
@@ -92,14 +92,33 @@ def build_image_candidates(app_id):
     header_image / default_header_image() stays on screen the whole
     time these are being probed, so a card never shows broken art
     while waiting, and never shows it at all if every candidate 404s.
-    """
+
+    `orientation` controls candidate ORDER, not which URLs exist.
+    image-upgrade.js just picks the first candidate that loads, with
+    no idea what shape of box it'll be cropped into -- so for a tall
+    slot (a portrait card, or Trending's full-height #1 feature),
+    putting the ultra-wide library_hero.jpg (~3:1 panoramic) first
+    was actively the worst choice: object-fit:cover was cramming a
+    wide banner into a tall box, cropping out most of the actual
+    artwork and any character/subject positioned off-center in the
+    source image. "landscape" (default) keeps the original order for
+    every existing wide/landscape-slot caller (Hero, Deals, New
+    Releases, Trending's compact list rows). "portrait" puts
+    library_600x900.jpg (a real 2:3 portrait asset) first instead."""
     if not app_id:
         return []
-    return [
+    landscape_order = [
         f"{STEAM_LIBRARY_CDN}/{app_id}/library_hero.jpg",
         f"{STEAM_LIBRARY_CDN}/{app_id}/library_600x900.jpg",
         f"{STEAM_CDN}/{app_id}/capsule_616x353.jpg",
     ]
+    if orientation == "portrait":
+        return [
+            f"{STEAM_LIBRARY_CDN}/{app_id}/library_600x900.jpg",
+            f"{STEAM_CDN}/{app_id}/capsule_616x353.jpg",
+            f"{STEAM_LIBRARY_CDN}/{app_id}/library_hero.jpg",
+        ]
+    return landscape_order
 
 
 def fetch_app_artwork(app_id, verify_library_hero=False):

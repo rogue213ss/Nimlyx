@@ -484,6 +484,33 @@
   gap:30px;
 }
 
+/* Empty state — discover.js's renderEmptyState() appends this
+   directly into .discover-results-grid when the active filters
+   match nothing. Spans the grid's full width rather than sitting in
+   a single grid cell. */
+.discover-results-empty{
+  grid-column:1 / -1;
+  display:flex; flex-direction:column; align-items:center; text-align:center;
+  gap:10px;
+  padding:72px 24px;
+  border:1px dashed var(--home-glass-border);
+  border-radius:20px;
+}
+.discover-results-empty-icon{
+  font-size:2.2rem;
+  opacity:.6;
+  margin-bottom:6px;
+}
+.discover-results-empty-title{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:1.15rem; color:var(--home-text-primary);
+  margin:0;
+}
+.discover-results-empty-text{
+  font-size:.92rem; color:var(--home-text-muted);
+  margin:0; max-width:360px;
+}
+
 /* ----------------------------------------------------------------
    CARD — poster-style tile. The card itself carries the 3:4 frame;
    media and body are both absolutely positioned inside it so the
