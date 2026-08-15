@@ -1,8 +1,0 @@
-[providers]
-python = {}
-
-[phases.install]
-cmds = ["pip install -r backend/requirements.txt"]
-
-[start]
-cmd = "cd backend && gunicorn app:app -b 0.0.0.0:$PORT"
