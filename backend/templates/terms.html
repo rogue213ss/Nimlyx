@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx Terms of Service</title>
+<meta name="description" content="Terms of Service for Nimlyx, a Steam game discovery and analysis platform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+</head>
+<body class="home-page">
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeSearchToggle" class="home-search-checkbox">
+    <label for="homeSearchToggle" class="home-mobile-search-btn" aria-label="Search">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </label>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+        <label for="homeSearchToggle" class="home-search-close-btn" aria-label="Close search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </label>
+        <div id="suggestions" class="suggestions-dropdown"></div>
+      </form>
+    </div>
+  </div>
+</header>
+
+  <!-- ============================================
+       MAIN CONTENT
+       ============================================ -->
+  <main class="about-page">
+
+    <!-- HERO SECTION -->
+    <section class="about-hero">
+      <div class="home-container about-hero-inner">
+        <span class="about-eyebrow">LEGAL</span>
+        <h1 class="about-title">Terms of <span class="about-title-accent">Service</span></h1>
+        <p class="about-lead">
+          The rules for using Nimlyx, written to actually describe what this platform does — a free, anonymous Steam discovery and analysis tool, not a storefront.
+        </p>
+      </div>
+    </section>
+
+    <section class="about-section">
+      <div class="home-container">
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">1. Acceptance of Terms</h2>
+          <p>
+            By accessing or using Nimlyx, you agree to these Terms of Service. If you don't agree with any part of these terms, please don't use the platform. We may update these terms from time to time; continued use after a change means you accept the updated terms.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">2. What Nimlyx Is</h2>
+          <p>
+            Nimlyx is a free game discovery and analysis platform for Steam. We help you explore, analyze, and understand games — surfacing pricing, discounts, reception data, and other publicly available information already published by Steam and other sources.
+          </p>
+          <ul class="about-list">
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>Nimlyx is not a storefront.</strong> We do not sell games, process payments, or fulfill purchases of any kind.</span>
+            </li>
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span><strong>Nimlyx is not affiliated with Valve Corporation or Steam</strong> in any way, and is not endorsed or sponsored by them.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">3. Using Nimlyx</h2>
+          <p>
+            Nimlyx doesn't require an account, login, or any personal information to use — see our <a href="/privacy">Privacy Policy</a> for details. Because there's no account system, there's nothing to register, and nothing tied to you personally when you browse.
+          </p>
+          <p>
+            When you use Nimlyx, you agree not to:
+          </p>
+          <ul class="about-list">
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span>Attempt to disrupt, overload, or interfere with the normal operation of the platform or the systems it depends on.</span>
+            </li>
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span>Scrape, republish, or redistribute Nimlyx's own analysis, rankings, or aggregated presentation at scale without permission.</span>
+            </li>
+            <li class="about-list-item">
+              <span class="about-list-bullet">›</span>
+              <span>Use the platform for any unlawful purpose or in a way that violates the rights of others.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">4. Pricing, Discounts &amp; Availability</h2>
+          <p>
+            Prices, discount percentages, regional availability, and release dates shown on Nimlyx are pulled from Steam and other public sources and are provided for informational purposes only. This data can change at any time, may be delayed or occasionally inaccurate, and can vary by region.
+          </p>
+          <p>
+            <strong>Always confirm the actual price and details on Steam itself before making a purchase decision.</strong> Nimlyx does not guarantee the accuracy of any price, discount, or availability information displayed, and is not responsible for purchases made based on it.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">5. Third-Party Data &amp; Intellectual Property</h2>
+          <p>
+            Game titles, artwork, descriptions, pricing, and review data displayed on Nimlyx belong to their respective publishers, developers, and Valve Corporation. Nimlyx aggregates and presents this publicly available information but claims no ownership over it.
+          </p>
+          <p>
+            Nimlyx's own original work — its analysis methodology, written insights, design, and codebase — is the property of Nimlyx unless otherwise noted.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">6. No Warranty</h2>
+          <p>
+            Nimlyx is provided <strong>"as is"</strong> and <strong>"as available,"</strong> without warranties of any kind, whether express or implied. We don't guarantee the platform will be uninterrupted, error-free, or that any information shown is complete or fully accurate — this is a discovery and analysis tool, not an authoritative source.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">7. Limitation of Liability</h2>
+          <p>
+            To the fullest extent permitted by law, Nimlyx and its operator are not liable for any indirect, incidental, or consequential damages arising from your use of the platform, including decisions made based on pricing, discount, or reception information shown here.
+          </p>
+        </div>
+
+        <div class="about-box" style="margin-bottom: 2rem;">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">8. Changes to These Terms</h2>
+          <p>
+            We may update these Terms of Service occasionally as Nimlyx evolves. Any changes will be posted on this page. Because we have no way to contact you directly (no accounts, no email collection), we encourage you to review this page periodically.
+          </p>
+        </div>
+
+        <div class="about-box">
+          <h2 class="about-box-title" style="margin-bottom: 1rem;">9. Contact</h2>
+          <p>
+            If you have questions about these Terms of Service, please contact us or open an issue on our project repository.
+          </p>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================
+       FOOTER
+       ============================================ -->
+  <footer class="home-footer">
+    <div class="home-container home-footer-inner">
+      <div class="home-footer-brand">
+        <div class="home-footer-logo">
+          <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+            <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+          </svg>
+          Nimlyx
+        </div>
+        <span class="home-footer-tag">Steam Data · Regional Pricing · Not affiliated with Valve</span>
+      </div>
+      <div class="home-footer-links">
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
+      </div>
+    </div>
+    <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

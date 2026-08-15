@@ -1,0 +1,209 @@
+<main>
+{% if featured_games %}
+<section class="home-hero" id="homeHero" aria-label="Featured game spotlight">
+  <div class="home-hero-track">
+    {% for game in featured_games %}
+    <div class="home-hero-slide{% if loop.first %} is-active{% endif %}"
+         {% if loop.first %}style="background-image:url('{{ game.header_image }}');"{% endif %}
+         data-bg-candidates='{{ (game.image_candidates + [game.header_image]) | tojson }}'
+         data-name="{{ game.name }}"
+         data-analyze-url="{{ game.analyze_url }}"
+         data-insight="{{ game.insight }}"
+         data-why="{{ game.why_it_matters }}">
+    </div>
+    {% endfor %}
+  </div>
+  <div class="home-hero-overlay"></div>
+
+  <div class="home-container home-hero-content">
+    <span class="home-hero-kicker">Featured by Nimlyx</span>
+    <h1 class="home-hero-title" id="homeHeroTitle">{{ featured_games[0].name }}</h1>
+    {% if featured_games[0].insight %}
+    <div class="hero-insight-integration glass-panel" id="homeHeroInsightBlock" style="padding: 24px; max-width: 600px; margin-bottom: 24px;">
+      <p class="home-insight-headline" id="homeHeroInsightHeadline" style="font-family: var(--home-font-display); font-size: 1.5rem; font-weight: 600; margin: 0 0 12px 0;">{{ featured_games[0].insight }}</p>
+      <p class="home-insight-why" id="homeHeroInsightWhy" style="color: var(--home-text-muted); margin: 0;">{{ featured_games[0].why_it_matters }}</p>
+    </div>
+    {% endif %}
+
+    <a class="home-btn home-btn-primary" id="homeHeroCta" href="{{ featured_games[0].analyze_url }}" style="background: var(--home-cta-blue); padding: 12px 24px; border-radius: var(--home-radius-md); font-weight: 600; display: inline-block;">
+      Analyze Game
+    </a>
+
+    <div class="home-hero-indicators" id="homeHeroIndicators">
+      {% for game in featured_games %}
+      <button type="button" class="home-hero-dot{% if loop.first %} is-active{% endif %}" data-slide="{{ loop.index0 }}" aria-label="Show {{ game.name }}"></button>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if hero_pending %}
+<section class="home-insight-bar home-insight-bar--pending" id="heroPendingNotice" aria-live="polite">
+  <div class="home-container home-insight-inner">
+    <span class="home-insight-kicker">?? Nimlyx Insight</span>
+    <p class="home-insight-headline">Preparing fresh insights…</p>
+    <span class="home-insight-why-label">One moment</span>
+    <p class="home-insight-why">Nimlyx is analyzing today's games. This updates automatically — no need to refresh.</p>
+  </div>
+</section>
+{% endif %}
+
+<!-- 2. WHY NIMLYX -->
+<section class="home-why" id="why-nimlyx">
+  <div class="home-container">
+    <div style="max-width: 600px;">
+      <span class="home-eyebrow" style="color: var(--home-cta-blue); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Why Nimlyx?</span>
+      <h2 style="font-family: var(--home-font-display); font-size: 2.5rem; margin: 12px 0 0 0;">Buy with confidence.</h2>
+    </div>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+        <h3 class="why-title">Unfiltered Data</h3>
+        <p class="why-desc">We aggregate millions of Steam reviews, ignoring hype and focusing on what players actually experience.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <h3 class="why-title">Historical Pricing</h3>
+        <p class="why-desc">Know if a deal is actually a deal. We track pricing history so you never buy at the wrong time.</p>
+      </div>
+      <div class="why-card">
+        <div class="why-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+        <h3 class="why-title">No Fluff</h3>
+        <p class="why-desc">No sponsored placements, no algorithmic bias. Just pure gaming discovery built on raw metrics.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. DISCOVER (Asymmetric Image-First Grid) -->
+{% if nimlyx_picks %}
+<section class="home-discover" id="discover">
+  <div class="home-container">
+    <div>
+      <span class="home-eyebrow" style="color: var(--home-cta-blue); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Curated Selections</span>
+      <h2 style="font-family: var(--home-font-display); font-size: 2.5rem; margin: 12px 0 0 0;">Discover Your Next Favorite.</h2>
+    </div>
+    <div class="discover-masonry">
+      {% for pick in nimlyx_picks[:5] %}
+      <a href="{{ pick.url }}" class="discover-card {% if loop.first %}large{% endif %}">
+        <img src="{{ pick.image }}" data-img-candidates='{{ pick.image_candidates | tojson }}' alt="{{ pick.name }}" class="discover-art" loading="lazy">
+        <div class="discover-overlay">
+          <h3 class="discover-title">{{ pick.name }}</h3>
+          <div class="discover-meta">
+            <span>{{ pick.badge_icon }} {{ pick.badge_label }}</span>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- 4. TRENDING TODAY -->
+{% if trending_games %}
+<section class="home-trending" id="trending">
+  <div class="home-container">
+    <div>
+      <span class="home-eyebrow" style="color: var(--home-cta-blue); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Real-time Popularity</span>
+      <h2 style="font-family: var(--home-font-display); font-size: 2.5rem; margin: 12px 0 0 0;">?? Trending Today.</h2>
+    </div>
+    <div class="trending-asymmetric" style="display: flex; gap: 24px; margin-top: 32px; flex-wrap: wrap;">
+      {% if trending_games|length > 0 %}
+      <a class="trending-feature glass-panel" href="{{ trending_games[0].analyze_url }}" style="flex: 1; min-width: 300px; display: block; overflow: hidden; position: relative;">
+        <div class="trending-feature-media" style="position: relative; padding-bottom: 56.25%;">
+          <img src="{{ trending_games[0].header_image }}" data-img-candidates='{{ trending_games[0].image_candidates | tojson }}' alt="{{ trending_games[0].name }}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+          <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);"></div>
+          <span style="position: absolute; bottom: 20px; right: 20px; font-family: var(--home-font-display); font-size: 4rem; font-weight: 700; color: rgba(255,255,255,0.2); line-height: 1;">#{{ trending_games[0].rank }}</span>
+        </div>
+        <div class="trending-feature-info" style="padding: 24px;">
+          <h3 style="font-family: var(--home-font-display); font-size: 1.5rem; margin: 0 0 8px 0; color: #fff;">{{ trending_games[0].name }}</h3>
+          <span style="color: var(--home-text-muted);">{{ trending_games[0].price }}</span>
+        </div>
+      </a>
+      {% endif %}
+      
+      <div class="trending-list" style="flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 16px;">
+        {% for game in trending_games[1:5] %}
+        <a class="trending-list-item glass-panel" href="{{ game.analyze_url }}" style="display: flex; align-items: center; padding: 12px; gap: 16px;">
+          <span style="font-family: var(--home-font-display); font-size: 1.5rem; font-weight: 700; color: var(--home-text-faint); width: 32px; text-align: center;">{{ game.rank }}</span>
+          <div style="width: 120px; height: 68px; border-radius: var(--home-radius-sm); overflow: hidden; flex-shrink: 0;">
+            <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <h4 style="font-family: var(--home-font-display); font-weight: 600; margin: 0 0 4px 0; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ game.name }}</h4>
+            <span style="color: var(--home-text-muted); font-size: 0.9rem;">{{ game.price }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- 5. BIGGEST DEALS (Lazy Loaded) -->
+<div class="lazy-row-placeholder" data-feed-id="specials" style="min-height: 400px; position: relative;">
+  <div class="home-container" style="padding-top: 60px;">
+    <div style="width: 200px; height: 30px; background: var(--home-glass-base); border-radius: 4px; margin-bottom: 24px; animation: pulse 2s infinite;"></div>
+    <div style="display: flex; gap: 24px; overflow: hidden;">
+      <div style="width: 400px; height: 260px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 400px; height: 260px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 400px; height: 260px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. NEW RELEASES -->
+{% if new_release_games %}
+<section class="home-new" id="new-releases">
+  <div class="home-container">
+    <div>
+      <span class="home-eyebrow" style="color: var(--home-cta-blue); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.05em;">Just Landed</span>
+      <h2 style="font-family: var(--home-font-display); font-size: 2.5rem; margin: 12px 0 0 0;">?? New Releases.</h2>
+    </div>
+    <div class="timeline-stream" style="margin-top: 32px; position: relative; padding-left: 24px;">
+      <div style="position: absolute; left: 6px; top: 0; bottom: 0; width: 2px; background: var(--home-border-glass-strong);"></div>
+      {% for game in new_release_games %}
+      <div class="timeline-node" style="position: relative; margin-bottom: 32px;">
+        <div class="timeline-marker" style="position: absolute; left: -24px; top: 16px; width: 14px; height: 14px; border-radius: 50%; background: var(--home-cta-blue); border: 3px solid var(--home-obsidian);"></div>
+        <a class="timeline-card glass-panel" href="{{ game.analyze_url }}" style="display: flex; gap: 20px; padding: 16px; align-items: center;">
+          <div style="width: 160px; height: 90px; border-radius: var(--home-radius-md); overflow: hidden; flex-shrink: 0;">
+            <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+          </div>
+          <div style="flex: 1;">
+            <span style="color: var(--home-cta-blue); font-family: var(--home-font-mono); font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px;">{{ game.recency_label }}</span>
+            <h4 style="font-family: var(--home-font-display); font-weight: 600; font-size: 1.25rem; margin: 0 0 4px 0; color: #fff;">{{ game.name }}</h4>
+          </div>
+          <span style="font-weight: 600; color: var(--home-text-muted); padding-right: 16px;">{{ game.price }}</span>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- 7. ACTION (Lazy Loaded) -->
+<div class="lazy-row-placeholder" data-feed-id="action" style="min-height: 400px; position: relative;">
+  <div class="home-container" style="padding-top: 60px;">
+    <div style="width: 200px; height: 30px; background: var(--home-glass-base); border-radius: 4px; margin-bottom: 24px; animation: pulse 2s infinite;"></div>
+    <div style="display: flex; gap: 16px; overflow: hidden;">
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+</style>
+</main>
