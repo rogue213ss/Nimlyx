@@ -92,7 +92,7 @@ def _shape_scraped_candidates(games):
             # Never render a blank/incomplete card -- matches the
             # historical "don't show blank cards" requirement.
             continue
-        g["header_default"] = default_header_image(app_id) or g.get("image")
+        g["header_default"] = g.get("image") or default_header_image(app_id)
         g["image_candidates"] = build_image_candidates(app_id)
         shaped.append(to_discover_card(g))
     return shaped

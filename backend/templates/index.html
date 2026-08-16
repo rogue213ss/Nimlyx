@@ -7,7 +7,7 @@
 <meta name="description" content="Nimlyx analyzes Steam games using ratings, reviews, screenshots and trailers so you know what you're getting before you buy.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
 </head>
@@ -77,21 +77,13 @@
 </header>
 
 <main>
-
-<!-- ============================================
-     HERO + NIMLYX INSIGHT
-     The hero carries the game itself; the insight bar directly
-     below is a distinct, separately-styled callout showing the
-     SAME HeroCandidate's insight/why_it_matters — this is real
-     Insight Engine output, not placeholder tagline copy.
-     ============================================ -->
 {% if featured_games %}
 <section class="home-hero" id="homeHero" aria-label="Featured game spotlight">
   <div class="home-hero-track">
     {% for game in featured_games %}
     <div class="home-hero-slide{% if loop.first %} is-active{% endif %}"
-         style="background-image:url('{{ game.header_image }}');"
-         data-bg-candidates='{{ game.image_candidates | tojson }}'
+         {% if loop.first %}style="background-image:url('{{ game.header_image }}');"{% endif %}
+         data-bg-candidates='{{ (game.image_candidates + [game.header_image]) | tojson }}'
          data-name="{{ game.name }}"
          data-analyze-url="{{ game.analyze_url }}"
          data-insight="{{ game.insight }}"
@@ -104,7 +96,14 @@
   <div class="home-container home-hero-content">
     <span class="home-hero-kicker">Featured by Nimlyx</span>
     <h1 class="home-hero-title" id="homeHeroTitle">{{ featured_games[0].name }}</h1>
-    <a class="home-btn home-btn-primary" id="homeHeroCta" href="{{ featured_games[0].analyze_url }}">
+    {% if featured_games[0].insight %}
+    <div class="hero-insight-integration glass-panel" id="homeHeroInsightBlock" style="padding: 24px; max-width: 600px; margin-bottom: 24px;">
+      <p class="home-insight-headline" id="homeHeroInsightHeadline" style="font-family: var(--home-font-display); font-size: 1.5rem; font-weight: 600; margin: 0 0 12px 0;">{{ featured_games[0].insight }}</p>
+      <p class="home-insight-why" id="homeHeroInsightWhy" style="color: var(--home-text-muted); margin: 0;">{{ featured_games[0].why_it_matters }}</p>
+    </div>
+    {% endif %}
+
+    <a class="home-btn home-btn-primary" id="homeHeroCta" href="{{ featured_games[0].analyze_url }}" style="background: var(--home-cta-blue); padding: 12px 24px; border-radius: var(--home-radius-md); font-weight: 600; display: inline-block;">
       Analyze Game
     </a>
 
@@ -117,186 +116,207 @@
 </section>
 {% endif %}
 
-{% if featured_games and featured_games[0].insight %}
-<section class="home-insight-bar" id="homeInsightBar" aria-label="Nimlyx insight for the featured game">
-  <div class="home-container home-insight-inner">
-    <span class="home-insight-kicker">💡 Nimlyx Insight</span>
-    <p class="home-insight-headline" id="homeInsightHeadline">{{ featured_games[0].insight }}</p>
-    <span class="home-insight-why-label">Why this matters</span>
-    <p class="home-insight-why" id="homeInsightWhy">{{ featured_games[0].why_it_matters }}</p>
-  </div>
-</section>
-{% elif hero_pending %}
-<!-- Shown ONLY while a real background build is actively running for
-     this visitor's region -- static/js/hero-refresh.js polls
-     /api/hero-status and reloads the page automatically once it's
-     done, so the visitor never has to touch Refresh themselves. If
-     the Insight Engine simply had nothing to publish this cycle
-     (hero_pending false), this doesn't render at all -- that state
-     is permanent for this build, not something to keep polling for. -->
+{% if hero_pending %}
 <section class="home-insight-bar home-insight-bar--pending" id="heroPendingNotice" aria-live="polite">
   <div class="home-container home-insight-inner">
-    <span class="home-insight-kicker">💡 Nimlyx Insight</span>
-    <p class="home-insight-headline">Preparing fresh insights…</p>
+    <span class="home-insight-kicker">Nimlyx Insight</span>
+    <p class="home-insight-headline">Preparing fresh insights&hellip;</p>
     <span class="home-insight-why-label">One moment</span>
-    <p class="home-insight-why">Nimlyx is analyzing today's games. This updates automatically — no need to refresh.</p>
+    <p class="home-insight-why">Nimlyx is analyzing today's games. This updates automatically &mdash; no need to refresh.</p>
   </div>
 </section>
 {% endif %}
 
-<!-- ============================================
-     NIMLYX PICKS — interactive master-detail.
-     Clicking a card on the right swaps the large panel on the
-     left (title/image/insight/why); it never navigates on its
-     own. The left panel's "Read Full Analysis" button is the
-     only thing that goes to the game's search page. See
-     static/js/picks.js.
-     ============================================ -->
+<!-- 2. DISCOVER -->
 {% if nimlyx_picks %}
-<section class="home-section" id="nimlyx-picks">
+<section class="nimlyx-section" id="discover">
   <div class="home-container">
-    <div class="home-section-head">
+    <div class="nimlyx-section-head">
       <div>
-        <span class="home-eyebrow">⭐ Today's verdicts</span>
-        <h2 class="home-section-title">Featured by Nimlyx</h2>
+        <span class="home-eyebrow">Curated Selections</span>
+        <h2>Discover your next favorite.</h2>
+        <span class="nimlyx-section-sub">Handpicked by Nimlyx — not just what's popular.</span>
       </div>
     </div>
-    <div class="picks-grid">
-      <div class="pick-lead {{ nimlyx_picks[0].badge_class }}" id="picksLead">
-        <div class="pick-lead-media" id="picksLeadMedia" style="background-image:url('{{ nimlyx_picks[0].image }}');" data-bg-candidates='{{ nimlyx_picks[0].image_candidates | tojson }}'></div>
-        <div class="pick-lead-overlay"></div>
-        <div class="pick-lead-content">
-          <span class="pick-badge {{ nimlyx_picks[0].badge_class }}" id="picksLeadBadge">{{ nimlyx_picks[0].badge_icon }} {{ nimlyx_picks[0].badge_label }}</span>
-          <h3 class="pick-lead-title" id="picksLeadTitle">{{ nimlyx_picks[0].name }}</h3>
-          <p class="pick-lead-insight" id="picksLeadInsight">{{ nimlyx_picks[0].insight }}</p>
-          <p class="pick-lead-why" id="picksLeadWhy">{{ nimlyx_picks[0].why_it_matters }}</p>
-          <a class="home-btn home-btn-primary pick-lead-cta" id="picksLeadCta" href="{{ nimlyx_picks[0].url }}">
-            Read Full Analysis
-          </a>
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row">
+      {% for pick in nimlyx_picks[:8] %}
+      <a href="{{ pick.url }}" class="nimlyx-card nimlyx-card--portrait">
+        <div class="nimlyx-card-media">
+          <img src="{{ pick.image }}" data-img-candidates='{{ pick.image_candidates | tojson }}' alt="{{ pick.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
         </div>
-      </div>
-
-      <div class="picks-feed" id="picksFeed">
-        {% for pick in nimlyx_picks[1:] %}
-        <button type="button"
-                class="pick-card {{ pick.badge_class }}"
-                data-name="{{ pick.name }}"
-                data-image="{{ pick.image }}"
-                data-candidates='{{ pick.image_candidates | tojson }}'
-                data-insight="{{ pick.insight }}"
-                data-why="{{ pick.why_it_matters }}"
-                data-url="{{ pick.url }}"
-                data-badge-class="{{ pick.badge_class }}"
-                data-badge-icon="{{ pick.badge_icon }}"
-                data-badge-label="{{ pick.badge_label }}">
-          <div class="pick-card-media">
-            <img src="{{ pick.image }}" data-img-candidates='{{ pick.image_candidates | tojson }}' alt="{{ pick.name }}" loading="lazy">
+        <div class="nimlyx-card-body">
+          <div class="nimlyx-card-context">
+            <span class="nimlyx-chip {{ pick.badge_class }}">{{ pick.badge_icon }} {{ pick.badge_label }}</span>
           </div>
-          <div class="pick-card-body">
-            <span class="pick-badge {{ pick.badge_class }}">{{ pick.badge_icon }} {{ pick.badge_label }}</span>
-            <h4 class="pick-card-title">{{ pick.name }}</h4>
-            <p class="pick-card-insight">{{ pick.insight }}</p>
-          </div>
-        </button>
-        {% endfor %}
-      </div>
+          <h3 class="nimlyx-card-title">{{ pick.name }}</h3>
+          {% if pick.price %}<span class="nimlyx-card-context" style="color: var(--home-text-muted); font-weight: 500;">{{ pick.price }}</span>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
     </div>
   </div>
 </section>
 {% endif %}
 
-<!-- ============================================
-     DISCOVER PROMO
-     ============================================ -->
-<section class="home-section" id="discover-promo">
-  <div class="home-container">
-    <div class="discover-banner">
-      <span class="discover-eyebrow">🎮 Discover</span>
-      <h2 class="discover-title">Explore Steam beyond popularity.</h2>
-      <p class="discover-sub">Genres · Reviews · Price · Region · Platform</p>
-      <a class="home-btn home-btn-primary" href="/discover">Open Discover</a>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================
-     TRENDING TODAY — large landscape cards, horizontal scroll.
-     Real Steam top-seller ordering. Deliberately colorless (no
-     verdict badges) — this is Steam's own ranking, not a Nimlyx
-     judgment; color stays reserved for the Picks section above.
-     ============================================ -->
+<!-- 3. TRENDING TODAY -->
 {% if trending_games %}
-<section class="home-section" id="trending">
+<section class="nimlyx-section nimlyx-section--glow" id="trending">
   <div class="home-container">
-    <div class="home-section-head">
+    <div class="nimlyx-section-head">
       <div>
-        <span class="home-eyebrow">Steam's own ranking, unfiltered</span>
-        <h2 class="home-section-title">🔥 Trending Today</h2>
+        <span class="home-eyebrow">Real-time Popularity</span>
+        <h2>Trending today.</h2>
+        <span class="nimlyx-section-sub">Games people are playing right now, ranked by Steam's own ordering.</span>
       </div>
     </div>
-    <div class="trending-wrap">
-      <button type="button" class="trending-arrow trending-arrow-left" id="trendingPrev" aria-label="Scroll left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-      <div class="trending-scroll" id="trendingScroll">
-        {% for game in trending_games %}
-        <a class="trending-card" href="{{ game.analyze_url }}">
-          <span class="trending-rank">{{ game.rank }}</span>
-          <div class="trending-media">
-            <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy">
-            <div class="trending-media-overlay"></div>
+    <div class="trending-showcase">
+      {% if trending_games|length > 0 %}
+      <a class="nimlyx-card trending-showcase-feature" href="{{ trending_games[0].analyze_url }}">
+        <div class="nimlyx-card-media">
+          <img src="{{ trending_games[0].header_image }}" data-img-candidates='{{ trending_games[0].image_candidates | tojson }}' alt="{{ trending_games[0].name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <span class="nimlyx-rank">#{{ trending_games[0].rank }}</span>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">{{ trending_games[0].name }}</h3>
+          <div class="nimlyx-card-context">
+            <span class="nimlyx-chip nimlyx-chip--blue">Top Seller</span>
+            <span class="dot">&bull;</span>
+            <span style="color: var(--home-text-muted); font-weight: 500;">{% if trending_games[0].price == '$0.00' or trending_games[0].price == 'Free' or trending_games[0].price == '0' or not trending_games[0].price %}Free{% else %}{{ trending_games[0].price }}{% endif %}</span>
           </div>
-          <div class="trending-info">
-            <h3 class="trending-title">{{ game.name }}</h3>
-            <span class="trending-price">{{ game.price }}</span>
+        </div>
+      </a>
+      {% endif %}
+
+      <div class="trending-showcase-list">
+        {% for game in trending_games[1:6] %}
+        <a class="nimlyx-card nimlyx-card--compact" href="{{ game.analyze_url }}">
+          <span class="nimlyx-rank">{{ game.rank }}</span>
+          <div class="nimlyx-card-media">
+            <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
+          </div>
+          <div class="nimlyx-card-body">
+            <h4 class="nimlyx-card-title">{{ game.name }}</h4>
+            <span class="nimlyx-card-context" style="color: var(--home-text-muted); font-weight: 500;">{% if game.price == '$0.00' or game.price == 'Free' or game.price == '0' or not game.price %}Free{% else %}{{ game.price }}{% endif %}</span>
           </div>
         </a>
         {% endfor %}
       </div>
-      <button type="button" class="trending-arrow trending-arrow-right" id="trendingNext" aria-label="Scroll right">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
     </div>
   </div>
 </section>
 {% endif %}
 
-<!-- ============================================
-     NEW RELEASES — numbered list, distinct row layout.
-     Every game here, and its recency label, is verified against
-     Steam's own appdetails release_date for that exact app id
-     (see steam.fetch_verified_new_releases()). Games without a
-     trustworthy, already-released date are excluded rather than
-     guessed at, so this list can legitimately be shorter than 5,
-     or empty (the section-visibility check below hides it then).
-     ============================================ -->
+<!-- 4. BIGGEST DEALS (Lazy Loaded) -->
+<div class="lazy-row-placeholder" data-feed-id="specials" style="min-height: 400px; position: relative;">
+  <div class="home-container" style="padding-top: 60px;">
+    <div style="width: 200px; height: 30px; background: var(--home-glass-fill); border-radius: 4px; margin-bottom: 24px; animation: pulse 2s infinite;"></div>
+    <div style="display: flex; gap: 24px; overflow: hidden;">
+      <div style="width: 340px; height: 220px; background: var(--home-glass-fill); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 340px; height: 220px; background: var(--home-glass-fill); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 340px; height: 220px; background: var(--home-glass-fill); border-radius: 10px; animation: pulse 2s infinite;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. NEW RELEASES -->
 {% if new_release_games %}
-<section class="home-section" id="new-releases">
+<section class="nimlyx-section nimlyx-section--elevated" id="new-releases">
   <div class="home-container">
-    <div class="home-section-head">
+    <div class="nimlyx-section-head">
       <div>
-        <span class="home-eyebrow">Just landed</span>
-        <h2 class="home-section-title">🆕 New Releases</h2>
+        <span class="home-eyebrow">Just Landed</span>
+        <h2>New releases.</h2>
+        <span class="nimlyx-section-sub">Fresh games landing on Steam, verified against their real release date.</span>
       </div>
     </div>
-    <div class="release-list">
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row">
       {% for game in new_release_games %}
-      <a class="release-row" href="{{ game.analyze_url }}">
-        <span class="release-num">{{ loop.index }}</span>
-        <div class="release-art"><img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy"></div>
-        <div class="release-info">
-          <span class="release-name">{{ game.name }}</span>
-          <span class="release-meta">{{ game.recency_label }}</span>
+      <a class="nimlyx-card nimlyx-card--compact" href="{{ game.analyze_url }}">
+        <div class="nimlyx-card-media">
+          <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
         </div>
-        <span class="release-price">{{ game.price }}</span>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">{{ game.name }}</h4>
+          <div class="nimlyx-card-context">
+            <span class="nimlyx-chip nimlyx-chip--blue">{{ game.recency_label }}</span>
+            {% if game.primary_genre %}<span class="dot">&bull;</span><span style="color: var(--home-text-muted); font-weight: 500;">{{ game.primary_genre }}</span>{% endif %}
+          </div>
+        </div>
       </a>
       {% endfor %}
     </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    </div>
   </div>
 </section>
 {% endif %}
 
+<!-- 6. ACTION (Lazy Loaded) -->
+<div class="lazy-row-placeholder" data-feed-id="action" style="min-height: 400px; position: relative;">
+  <div class="home-container" style="padding-top: 60px;">
+    <div style="width: 200px; height: 30px; background: var(--home-glass-base); border-radius: 4px; margin-bottom: 24px; animation: pulse 2s infinite;"></div>
+    <div style="display: flex; gap: 16px; overflow: hidden;">
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+      <div style="width: 220px; height: 330px; background: var(--home-glass-base); border-radius: 10px; animation: pulse 2s infinite;"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.3; }
+  100% { opacity: 0.6; }
+}
+</style>
 </main>
+
+
+<!-- 7. WHY NIMLYX -->
+<section class="nimlyx-section nimlyx-section--closing" id="why-nimlyx">
+  <div class="home-container">
+    <div class="nimlyx-why-intro">
+      <span class="home-eyebrow">Why Nimlyx?</span>
+      <h2>Buy with confidence.</h2>
+    </div>
+    <div class="nimlyx-why-grid">
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+        <h3 class="nimlyx-why-title">Analyze</h3>
+        <p class="nimlyx-why-desc">Understand a game's performance, requirements and important information.</p>
+      </div>
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <h3 class="nimlyx-why-title">Explore</h3>
+        <p class="nimlyx-why-desc">Discover games through different categories and collections.</p>
+      </div>
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+        <h3 class="nimlyx-why-title">Understand</h3>
+        <p class="nimlyx-why-desc">See useful player reception and review information.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ============================================
      FOOTER
@@ -323,10 +343,60 @@
 </footer>
 
 <script src="{{ url_for('static', filename='js/image-upgrade.js') }}"></script>
+<script src="{{ url_for('static', filename='js/home-rows.js') }}"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hero-rotation.js') }}"></script>
 <script src="{{ url_for('static', filename='js/picks.js') }}"></script>
 <script src="{{ url_for('static', filename='js/trending.js') }}"></script>
 <script src="{{ url_for('static', filename='js/hero-refresh.js') }}"></script>
+
+
+<script>
+  const rawSeenGames = '{{ seen_ids | list | tojson | safe }}';
+  window.NIMLYX_SEEN_GAMES = new Set(JSON.parse(rawSeenGames || "[]"));
+
+  (function() {
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const feedId = el.getAttribute('data-feed-id');
+          obs.unobserve(el);
+          
+          const seenParam = Array.from(window.NIMLYX_SEEN_GAMES).slice(-100).join(',');
+          
+          fetch(`/api/feed/row/${feedId}?seen=${encodeURIComponent(seenParam)}`)
+            .then(res => res.text())
+            .then(html => {
+              if (html.trim() !== "") {
+                el.innerHTML = html;
+                const injectedSection = el.querySelector('.home-section') || el.querySelector('section');
+                if (injectedSection && injectedSection.hasAttribute('data-appids')) {
+                  const newIds = injectedSection.getAttribute('data-appids').split(',');
+                  newIds.forEach(id => {
+                    if (id.trim() !== "") window.NIMLYX_SEEN_GAMES.add(id.trim());
+                  });
+                }
+                if (window.NimlyxImageUpgrade && window.NimlyxImageUpgrade.upgradeAll) {
+                  window.NimlyxImageUpgrade.upgradeAll(el);
+                }
+                if (window.NimlyxRows && window.NimlyxRows.wireAll) {
+                  window.NimlyxRows.wireAll(el);
+                }
+              }
+            })
+            .catch(err => console.error("Feed load failed", err));
+        }
+      });
+    }, {
+      rootMargin: "0px 0px 800px 0px"
+    });
+
+    document.querySelectorAll('.lazy-row-placeholder').forEach(el => {
+      observer.observe(el);
+    });
+  })();
+</script>
+
 </body>
 </html>

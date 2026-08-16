@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-08-15T14:56:18.868641+00:00",
+  "methodology_version": "v3",
+  "cpu_record_count": 418,
+  "gpu_record_count": 2627,
+  "cpu_source": "data/hardware/normalized/cpus.json",
+  "gpu_source": "data/hardware/normalized/gpus.json",
+  "outputs": {
+    "cpu_rankings": "data/hardware/rankings/cpu_rankings.json",
+    "gpu_rankings": "data/hardware/rankings/gpu_rankings.json"
+  }
+}

@@ -1,6 +1,7 @@
 import re
 import requests
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from flask import Blueprint, jsonify, request
 
 from region import get_region_code
@@ -13,6 +14,8 @@ from services.analysis.tag_honesty import compute_tag_honesty
 from services.analysis.spotlight_reviews import compute_spotlight_reviews
 from services.game.related_games import get_developer_games, get_publisher_games
 from services.game.requirements import parse_requirements
+from services.hardware.compatibility import evaluate_compatibility, HardwareProfile, serialize_compatibility_result
+from services.hardware.rankings_loader import get_cpus_with_rankings, get_gpus_with_rankings
 
 game_bp = Blueprint("game", __name__)
 
@@ -115,23 +118,12 @@ def search_results(query):
         has_more = len(games) == BATCH_SIZE
         next_offset = offset + BATCH_SIZE if has_more else None
 
-        # Genre data isn't in this scrape's HTML (same acknowledged gap
-        # to_discover_card()/fetch_discover_games() already document for
-        # Discover's own cards) -- so it's fetched here, concurrently,
-        # purely to populate the Genre filter sidebar. Deliberately
-        # NOT a gate: unlike the old storesearch verification pass,
-        # nothing here can remove a result -- a failed/slow lookup just
-        # leaves that one row's genre pills empty. Bounded to whatever
-        # this one batch is (BATCH_SIZE, not a whole franchise), so this
-        # can't reintroduce the rate-limit pressure the old per-search
-        # verification pass caused.
-        def fetch_genres(app_id):
-            raw = get_appdetails(app_id, cc)
-            return [g["description"] for g in (raw or {}).get("genres", [])]
-
-        app_ids = [g.get("id") for g in games if g.get("id")]
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+        # Genre data is now lazy-loaded via /api/search-genres to decouple
+        # its high-latency (30 concurrent appdetails lookups on cold cache)
+        # from the critical rendering path. The search rows render
+        # immediately with genres=[], and search_list.js populates them
+        # async.
+        genres_by_id = {}
 
         normalized_query = clean_search_term(query).lower()
         results = []
@@ -193,6 +185,34 @@ def search_results(query):
         return jsonify({"error": str(e), "results": [], "exact_match_app_id": None, "has_more": False, "next_offset": None}), 500
 
 
+@game_bp.route("/api/search-genres", methods=["POST"])
+def search_genres_api():
+    try:
+        data = request.get_json() or {}
+        app_ids = data.get("app_ids", [])
+        
+        if not app_ids or not isinstance(app_ids, list):
+            return jsonify({}), 400
+
+        # Safety cap to prevent abuse
+        app_ids = app_ids[:50]
+        
+        cc = get_region_code()
+        
+        def fetch_genres(app_id):
+            raw = get_appdetails(app_id, cc)
+            return [g["description"] for g in (raw or {}).get("genres", [])]
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            genres_by_id = dict(zip(app_ids, executor.map(fetch_genres, app_ids)))
+
+        return jsonify(genres_by_id)
+        
+    except Exception as e:
+        print(f"Error fetching search genres: {e}")
+        return jsonify({}), 500
+
+
 @game_bp.route("/api/game-detail/<app_id>")
 def game_detail_by_id(app_id):
     """Canonical Sprint 3 detail endpoint -- loads a game straight off
@@ -218,6 +238,121 @@ def game_detail_by_id(app_id):
     clean_data["highlighted_package_id"] = request.args.get("package_id")
 
     return jsonify(clean_data)
+
+
+@game_bp.route("/api/game/<app_id>/compatibility", methods=["POST"])
+def game_compatibility(app_id):
+    """Compatibility-engine integration (read-only). Takes a user's
+    selected hardware (by ranking-catalog external_id -- see
+    services/hardware/rankings_loader.py) plus RAM in GB, and returns
+    whether that hardware meets this game's minimum/recommended specs.
+
+    Deliberately a SEPARATE endpoint from /api/game-detail/<app_id>,
+    not a field added onto it: game-detail's response shape is a
+    stable contract several existing frontend call sites already
+    depend on (see build_game_detail's own docstring note that
+    `requirements` is kept stable specifically as this future input),
+    and a per-request hardware selection isn't part of "the game"
+    the way requirements/reviews/media are -- it varies per visitor,
+    per request, so it doesn't belong baked into the cacheable game
+    payload. Splitting it out also means this endpoint can be
+    called repeatedly (e.g. the user tries a few different GPUs) with
+    no need to re-fetch or reprocess the rest of the game detail data
+    each time.
+
+    Body (all fields optional -- a missing selection is handled by
+    evaluate_compatibility() as "insufficient data" for that
+    component, never as a guessed pass/fail):
+        {
+          "cpu_external_id": "cpu-intel-i5-2500k",
+          "gpu_external_id": "nvidia-geforce-rtx-4090",
+          "ram_gb": 16
+        }
+
+    Only fetches raw appdetails + parses requirements -- it does NOT
+    call build_game_detail() (which also runs the review-summary,
+    reputation-trajectory, community-pulse, spotlight-review, and
+    developer/publisher-games pipeline). Requirement text is the only
+    piece of the game payload this endpoint actually needs, so this
+    avoids re-doing everything else 1:1 game-detail-by-id already
+    computed on the page load that got the user here.
+    """
+    try:
+        cc = get_region_code()
+        raw = get_appdetails(app_id, cc)
+        if raw is None:
+            raw = get_appdetails(app_id, "US")  # same region fallback as build_game_detail
+        if raw is None:
+            return jsonify({"error": "Game not found"}), 404
+
+        requirements = parse_requirements(raw.get("pc_requirements"))
+
+        data = request.get_json(silent=True) or {}
+        profile = HardwareProfile(
+            cpu_external_id=data.get("cpu_external_id"),
+            gpu_external_id=data.get("gpu_external_id"),
+            ram_gb=data.get("ram_gb"),
+        )
+
+        result = evaluate_compatibility(requirements, profile)
+        return jsonify(serialize_compatibility_result(result))
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@lru_cache(maxsize=1)
+def _hardware_catalog_payload():
+    """Builds the read-only {cpus: [...], gpus: [...]} catalog payload
+    once and caches it in-memory for the life of the process -- the
+    same 418+2,627 records the compatibility engine itself already
+    reads via rankings_loader.py, just trimmed down to what a
+    selection dropdown actually needs (external_id + a display name +
+    manufacturer/vendor), not the full ranking/spec record. No score
+    fields are exposed here; this endpoint is for populating a picker,
+    not for surfacing ranking internals to the client.
+
+    lru_cache is safe here because rankings_loader's own underlying
+    data doesn't change at runtime (it's read from the generated
+    ranking JSON files once per process); this just avoids rebuilding
+    the same ~3,000-item list on every request.
+    """
+    cpus = [
+        {
+            "external_id": c["external_id"],
+            "name": c["model_name"],
+            "manufacturer": c["manufacturer"],
+        }
+        for c in get_cpus_with_rankings()
+    ]
+    gpus = [
+        {
+            "external_id": g["external_id"],
+            "name": g["name"],
+            "vendor": g["vendor"],
+        }
+        for g in get_gpus_with_rankings()
+    ]
+    cpus.sort(key=lambda r: (r["manufacturer"], r["name"]))
+    gpus.sort(key=lambda r: (r["vendor"], r["name"]))
+    return {"cpus": cpus, "gpus": gpus}
+
+
+@game_bp.route("/api/hardware/catalog")
+def hardware_catalog():
+    """Read-only hardware catalog for populating the Compatibility
+    UI's CPU/GPU selectors (see compatibility endpoint above). Source
+    of truth is the same validated ranking catalog
+    (services.hardware.rankings_loader) the compatibility engine
+    itself uses -- NOT the dormant SQL HardwareDevice table, which
+    remains untouched and unused throughout this feature. No database
+    involved; this reads the already-generated ranking JSON files,
+    same as every other consumer of rankings_loader.
+    """
+    try:
+        return jsonify(_hardware_catalog_payload())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @game_bp.route("/api/find/<game_name>")

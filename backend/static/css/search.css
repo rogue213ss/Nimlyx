@@ -292,7 +292,7 @@
      space (up to 120px top+bottom on desktop), which is what read
      as a giant empty gap inside the hero card. */
   position:relative;
-  overflow:hidden; /* clips .search-landing-hero__art to the card's own rounded corners */
+  overflow:visible; /* overflow:visible allows #landingSuggestions dropdown to render unclipped */
   text-align:center;
 }
 /* Background "artwork" layer -- a single blurred game's Steam header
@@ -301,11 +301,12 @@
    pull game art from elsewhere in this app, so nothing here is
    fabricated. Swap the <img src> in search.html to change the art. */
 .search-landing-hero__art{
-  position:absolute; inset:-6%;
+  position:absolute; inset:0;
   z-index:0;
   pointer-events:none;
   display:flex;
   overflow:hidden;
+  border-radius:inherit;
   filter:blur(18px) saturate(115%);
   opacity:.65;
 }
@@ -323,6 +324,7 @@
   position:absolute; inset:0;
   z-index:1;
   pointer-events:none;
+  border-radius:inherit;
   background:radial-gradient(120% 100% at 50% 0%, rgba(10,10,13,.55) 0%, rgba(10,10,13,.88) 75%);
 }
 /* Color wash on top of the scrim, below the content -- pulls
@@ -338,6 +340,7 @@
   position:absolute; inset:0;
   z-index:1;
   pointer-events:none;
+  border-radius:inherit;
   background:rgba(20,40,80,.55);
   mix-blend-mode:multiply;
 }
@@ -376,6 +379,7 @@
    keyboard/screen-reader behavior all come from the browser for
    free -- no click/keydown wiring needed here. */
 .search-landing-box{
+  position:relative !important;
   display:flex; align-items:center; gap:12px;
   width:100%; max-width:560px;
   background:var(--home-glass-fill);
@@ -451,6 +455,50 @@
 }
 .about-copy p{ margin:0; }
 .about-copy p + p{ margin-top:16px; }
+
+/* ================================================================
+   NIMLYX — SEARCH / GAME DETAIL PAGE (BASE DESKTOP)
+   ================================================================ */
+
+/* Hide global header search controls on the dedicated Search page (both desktop & mobile) */
+.search-page .home-header .home-search,
+.search-page .home-header .home-mobile-search-btn,
+.search-page .home-header .home-search-checkbox {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  .search-page .home-header .home-nav-burger {
+    margin-left: auto !important;
+    align-self: center !important;
+  }
+}
+
+/* Dedicated Search Landing Page Box & Autocomplete Suggestions */
+.search-landing-box {
+  position: relative !important;
+}
+
+.search-landing-box .suggestions-dropdown,
+#landingSuggestions.suggestions-dropdown {
+  position: absolute !important;
+  top: calc(100% + 10px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  background: #131318 !important;
+  border: 1px solid var(--home-glass-border-strong) !important;
+  border-radius: var(--home-radius-lg) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8) !important;
+  z-index: 1000 !important;
+}
+
+.search-landing-box .suggestion-info {
+  flex: 1;
+  min-width: 0;
+}
 
 /* ================================================================
    SCREENSHOTS
@@ -696,6 +744,7 @@
 }
 .thumb-strip::-webkit-scrollbar{ display:none; }
 .thumb{
+  position:relative;
   flex:0 0 auto;
   width:150px; height:84px;
   border-radius:var(--home-radius-sm);
@@ -711,6 +760,19 @@
   border-color:var(--home-cta-blue);
   box-shadow:0 0 0 1px rgba(59,130,246,.3), 0 8px 20px -6px rgba(59,130,246,.4);
 }
+/* Centered play badge on video thumbs -- same glass-circle language
+   as .strip-nav's arrow buttons below. */
+.thumb-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(10,10,13,.72);
+  border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  font-size:.7rem;
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+}
+.thumb-play i{ margin-left:1px; } /* optical centering for the play glyph */
 .strip-nav{
   position:absolute; top:50%; translate:0 -50%;
   display:flex; align-items:center; justify-content:center;
@@ -1124,7 +1186,70 @@
   white-space:nowrap;
 }
 /* ================================================================
-   SKELETON LOADERS
+   TRENDING-STYLE CARDS — More From Developer / More From Publisher
+   Built dynamically by search.js's buildTrendingStyleCard() into the
+   existing .trending-scroll/.trending-arrow shell (see style.css for
+   those). This card shape itself (.trending-card and its children)
+   had no base styling anywhere in the CSS -- only a stray mobile-only
+   flex-basis survived from wherever this used to be styled -- so
+   these carousels were rendering as raw, unstyled images and text.
+   Same visual language as the rest of this page: .panel's glass
+   fill/border/radius, --home-cta-blue for price (this file's own
+   header comment already documents that as the convention here).
+   ================================================================ */
+.trending-card{
+  flex-shrink:0;
+  flex-basis:320px;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-lg);
+  text-decoration:none; color:inherit;
+  transition:transform .25s var(--home-ease), border-color .25s var(--home-ease),
+             box-shadow .25s var(--home-ease);
+}
+.trending-card:hover{
+  transform:translateY(-3px);
+  border-color:var(--home-glass-border-strong);
+  box-shadow:0 16px 36px -18px rgba(0,0,0,.5);
+}
+.trending-media{
+  position:relative; width:100%; aspect-ratio:16/9;
+  overflow:hidden; background:var(--home-bg-elevated);
+}
+.trending-media img{
+  width:100%; height:100%; object-fit:cover; display:block;
+  transition:transform .5s var(--home-ease);
+}
+.trending-card:hover .trending-media img{ transform:scale(1.05); }
+.trending-media-overlay{
+  position:absolute; left:0; right:0; bottom:0; height:35%;
+  background:linear-gradient(to top, rgba(6,6,9,.55), rgba(6,6,9,0));
+  pointer-events:none;
+}
+.trending-info{
+  padding:14px 16px 16px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.trending-title{
+  margin:0;
+  font-family:var(--home-font-display); font-weight:600; font-size:1rem;
+  color:var(--home-text-primary);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.trending-price{
+  font-family:var(--home-font-mono); font-size:.85rem; font-weight:600;
+  color:var(--home-cta-blue);
+}
+
+@media (max-width:700px){
+  .trending-card{ flex-basis:230px; }
+  .trending-info{ padding:12px 14px 14px; }
+  .trending-title{ font-size:.92rem; }
+}
+
+
    Shown by loadGame() the instant it knows which fetch is about to
    go out (before the request itself starts), hidden the moment the
    real view or error state takes over. Shaped to roughly match each
@@ -1190,4 +1315,248 @@
 .skeleton-search-row{
   height:96px;
   margin-bottom:16px;
+}
+/* ================================================================
+   COMPATIBILITY CHECK — "Can Your PC Run This?" panel.
+   New feature (backend: services/hardware/compatibility.py +
+   requirement_matching.py + ram_parsing.py + rankings_loader.py,
+   exposed via POST /api/game/<app_id>/compatibility and
+   GET /api/hardware/catalog -- see search.js's initCompatibility()).
+
+   Deliberately reuses this file's EXISTING tokens/components rather
+   than introducing new ones: .home-btn-primary for the CTA,
+   --home-good/--home-mid/--home-low (already declared at the top of
+   this file for meta-chip score coloring) for the three verdict
+   states, .info-row's card shape as the base for each component row,
+   and the same glass/border/radius tokens every other panel here
+   uses. Nothing about this section should look like a bolted-on
+   widget.
+   ================================================================ */
+
+.compat-form{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr auto;
+  gap:16px;
+  align-items:end;
+}
+.compat-field{ display:flex; flex-direction:column; gap:8px; min-width:0; }
+.compat-field__label{
+  font-family:var(--home-font-mono); font-size:.7rem; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--home-text-muted);
+}
+/* Styled to match the page's other inputs (region picker trigger,
+   home-search) -- dark glass fill, not a default browser <select>. */
+.compat-select{
+  appearance:none; -webkit-appearance:none;
+  width:100%;
+  background:var(--home-glass-fill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a99a3' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  color:var(--home-text-primary);
+  font-family:var(--home-font-body); font-size:.85rem;
+  padding:12px 36px 12px 14px;
+  cursor:pointer;
+  transition:border-color .2s var(--home-ease), background-color .2s var(--home-ease);
+}
+.compat-select:hover{ border-color:var(--home-glass-border-strong); }
+.compat-select:focus{ outline:none; border-color:var(--home-cta-blue); }
+.compat-select option{ background:var(--home-bg-elevated); color:var(--home-text-primary); }
+
+/* ---- Searchable CPU/GPU combobox ----
+   Replaces the native <select> for CPU/GPU (still used as-is for
+   RAM, above -- only a handful of options there). Same dark-glass
+   input treatment as .compat-select so it reads as part of the same
+   form, not a bolted-on widget. */
+.compat-combobox{ position:relative; }
+.compat-combobox__control{ position:relative; display:flex; align-items:center; }
+.compat-combobox__input{
+  width:100%;
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  color:var(--home-text-primary);
+  font-family:var(--home-font-body); font-size:.85rem;
+  padding:12px 36px 12px 14px;
+  transition:border-color .2s var(--home-ease), background-color .2s var(--home-ease);
+}
+.compat-combobox__input::placeholder{ color:var(--home-text-faint); }
+.compat-combobox__input:hover{ border-color:var(--home-glass-border-strong); }
+.compat-combobox__input:focus{ outline:none; border-color:var(--home-cta-blue); }
+.compat-combobox__clear{
+  position:absolute; right:10px; top:50%; transform:translateY(-50%);
+  width:22px; height:22px; display:flex; align-items:center; justify-content:center;
+  border:none; background:transparent; color:var(--home-text-faint);
+  font-size:.75rem; cursor:pointer; border-radius:var(--home-radius-sm);
+  transition:color .15s var(--home-ease), background-color .15s var(--home-ease);
+}
+.compat-combobox__clear:hover{ color:var(--home-text-primary); background:var(--home-glass-fill-strong); }
+
+.compat-combobox__listbox{
+  position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:20;
+  max-height:260px; overflow-y:auto;
+  background:var(--home-bg-elevated);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:var(--home-radius-md);
+  box-shadow:0 12px 32px rgba(0,0,0,.45);
+  list-style:none; margin:0; padding:6px;
+}
+.compat-combobox__option{
+  display:flex; align-items:baseline; gap:8px;
+  padding:9px 10px; border-radius:var(--home-radius-sm);
+  cursor:pointer; font-family:var(--home-font-body); font-size:.85rem;
+  color:var(--home-text-primary);
+}
+.compat-combobox__option.is-highlighted,
+.compat-combobox__option:hover{ background:var(--home-glass-fill-strong); }
+.compat-combobox__option-vendor{
+  flex-shrink:0;
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--home-text-muted);
+}
+.compat-combobox__option-name{ color:var(--home-text-primary); }
+.compat-combobox__empty{
+  padding:14px 10px; text-align:center;
+  font-family:var(--home-font-body); font-size:.83rem; color:var(--home-text-muted);
+}
+
+.compat-check-btn{ white-space:nowrap; justify-content:center; }
+.compat-check-btn:disabled{
+  opacity:.6; cursor:not-allowed;
+  transform:none !important; box-shadow:none !important;
+  background:var(--home-glass-fill-strong) !important; color:var(--home-text-muted) !important;
+}
+/* Spin only the icon while a check is in flight -- swapped in via
+   JS (fa-magnifying-glass-chart -> fa-spinner) rather than a
+   separate spinner element, keeping the button's layout stable. */
+.compat-check-btn .fa-spinner{ animation:compat-spin .8s linear infinite; }
+@keyframes compat-spin{ to{ transform:rotate(360deg); } }
+
+.compat-hint{
+  margin:14px 2px 0;
+  font-family:var(--home-font-body); font-size:.83rem; color:var(--home-text-muted);
+}
+
+.compat-error{
+  margin-top:20px;
+  display:flex; align-items:center; gap:12px;
+  background:rgba(248,113,113,.08);
+  border:1px solid rgba(248,113,113,.28);
+  border-radius:var(--home-radius-md);
+  padding:16px 18px;
+  color:var(--home-low);
+  font-family:var(--home-font-body); font-size:.87rem;
+}
+.compat-error i{ font-size:1rem; flex-shrink:0; }
+
+/* ---- Result ---- */
+.compat-result{ margin-top:28px; }
+
+.compat-verdict{
+  display:flex; align-items:center; gap:16px;
+  border-radius:var(--home-radius-lg);
+  padding:22px 26px;
+  margin-bottom:24px;
+  border:1px solid var(--home-glass-border-strong);
+  background:var(--home-glass-fill-strong);
+}
+.compat-verdict__icon{
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  width:52px; height:52px; border-radius:50%;
+  font-size:1.3rem;
+}
+.compat-verdict__title{
+  font-family:var(--home-font-display); font-weight:700; font-size:1.15rem;
+  color:var(--home-text-primary);
+  margin-bottom:4px;
+}
+.compat-verdict__subtitle{
+  font-family:var(--home-font-body); font-size:.85rem; color:var(--home-text-muted);
+}
+/* Three verdict states -- same traffic-light tokens already used for
+   .meta-chip--score (is-good/is-mid/is-low), applied consistently
+   rather than inventing new colors for the same three-state idea. */
+.compat-verdict.is-good{ border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08); }
+.compat-verdict.is-good .compat-verdict__icon{ background:rgba(34,197,94,.16); color:var(--home-good); }
+.compat-verdict.is-mid{ border-color:rgba(245,185,66,.35); background:rgba(245,185,66,.08); }
+.compat-verdict.is-mid .compat-verdict__icon{ background:rgba(245,185,66,.16); color:var(--home-mid); }
+.compat-verdict.is-low{ border-color:rgba(248,113,113,.35); background:rgba(248,113,113,.08); }
+.compat-verdict.is-low .compat-verdict__icon{ background:rgba(248,113,113,.16); color:var(--home-low); }
+
+/* ---- Per-component breakdown -- built on .info-row's existing card
+   shape (same as Quick Stats / Requirements rows) rather than a new
+   card style, so this reads as part of the same system. ---- */
+.compat-components{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:14px;
+  margin-bottom:20px;
+}
+.compat-component{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  padding:18px 20px;
+}
+.compat-component__label{
+  display:flex; align-items:center; gap:8px;
+  font-family:var(--home-font-mono); font-size:.7rem; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--home-text-muted);
+  margin-bottom:12px;
+}
+.compat-component__label i{ font-size:.7rem; color:var(--home-text-faint); }
+.compat-component__row{
+  display:flex; align-items:center; gap:9px;
+  font-family:var(--home-font-body); font-size:.87rem; font-weight:500;
+  color:var(--home-text-primary);
+}
+.compat-component__row + .compat-component__row{ margin-top:8px; }
+.compat-component__row i{ font-size:.85rem; width:16px; text-align:center; flex-shrink:0; }
+.compat-component__row.is-pass i{ color:var(--home-good); }
+.compat-component__row.is-fail i{ color:var(--home-low); }
+.compat-component__row.is-warn i{ color:var(--home-mid); }
+/* Unresolved/unknown -- deliberately styled as neutral, NOT red.
+   This is the visual guarantee that "couldn't determine" never
+   reads as "failed" -- see the approved compatibility methodology's
+   explicit rule that uncertainty must never be shown as a failure. */
+.compat-component__row.is-unknown{ color:var(--home-text-muted); }
+.compat-component__row.is-unknown i{ color:var(--home-text-faint); }
+.compat-component__note{
+  margin:4px 0 0 25px;
+  font-family:var(--home-font-body); font-size:.76rem; line-height:1.4;
+  color:var(--home-text-faint);
+}
+
+/* ---- Notes ("About this result") -- unobtrusive, collapsible-
+   feeling but always visible; small/muted so it doesn't compete with
+   the verdict banner above it, matching how .panel__meta is used
+   elsewhere on this page for secondary context. ---- */
+.compat-notes{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  padding:16px 20px;
+}
+.compat-notes__title{
+  display:flex; align-items:center; gap:8px;
+  font-family:var(--home-font-mono); font-size:.7rem; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase;
+  color:var(--home-text-muted);
+  margin-bottom:10px;
+}
+.compat-notes__list{
+  list-style:none; margin:0; padding:0;
+  display:flex; flex-direction:column; gap:8px;
+}
+.compat-notes__list li{
+  font-family:var(--home-font-body); font-size:.82rem; line-height:1.5;
+  color:var(--home-text-muted);
+  padding-left:16px;
+  position:relative;
+}
+.compat-notes__list li::before{
+  content:"";
+  position:absolute; left:0; top:.55em;
+  width:5px; height:5px; border-radius:50%;
+  background:var(--home-text-faint);
 }

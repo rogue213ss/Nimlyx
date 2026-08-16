@@ -90,105 +90,292 @@ initRegionPicker();
    SEARCH BAR + SUGGESTIONS (reused Nimlyx logic)
 ========================================================== */
 
-function searchGame(name) {
-    window.location.href = `/search?q=${encodeURIComponent(name)}`;
+if (typeof window.searchGame !== "function") {
+    window.searchGame = function searchGame(name) {
+        window.location.href = `/search?q=${encodeURIComponent(name)}`;
+    };
 }
 
-document.getElementById("searchBtn").addEventListener("click", () => {
-    const gameName = document.getElementById("gameInput").value.trim();
-    if (!gameName) return;
-    searchGame(gameName);
-});
-
-let debounceTimer;
-let activeSuggestionIndex = -1;
-
-document.getElementById("gameInput").addEventListener("input", (e) => {
-    clearTimeout(debounceTimer);
-    const query = e.target.value;
-
-    if (query.length < 2) {
-        document.getElementById("suggestions").innerHTML = "";
-        return;
+(function () {
+    function isMobileViewport() {
+        return window.matchMedia("(max-width: 900px)").matches;
     }
 
-    debounceTimer = setTimeout(() => {
-        fetchSuggestions(query);
-    }, 400);
-});
-
-document.getElementById("gameInput").addEventListener("keydown", (e) => {
-    const suggestionsBox = document.getElementById("suggestions");
-    const items = suggestionsBox.querySelectorAll(".suggestion-item");
-
-    if (items.length === 0) {
-        if (e.key === "Enter") document.getElementById("searchBtn").click();
-        return;
+    const searchBtnEl = document.getElementById("searchBtn");
+    if (searchBtnEl) {
+        searchBtnEl.addEventListener("click", (e) => {
+            if (isMobileViewport()) {
+                if (e) e.preventDefault();
+                if (window.location.pathname !== "/search" || window.location.search !== "") {
+                    window.location.href = "/search";
+                }
+                return;
+            }
+            const gameName = document.getElementById("gameInput").value.trim();
+            if (!gameName) return;
+            window.searchGame(gameName);
+        });
     }
 
-    if (e.key === "ArrowDown") {
-        e.preventDefault();
-        activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
-        updateActiveSuggestion(items);
-    }
+    let debounceTimer;
+    let activeSuggestionIndex = -1;
 
-    if (e.key === "ArrowUp") {
-        e.preventDefault();
-        activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
-        updateActiveSuggestion(items);
-    }
+    const searchGameInputEl = document.getElementById("gameInput");
+    if (searchGameInputEl) {
+        const redirectIfMobile = (e) => {
+            if (isMobileViewport()) {
+                if (e) e.preventDefault();
+                searchGameInputEl.blur();
+                const suggestionsBox = document.getElementById("suggestions");
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                if (window.location.pathname !== "/search" || window.location.search !== "") {
+                    window.location.href = "/search";
+                }
+                return true;
+            }
+            return false;
+        };
 
-    if (e.key === "Enter") {
-        if (activeSuggestionIndex >= 0) {
-            items[activeSuggestionIndex].click();
-        } else {
-            document.getElementById("searchBtn").click();
-        }
-    }
-});
+        searchGameInputEl.addEventListener("focus", redirectIfMobile);
+        searchGameInputEl.addEventListener("click", redirectIfMobile);
 
-function updateActiveSuggestion(items) {
-    items.forEach(item => item.classList.remove("active-suggestion"));
-    if (activeSuggestionIndex >= 0) {
-        items[activeSuggestionIndex].classList.add("active-suggestion");
-        items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
-    }
-}
+        searchGameInputEl.addEventListener("input", (e) => {
+            const suggestionsBox = document.getElementById("suggestions");
+            if (isMobileViewport()) {
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                return;
+            }
+            clearTimeout(debounceTimer);
+            const query = e.target.value;
 
-async function fetchSuggestions(query) {
-    activeSuggestionIndex = -1;
-    const response = await fetch(`/api/search/${query}`);
-    const data = await response.json();
+            if (query.length < 2) {
+                if (suggestionsBox) suggestionsBox.innerHTML = "";
+                return;
+            }
 
-    const suggestionsBox = document.getElementById("suggestions");
-    suggestionsBox.innerHTML = "";
-
-    if (!data.items || data.items.length === 0) return;
-
-    data.items.slice(0, 5).forEach(game => {
-        const item = document.createElement("div");
-        item.className = "suggestion-item";
-
-        const priceText = game.price
-            ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
-            : "N/A";
-
-        item.innerHTML = `
-            <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
-            <div class="suggestion-info">
-                <span class="suggestion-name">${game.name}</span>
-                <span class="suggestion-dev">${priceText}</span>
-            </div>
-        `;
-
-        item.addEventListener("click", () => {
-            suggestionsBox.innerHTML = "";
-            searchGame(game.name);
+            debounceTimer = setTimeout(() => {
+                fetchSuggestions(query);
+            }, 400);
         });
 
-        suggestionsBox.appendChild(item);
-    });
-}
+        searchGameInputEl.addEventListener("keydown", (e) => {
+            if (isMobileViewport()) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (window.location.pathname !== "/search" || window.location.search !== "") {
+                        window.location.href = "/search";
+                    }
+                }
+                return;
+            }
+
+            const suggestionsBox = document.getElementById("suggestions");
+            const items = suggestionsBox ? suggestionsBox.querySelectorAll(".suggestion-item") : [];
+
+            if (items.length === 0) {
+                if (e.key === "Enter" && searchBtnEl) searchBtnEl.click();
+                return;
+            }
+
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+                updateActiveSuggestion(items);
+            }
+
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+                updateActiveSuggestion(items);
+            }
+
+            if (e.key === "Enter") {
+                if (activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+                    items[activeSuggestionIndex].click();
+                } else if (searchBtnEl) {
+                    searchBtnEl.click();
+                }
+            }
+        });
+    }
+
+    function updateActiveSuggestion(items) {
+        items.forEach(item => item.classList.remove("active-suggestion"));
+        if (activeSuggestionIndex >= 0) {
+            items[activeSuggestionIndex].classList.add("active-suggestion");
+            items[activeSuggestionIndex].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    const suggestionCache = new Map();
+
+    async function fetchSuggestions(query) {
+        activeSuggestionIndex = -1;
+        
+        const suggestionsBox = document.getElementById("suggestions");
+        if (!suggestionsBox) return;
+
+        if (suggestionCache.has(query)) {
+            renderSuggestions(suggestionCache.get(query), suggestionsBox);
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/search/${encodeURIComponent(query)}`);
+            const data = await response.json();
+            suggestionCache.set(query, data);
+            renderSuggestions(data, suggestionsBox);
+        } catch (err) {
+            console.error("Error fetching suggestions:", err);
+        }
+    }
+
+    function renderSuggestions(data, suggestionsBox) {
+        suggestionsBox.innerHTML = "";
+        if (!data.items || data.items.length === 0) return;
+
+        data.items.slice(0, 5).forEach(game => {
+            const item = document.createElement("div");
+            item.className = "suggestion-item";
+
+            const priceText = game.price
+                ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+                : "N/A";
+
+            item.innerHTML = `
+                <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
+                <div class="suggestion-info">
+                    <span class="suggestion-name">${game.name}</span>
+                    <span class="suggestion-dev">${priceText}</span>
+                </div>
+            `;
+
+            item.addEventListener("click", () => {
+                suggestionsBox.innerHTML = "";
+                window.searchGame(game.name);
+            });
+
+            suggestionsBox.appendChild(item);
+        });
+    }
+
+    // ==========================================================
+    // DEDICATED SEARCH LANDING INPUT AUTOCOMPLETE
+    // ==========================================================
+    const landingInputEl = document.getElementById("landingGameInput");
+    const landingSuggestionsBox = document.getElementById("landingSuggestions");
+    let landingDebounceTimer;
+    let landingActiveIndex = -1;
+
+    if (landingInputEl && landingSuggestionsBox) {
+        landingInputEl.addEventListener("input", (e) => {
+            clearTimeout(landingDebounceTimer);
+            const query = e.target.value.trim();
+
+            if (query.length < 2) {
+                landingSuggestionsBox.innerHTML = "";
+                return;
+            }
+
+            landingDebounceTimer = setTimeout(() => {
+                fetchLandingSuggestions(query);
+            }, 400);
+        });
+
+        landingInputEl.addEventListener("keydown", (e) => {
+            const items = landingSuggestionsBox.querySelectorAll(".suggestion-item");
+
+            if (items.length === 0) {
+                return;
+            }
+
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                landingActiveIndex = (landingActiveIndex + 1) % items.length;
+                updateLandingActiveSuggestion(items);
+            }
+
+            if (e.key === "ArrowUp") {
+                e.preventDefault();
+                landingActiveIndex = (landingActiveIndex - 1 + items.length) % items.length;
+                updateLandingActiveSuggestion(items);
+            }
+
+            if (e.key === "Enter") {
+                if (landingActiveIndex >= 0 && items[landingActiveIndex]) {
+                    e.preventDefault();
+                    items[landingActiveIndex].click();
+                }
+            }
+
+            if (e.key === "Escape") {
+                landingSuggestionsBox.innerHTML = "";
+            }
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!landingInputEl.contains(e.target) && !landingSuggestionsBox.contains(e.target)) {
+                landingSuggestionsBox.innerHTML = "";
+            }
+        });
+    }
+
+    function updateLandingActiveSuggestion(items) {
+        items.forEach(item => item.classList.remove("active-suggestion"));
+        if (landingActiveIndex >= 0 && items[landingActiveIndex]) {
+            items[landingActiveIndex].classList.add("active-suggestion");
+            items[landingActiveIndex].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    async function fetchLandingSuggestions(query) {
+        landingActiveIndex = -1;
+        if (!landingSuggestionsBox) return;
+
+        if (suggestionCache.has(query)) {
+            renderLandingSuggestions(suggestionCache.get(query));
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/search/${encodeURIComponent(query)}`);
+            const data = await response.json();
+            suggestionCache.set(query, data);
+            renderLandingSuggestions(data);
+        } catch (err) {
+            console.error("Error fetching landing suggestions:", err);
+        }
+    }
+
+    function renderLandingSuggestions(data) {
+        landingSuggestionsBox.innerHTML = "";
+        if (!data.items || data.items.length === 0) return;
+
+        data.items.slice(0, 5).forEach(game => {
+            const item = document.createElement("div");
+            item.className = "suggestion-item";
+
+            const priceText = game.price
+                ? (game.price.final === 0 ? "Free" : `$${(game.price.final / 100).toFixed(2)}`)
+                : "N/A";
+
+            item.innerHTML = `
+                <img src="${game.tiny_image}" alt="${game.name}" loading="lazy">
+                <div class="suggestion-info">
+                    <span class="suggestion-name">${game.name}</span>
+                    <span class="suggestion-dev">${priceText}</span>
+                </div>
+            `;
+
+            item.addEventListener("click", () => {
+                landingSuggestionsBox.innerHTML = "";
+                window.searchGame(game.name);
+            });
+
+            landingSuggestionsBox.appendChild(item);
+        });
+    }
+})();
 
 /* ==========================================================
    LOAD REAL GAME DATA FROM NIMLYX BACKEND
@@ -253,6 +440,14 @@ function showLandingView() {
     if (searchLandingView) searchLandingView.classList.remove("is-hidden");
     const errorState = document.getElementById("gameErrorState");
     if (errorState) errorState.style.display = "none";
+
+    // Wire SSR trending carousel once
+    const landingTrendingSection = document.getElementById("landingTrendingSection");
+    if (landingTrendingSection && !landingTrendingSection.dataset.wired) {
+        // wireCarouselScroll handles null checks internally if the elements are missing
+        wireCarouselScroll("landingTrendingScroll", "landingTrendingPrev", "landingTrendingNext");
+        landingTrendingSection.dataset.wired = "true";
+    }
 }
 
 /** Canonical loader — always by app_id. Used for /search?app_id=
@@ -357,14 +552,10 @@ async function loadGame() {
     } else {
         // Bare /search has nothing to fetch before its first paint --
         // showLandingView() runs synchronously below, so there's no
-        // gap for a skeleton to fill here. loadLandingTrending() below
-        // is a background enhancement to an already-visible page, not
-        // something blocking initial content, so it doesn't get one
-        // either -- same "don't show empty sections" rule that section
-        // already follows, just extended to "don't show a skeleton for
-        // a section that might render as nothing at all".
+        // gap for a skeleton to fill here.
+        // Trending Games are now server-side rendered (SSR) directly into search.html
+        // so we just show the landing view immediately.
         showLandingView();
-        loadLandingTrending();
     }
 }
 
@@ -372,49 +563,10 @@ loadGame();
 
 /* ==========================================================
    SEARCH LANDING — TRENDING GAMES
-   Reuses /api/featured (already fetched by the homepage) rather than
-   any new/heavy endpoint, and reuses buildTrendingStyleCard() /
-   wireCarouselScroll() / renderCarouselSection() below -- the exact
-   same functions the More From Developer/Publisher carousels use --
-   instead of a second copy of that render logic. Whole section stays
-   is-hidden (renderCarouselSection's own "no games -> display:none"
-   behavior) if the fetch fails or top_sellers is empty -- never
-   shown empty.
+   Reuses buildTrendingStyleCard() / wireCarouselScroll() / 
+   renderCarouselSection() below. The trending list itself is now
+   rendered server-side into search.html to eliminate a client round-trip.
 ========================================================== */
-async function loadLandingTrending() {
-    try {
-        const response = await fetch("/api/featured");
-        if (!response.ok) return; // stays hidden
-        const data = await response.json();
-
-        // /api/featured's top_sellers shape (id/image/final_price/
-        // discount_percent) differs from what buildTrendingStyleCard
-        // expects (app_id/header_image/price/discount) because that
-        // function was built against the game-detail endpoint's
-        // developer_games/publisher_games shape -- mapped here rather
-        // than adding a second card-building function for one field
-        // naming difference.
-        const games = (data.top_sellers || []).slice(0, 10).map(g => ({
-            app_id: g.id,
-            name: g.name,
-            header_image: g.image,
-            price: g.final_price,
-            // Number(...) rather than assuming an already-clean int --
-            // same defensive stance formatters.py's parse_discount()
-            // takes server-side for this same Steam field elsewhere.
-            discount: Number(g.discount_percent) || 0,
-        }));
-
-        renderCarouselSection(
-            "landingTrendingSection", "landingTrendingScroll",
-            "landingTrendingPrev", "landingTrendingNext",
-            games, null, null, null
-        );
-    } catch (error) {
-        console.error("Error loading landing trending games:", error);
-        // stays hidden -- no error state needed for an optional section
-    }
-}
 
 /* ==========================================================
    MASTER RENDER
@@ -429,6 +581,7 @@ function renderGame(game) {
     renderCredits(game);
     renderStats(game);
     renderRequirements(game);
+    initCompatibility(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
     initScrollReveal();
@@ -1118,6 +1271,19 @@ function initFeaturedPlayOverlay() {
     function show() { overlay.style.display = ""; }
     function hide() { overlay.style.display = "none"; }
 
+    function togglePlayPause(e) {
+        if (e && e.clientY) {
+            const rect = featuredVideo.getBoundingClientRect();
+            const NATIVE_CONTROLS_BAR_HEIGHT = 44;
+            if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
+        }
+        if (featuredVideo.paused) {
+            featuredVideo.play().catch(() => {});
+        } else {
+            featuredVideo.pause();
+        }
+    }
+
     // "loadstart" fires whenever a new trailer is loaded into the
     // element -- whether that's hls.js calling loadSource() or Safari's
     // native path setting .src directly -- which is exactly when the
@@ -1127,63 +1293,45 @@ function initFeaturedPlayOverlay() {
     featuredVideo.addEventListener("play", hide);
     featuredVideo.addEventListener("pause", show);
     featuredVideo.addEventListener("ended", show);
+
     overlay.addEventListener("click", () => {
-        // .play() returns a promise that rejects if playback can't
-        // start (e.g. the source failed to load in the moment between
-        // the overlay appearing and being clicked) -- the fatal-error
-        // path in showFeaturedMedia() already handles telling the user
-        // via the error state, so this just needs to not leave an
-        // unhandled rejection sitting in the console on top of that.
         featuredVideo.play().catch(() => {});
     });
 
+    // Clicking the video canvas directly toggles play ↔ pause
+    featuredVideo.addEventListener("click", (e) => {
+        // Pointer coarse (mobile touch) handles single vs double tap separately below
+        if (window.matchMedia("(pointer: coarse)").matches) return;
+        togglePlayPause(e);
+    });
+
     // Switching to the featured screenshot needs the overlay gone too
-    // -- same belt-and-suspenders reasoning as the glow reset above,
-    // since showFeaturedMedia() hides #featuredVideo itself rather
-    // than firing any event this overlay already listens for.
     if (featuredImg) {
         featuredImg.addEventListener("load", () => {
             if (featuredVideo.style.display === "none") hide();
         });
     }
 
-    // Mobile: single-tap play/pause (native <video controls>' own
-    // play/pause icon is fiddly on a phone-sized trailer) fought with
-    // the browser's own tap-to-reveal-controls gesture -- the first
-    // tap after controls auto-hid would both reveal the bar AND
-    // silently toggle playback, which read as "the video randomly
-    // paused/played itself" and was the annoying part. Replaced with
-    // a YouTube-style gesture instead: single tap does nothing extra
-    // (native controls still reveal/hide themselves for free, no code
-    // needed for that), double-tap on the left or right half seeks
-    // -5s/+5s. Desktop is untouched -- pointerType is checked below,
-    // and this whole gesture is additive on top of the click-to-play
-    // overlay/native controls desktop already had.
+    // Mobile touch interaction: single tap toggles play/pause,
+    // double-tap on left/right half seeks -5s/+5s (YouTube-style)
     if (window.matchMedia("(pointer: coarse)").matches) {
         const seekBack = document.getElementById("featuredSeekBack");
         const seekFwd = document.getElementById("featuredSeekFwd");
         const SEEK_SECONDS = 5;
-        const DOUBLE_TAP_WINDOW_MS = 320;
+        const DOUBLE_TAP_WINDOW_MS = 300;
         let lastTapAt = 0;
+        let tapTimer = null;
 
         function flashSeek(el) {
             if (!el) return;
             el.classList.add("is-active");
-            // Restart the fade if the same side is double-tapped again
-            // in quick succession, rather than the flash getting stuck
-            // mid-fade and looking unresponsive.
             clearTimeout(el._flashTimer);
             el._flashTimer = setTimeout(() => el.classList.remove("is-active"), 450);
         }
 
         featuredVideo.addEventListener("pointerup", (e) => {
-            if (e.pointerType === "mouse") return; // desktop stays click/overlay-only
+            if (e.pointerType === "mouse") return;
 
-            // The native control bar lives inside this same element,
-            // so a tap on it also reaches this listener. Ignore taps
-            // in that bottom strip and let the native controls handle
-            // themselves -- only a tap on the open video canvas above
-            // it should count toward the seek gesture.
             const rect = featuredVideo.getBoundingClientRect();
             const NATIVE_CONTROLS_BAR_HEIGHT = 44;
             if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
@@ -1191,22 +1339,26 @@ function initFeaturedPlayOverlay() {
             const now = Date.now();
             const isDoubleTap = now - lastTapAt < DOUBLE_TAP_WINDOW_MS;
             lastTapAt = now;
-            if (!isDoubleTap) return; // single tap: no-op, native controls handle their own reveal/hide
 
-            const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
-            if (isLeftHalf) {
-                featuredVideo.currentTime = Math.max(0, featuredVideo.currentTime - SEEK_SECONDS);
-                flashSeek(seekBack);
+            if (isDoubleTap) {
+                clearTimeout(tapTimer);
+                lastTapAt = 0;
+                const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+                if (isLeftHalf) {
+                    featuredVideo.currentTime = Math.max(0, featuredVideo.currentTime - SEEK_SECONDS);
+                    flashSeek(seekBack);
+                } else {
+                    const duration = featuredVideo.duration || Infinity;
+                    featuredVideo.currentTime = Math.min(duration, featuredVideo.currentTime + SEEK_SECONDS);
+                    flashSeek(seekFwd);
+                }
             } else {
-                const duration = featuredVideo.duration || Infinity;
-                featuredVideo.currentTime = Math.min(duration, featuredVideo.currentTime + SEEK_SECONDS);
-                flashSeek(seekFwd);
+                clearTimeout(tapTimer);
+                tapTimer = setTimeout(() => {
+                    lastTapAt = 0;
+                    togglePlayPause(e);
+                }, DOUBLE_TAP_WINDOW_MS);
             }
-            // A double-tap is two consecutive taps -- without this the
-            // second tap of THIS double-tap can become the first tap of
-            // a following pair, making three quick taps register as two
-            // seeks instead of one.
-            lastTapAt = 0;
         });
     }
 }
@@ -1609,4 +1761,521 @@ function initScrollReveal() {
     } else {
         document.querySelectorAll(".reveal").forEach(el => el.classList.add("in-view"));
     }
+}
+
+/* ==========================================================
+   COMPATIBILITY CHECK (new feature)
+   Backend: services/hardware/compatibility.py +
+   requirement_matching.py + ram_parsing.py + rankings_loader.py,
+   exposed via POST /api/game/<app_id>/compatibility. CPU/GPU
+   selector options come from GET /api/hardware/catalog (same
+   validated ranking catalog the engine itself reads).
+
+   This block owns exactly one section (#compatibilityPanel) and
+   touches nothing else on the page -- same isolation as
+   renderRequirements() above. All comparison logic is server-side;
+   this only sends the user's selection and renders whatever the API
+   returns, verbatim (including null/"unable to determine" states --
+   never guessed into a pass or fail on the client).
+========================================================== */
+
+let _compatCatalogPromise = null;
+
+/** Fetches /api/hardware/catalog once per page load and caches the
+ * promise -- reused across every game the user views in this SPA
+ * session (the catalog itself doesn't change per-game), and dedupes
+ * concurrent callers so a fast game-to-game navigation can't fire it
+ * twice. */
+function getHardwareCatalog() {
+    if (!_compatCatalogPromise) {
+        _compatCatalogPromise = fetch("/api/hardware/catalog")
+            .then(res => {
+                if (!res.ok) throw new Error(`Hardware catalog request failed (${res.status})`);
+                return res.json();
+            })
+            .catch(error => {
+                // Reset so a later retry (e.g. next game page visit)
+                // gets a fresh attempt instead of a cached failure.
+                _compatCatalogPromise = null;
+                throw error;
+            });
+    }
+    return _compatCatalogPromise;
+}
+
+/* ----------------------------------------------------------------
+   Searchable CPU/GPU combobox
+   Replaces the old native <select> (which had to render every one of
+   the ~418 CPU / ~2,627 GPU catalog rows as an <option>). The catalog
+   itself and the API contract are unchanged -- this is purely a
+   client-side search/filter layer over the same GET
+   /api/hardware/catalog payload, writing the chosen external_id into
+   the existing hidden #compatCpuSelect / #compatGpuSelect inputs so
+   _runCompatibilityCheck() needs no changes at all.
+
+   Matching is deliberately more lenient than the backend's
+   requirement_matching.py (which must stay exact-key-only so it
+   never guesses a Steam requirement's identity) -- here the user is
+   explicitly picking their OWN hardware from a visible list, so a
+   forgiving "every typed word appears somewhere in vendor+name"
+   substring match is the right trade-off: it's what makes bare
+   numbers ("2600"), missing vendor prefixes ("RX 5600 XT" without
+   "AMD"), and missing brand words ("NVIDIA RTX 5050" without
+   "GeForce") all find the right rows, while the user still confirms
+   the exact match themselves before it's submitted.
+---------------------------------------------------------------- */
+
+const COMPAT_SEARCH_DEBOUNCE_MS = 120;
+const COMPAT_SEARCH_MAX_RESULTS = 50;
+
+function _compactUpper(text) {
+    return (text || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+/** Every typed word (split on whitespace) must appear somewhere in
+ * the item's "vendor + name" compact haystack -- order-independent,
+ * so "AMD 2600", "Ryzen 5 2600", and "2600" all match "AMD Ryzen 5
+ * 2600", and "NVIDIA RTX 5050" matches "GeForce RTX 5050" (vendor
+ * NVIDIA) even though the word "NVIDIA" never appears in the name
+ * itself. */
+function _filterHardwareItems(items, query, vendorKey) {
+    const tokens = query.trim().split(/\s+/).filter(Boolean).map(_compactUpper).filter(Boolean);
+    if (!tokens.length) return [];
+
+    const scored = [];
+    for (const item of items) {
+        const haystack = _compactUpper((item[vendorKey] || "") + item.name);
+        if (tokens.every(t => haystack.includes(t))) {
+            // Rough relevance: shorter names and earlier match
+            // position surface more specific/likely matches first
+            // without needing a real ranking algorithm.
+            const firstIdx = haystack.indexOf(tokens[0]);
+            scored.push({ item, score: firstIdx * 1000 + item.name.length });
+        }
+    }
+    scored.sort((a, b) => a.score - b.score);
+    return scored.slice(0, COMPAT_SEARCH_MAX_RESULTS).map(s => s.item);
+}
+
+/** Wires one combobox (CPU or GPU) up to search/select/keyboard-nav
+ * behavior. `items` is the full catalog array for that hardware type
+ * (already fetched via getHardwareCatalog()); `vendorKey` is
+ * "manufacturer" for CPUs or "vendor" for GPUs, matching the shape
+ * /api/hardware/catalog already returns. Returns a `reset()` function
+ * so initCompatibility() can clear the field when the user navigates
+ * to a different game. */
+function _initHardwareCombobox({ inputId, listboxId, clearBtnId, hiddenId, items, vendorKey, placeholder }) {
+    const input = document.getElementById(inputId);
+    const listbox = document.getElementById(listboxId);
+    const clearBtn = document.getElementById(clearBtnId);
+    const hidden = document.getElementById(hiddenId);
+    const combobox = input ? input.closest(".compat-combobox") : null;
+    if (!input || !listbox || !hidden || !combobox) return { reset() {} };
+
+    input.placeholder = placeholder;
+
+    let debounceTimer = null;
+    let currentResults = [];
+    let highlightedIndex = -1;
+
+    function closeListbox() {
+        listbox.classList.add("is-hidden");
+        listbox.innerHTML = "";
+        input.setAttribute("aria-expanded", "false");
+        input.removeAttribute("aria-activedescendant");
+        highlightedIndex = -1;
+        currentResults = [];
+    }
+
+function _displayHardwareName(item, vendorKey) {
+    // Some catalog names already include the vendor (CPU
+    // model_name is always "Intel ..."/"AMD ..."), others don't (GPU
+    // name is "Radeon RX 590", not "AMD Radeon RX 590"). Only
+    // prepend the vendor when the name doesn't already start with it,
+    // so the display never doubles up ("AMD AMD Ryzen 5 2600").
+    const vendor = (item[vendorKey] || "").trim();
+    const name = (item.name || "").trim();
+    if (!vendor || name.toUpperCase().startsWith(vendor.toUpperCase())) return name;
+    return `${vendor} ${name}`;
+}
+
+    function selectItem(item) {
+        hidden.value = item.external_id;
+        input.value = _displayHardwareName(item, vendorKey);
+        clearBtn.classList.remove("is-hidden");
+        closeListbox();
+    }
+
+    function clearSelection({ focus = true } = {}) {
+        hidden.value = "";
+        input.value = "";
+        clearBtn.classList.add("is-hidden");
+        closeListbox();
+        if (focus) input.focus();
+    }
+
+    function renderResults(query) {
+        const matches = _filterHardwareItems(items, query, vendorKey);
+        currentResults = matches;
+        highlightedIndex = matches.length ? 0 : -1;
+
+        if (!matches.length) {
+            listbox.innerHTML = `<li class="compat-combobox__empty">No hardware found for "${query.replace(/</g, "&lt;")}"</li>`;
+            listbox.classList.remove("is-hidden");
+            input.setAttribute("aria-expanded", "true");
+            return;
+        }
+
+        listbox.innerHTML = matches.map((item, i) => {
+            // Only show the vendor tag when the name doesn't already
+            // start with it (see _displayHardwareName) -- avoids a
+            // redundant "AMD | AMD Ryzen 5 2600" row for CPUs, while
+            // GPUs (name has no vendor prefix) still get the tag.
+            const vendor = (item[vendorKey] || "").trim();
+            const showVendorTag = vendor && !item.name.trim().toUpperCase().startsWith(vendor.toUpperCase());
+            return `
+            <li class="compat-combobox__option${i === 0 ? " is-highlighted" : ""}"
+                role="option" id="${listboxId}-opt-${i}" data-index="${i}"
+                aria-selected="${i === 0 ? "true" : "false"}">
+                ${showVendorTag ? `<span class="compat-combobox__option-vendor">${vendor}</span>` : ""}
+                <span class="compat-combobox__option-name">${item.name}</span>
+            </li>
+        `;
+        }).join("");
+        listbox.classList.remove("is-hidden");
+        input.setAttribute("aria-expanded", "true");
+        input.setAttribute("aria-activedescendant", `${listboxId}-opt-0`);
+    }
+
+    function setHighlighted(index) {
+        const options = listbox.querySelectorAll(".compat-combobox__option");
+        if (!options.length) return;
+        highlightedIndex = ((index % options.length) + options.length) % options.length;
+        options.forEach((opt, i) => {
+            const isHi = i === highlightedIndex;
+            opt.classList.toggle("is-highlighted", isHi);
+            opt.setAttribute("aria-selected", isHi ? "true" : "false");
+        });
+        input.setAttribute("aria-activedescendant", `${listboxId}-opt-${highlightedIndex}`);
+        options[highlightedIndex].scrollIntoView({ block: "nearest" });
+    }
+
+    input.addEventListener("input", () => {
+        // Typing invalidates any prior selection until a new one is
+        // explicitly confirmed -- matches the spec's "allow
+        // clearing/changing the selection" requirement.
+        if (hidden.value) {
+            hidden.value = "";
+            clearBtn.classList.add("is-hidden");
+        }
+        const query = input.value;
+        clearTimeout(debounceTimer);
+        if (!query.trim()) {
+            closeListbox();
+            return;
+        }
+        debounceTimer = setTimeout(() => renderResults(query), COMPAT_SEARCH_DEBOUNCE_MS);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        const isOpen = !listbox.classList.contains("is-hidden");
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            if (!isOpen && input.value.trim()) { renderResults(input.value); return; }
+            if (currentResults.length) setHighlighted(highlightedIndex + 1);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            if (isOpen && currentResults.length) setHighlighted(highlightedIndex - 1);
+        } else if (e.key === "Enter") {
+            if (isOpen && highlightedIndex >= 0 && currentResults[highlightedIndex]) {
+                e.preventDefault();
+                selectItem(currentResults[highlightedIndex]);
+            }
+        } else if (e.key === "Escape") {
+            if (isOpen) { e.preventDefault(); closeListbox(); }
+        }
+    });
+
+    listbox.addEventListener("click", (e) => {
+        const optionEl = e.target.closest(".compat-combobox__option");
+        if (!optionEl) return;
+        const idx = Number(optionEl.dataset.index);
+        if (currentResults[idx]) selectItem(currentResults[idx]);
+    });
+
+    clearBtn.addEventListener("click", () => clearSelection());
+
+    document.addEventListener("click", (e) => {
+        if (!combobox.contains(e.target)) closeListbox();
+    });
+
+    return {
+        reset() { clearSelection({ focus: false }); },
+    };
+}
+
+let _compatChecking = false; // request-guard -- prevents duplicate in-flight checks
+
+function _setCompatLoading(isLoading) {
+    const btn = document.getElementById("compatCheckBtn");
+    const icon = document.getElementById("compatCheckBtnIcon");
+    const label = document.getElementById("compatCheckBtnText");
+    if (!btn) return;
+
+    _compatChecking = isLoading;
+    btn.disabled = isLoading;
+    if (icon) {
+        icon.className = isLoading
+            ? "fa-solid fa-spinner fa-spin"
+            : "fa-solid fa-magnifying-glass-chart";
+    }
+    if (label) label.textContent = isLoading ? "Checking\u2026" : "Check Compatibility";
+}
+
+function _showCompatError(message) {
+    const errorEl = document.getElementById("compatError");
+    const resultEl = document.getElementById("compatResult");
+    if (resultEl) resultEl.classList.add("is-hidden");
+    if (errorEl) {
+        errorEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${message}</span>`;
+        errorEl.classList.remove("is-hidden");
+    }
+}
+
+function _clearCompatError() {
+    const errorEl = document.getElementById("compatError");
+    if (errorEl) errorEl.classList.add("is-hidden");
+}
+
+const COMPAT_VERDICT_META = {
+    runs_well: { icon: "fa-solid fa-circle-check", cls: "is-good", emoji: "\u{1F7E2}", title: "Runs Well", subtitle: "This hardware meets or exceeds the recommended specs." },
+    playable: { icon: "fa-solid fa-triangle-exclamation", cls: "is-mid", emoji: "\u{1F7E1}", title: "Playable", subtitle: "This hardware meets the minimum requirements, but not every recommended spec." },
+    not_recommended: { icon: "fa-solid fa-circle-xmark", cls: "is-low", emoji: "\u{1F534}", title: "Not Recommended", subtitle: "This hardware falls below the minimum requirements for at least one component." },
+};
+
+const COMPAT_COMPONENT_META = {
+    cpu: { label: "CPU", icon: "fa-solid fa-microchip" },
+    gpu: { label: "GPU", icon: "fa-solid fa-tv" },
+    ram: { label: "RAM", icon: "fa-solid fa-memory" },
+};
+
+/** One meets_minimum/meets_recommended -> {icon, cls, text} row.
+ * `null` is ALWAYS rendered as a neutral, non-failure state -- this
+ * is the client-side half of the same rule the backend's
+ * compatibility engine enforces (see compatibility.py's module
+ * docstring on preserving uncertainty rather than guessing). Worded
+ * as "Unable to compare" (not "Unable to determine") specifically so
+ * it doesn't read as a hardware failure -- it's a statement about
+ * what Nimlyx could match, not about the user's PC. */
+function _compatRowState(value, passLabel, failLabel) {
+    if (value === true) return { cls: "is-pass", icon: "fa-solid fa-check", text: passLabel };
+    if (value === false) return { cls: "is-fail", icon: "fa-solid fa-xmark", text: failLabel };
+    return {
+        cls: "is-unknown", icon: "fa-solid fa-question", text: "Unable to compare",
+        note: "Nimlyx couldn't confidently match this requirement to its hardware database.",
+    };
+}
+
+function _renderCompatComponent(componentResult) {
+    const meta = COMPAT_COMPONENT_META[componentResult.component] || { label: componentResult.component, icon: "fa-solid fa-circle" };
+    const minState = _compatRowState(componentResult.meets_minimum, "Meets minimum", "Below minimum");
+    const recState = _compatRowState(componentResult.meets_recommended, "Meets recommended", "Below recommended");
+    const minNote = minState.note ? `<div class="compat-component__note">${minState.note}</div>` : "";
+    const recNote = recState.note ? `<div class="compat-component__note">${recState.note}</div>` : "";
+
+    return `
+        <div class="compat-component">
+            <div class="compat-component__label"><i class="${meta.icon}"></i>${meta.label}</div>
+            <div class="compat-component__row ${minState.cls}"><i class="${minState.icon}"></i>${minState.text}</div>
+            ${minNote}
+            <div class="compat-component__row ${recState.cls}"><i class="${recState.icon}"></i>${recState.text}</div>
+            ${recNote}
+        </div>
+    `;
+}
+
+function _renderCompatResult(result) {
+    const resultEl = document.getElementById("compatResult");
+    if (!resultEl) return;
+
+    // Malformed-response guard -- if the API ever returns something
+    // that doesn't match the expected contract, fail into the error
+    // state rather than throwing mid-render or silently showing a
+    // blank/broken panel.
+    if (!result || typeof result.verdict !== "string" || !Array.isArray(result.components)) {
+        _showCompatError("Nimlyx received an unexpected response while checking compatibility. Please try again.");
+        return;
+    }
+
+    const verdictMeta = COMPAT_VERDICT_META[result.verdict];
+    if (!verdictMeta) {
+        _showCompatError("Nimlyx received an unrecognized compatibility result. Please try again.");
+        return;
+    }
+
+    const componentOrder = ["cpu", "gpu", "ram"];
+    const byComponent = new Map(result.components.map(c => [c.component, c]));
+    const componentsHtml = componentOrder
+        .filter(key => byComponent.has(key))
+        .map(key => _renderCompatComponent(byComponent.get(key)))
+        .join("");
+
+    const notes = Array.isArray(result.notes) ? result.notes.filter(Boolean) : [];
+    const notesHtml = notes.length ? `
+        <div class="compat-notes">
+            <div class="compat-notes__title"><i class="fa-solid fa-circle-info"></i>Nimlyx notes</div>
+            <ul class="compat-notes__list">
+                ${notes.map(n => `<li>${n}</li>`).join("")}
+            </ul>
+        </div>
+    ` : "";
+
+    resultEl.innerHTML = `
+        <div class="compat-verdict ${verdictMeta.cls}">
+            <div class="compat-verdict__icon"><i class="${verdictMeta.icon}"></i></div>
+            <div>
+                <div class="compat-verdict__title">${verdictMeta.emoji} ${verdictMeta.title}</div>
+                <div class="compat-verdict__subtitle">${verdictMeta.subtitle}</div>
+            </div>
+        </div>
+        <div class="compat-components">${componentsHtml}</div>
+        ${notesHtml}
+    `;
+    resultEl.classList.remove("is-hidden");
+}
+
+async function _runCompatibilityCheck(appId) {
+    if (_compatChecking) return; // duplicate-click guard
+
+    _clearCompatError();
+    _setCompatLoading(true);
+
+    try {
+        const cpuId = document.getElementById("compatCpuSelect")?.value || null;
+        const gpuId = document.getElementById("compatGpuSelect")?.value || null;
+        const ramRaw = document.getElementById("compatRamSelect")?.value || "";
+        const ramGb = ramRaw ? Number(ramRaw) : null;
+
+        const response = await fetch(`/api/game/${encodeURIComponent(appId)}/compatibility`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                cpu_external_id: cpuId,
+                gpu_external_id: gpuId,
+                ram_gb: ramGb,
+            }),
+        });
+
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error("MALFORMED");
+        }
+
+        if (!response.ok) {
+            const message = (data && data.error) || `Request failed (${response.status})`;
+            throw new Error(message === "Game not found" ? "GAME_NOT_FOUND" : message);
+        }
+
+        _renderCompatResult(data);
+    } catch (error) {
+        console.error("Compatibility check failed:", error);
+        if (error.message === "GAME_NOT_FOUND") {
+            _showCompatError("This game's requirements couldn't be found right now. Please try again later.");
+        } else if (error.message === "MALFORMED") {
+            _showCompatError("Nimlyx received an unexpected response while checking compatibility. Please try again.");
+        } else if (error instanceof TypeError) {
+            // fetch() throws a TypeError specifically on network-level
+            // failure (offline, DNS, CORS) -- distinct from a
+            // non-2xx HTTP response, which is handled above instead.
+            _showCompatError("Couldn't reach Nimlyx to check compatibility. Check your connection and try again.");
+        } else {
+            _showCompatError("Something went wrong while checking compatibility. Please try again.");
+        }
+    } finally {
+        _setCompatLoading(false);
+    }
+}
+
+let _compatCpuCombobox = null;
+let _compatGpuCombobox = null;
+
+function initCompatibility(game) {
+    const panel = document.getElementById("compatibilityPanel");
+    if (!panel) return;
+
+    // Same "nothing honest to show" rule renderRequirements() above
+    // already follows -- if Steam gave this game no usable
+    // requirement text at all, there's nothing meaningful to check
+    // against, so the section stays hidden rather than offering a
+    // form that can only ever return "unable to determine" for
+    // every component.
+    const req = game.requirements || {};
+    const min = req.minimum || {};
+    const rec = req.recommended || {};
+    const hasAnyRequirement = ["cpu", "gpu", "ram"].some(k => min[k] || rec[k]);
+    if (!hasAnyRequirement) {
+        panel.classList.add("is-hidden");
+        return;
+    }
+    panel.classList.remove("is-hidden");
+
+    // Reset any previous game's result/error/selection when
+    // navigating game-to-game in this SPA -- otherwise a stale
+    // verdict from the last game briefly shows under the new one's
+    // requirements before the user does anything.
+    document.getElementById("compatResult")?.classList.add("is-hidden");
+    _clearCompatError();
+    _setCompatLoading(false);
+
+    // Reset any previously-typed/selected hardware from the last
+    // game before this game's catalog-driven combobox is (re)wired.
+    _compatCpuCombobox?.reset();
+    _compatGpuCombobox?.reset();
+
+    getHardwareCatalog()
+        .then(catalog => {
+            // Combobox event listeners are only bound once per page
+            // load (guarded by _compatCpuCombobox/_compatGpuCombobox
+            // already being set) -- same "bind once, re-target per
+            // game via reset() above" pattern the Check button below
+            // already uses, so re-entering this page's SPA flow for a
+            // different game doesn't double-bind listeners.
+            if (!_compatCpuCombobox) {
+                _compatCpuCombobox = _initHardwareCombobox({
+                    inputId: "compatCpuInput", listboxId: "compatCpuListbox",
+                    clearBtnId: "compatCpuClear", hiddenId: "compatCpuSelect",
+                    items: catalog.cpus, vendorKey: "manufacturer",
+                    placeholder: "Search your CPU\u2026",
+                });
+            }
+            if (!_compatGpuCombobox) {
+                _compatGpuCombobox = _initHardwareCombobox({
+                    inputId: "compatGpuInput", listboxId: "compatGpuListbox",
+                    clearBtnId: "compatGpuClear", hiddenId: "compatGpuSelect",
+                    items: catalog.gpus, vendorKey: "vendor",
+                    placeholder: "Search your GPU\u2026",
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error loading hardware catalog:", error);
+            _showCompatError("Couldn't load the hardware list right now. Please refresh and try again.");
+        });
+
+    const btn = document.getElementById("compatCheckBtn");
+    if (btn && !btn.dataset.compatBound) {
+        // Bound once per page load (not once per game) -- app_id is
+        // read fresh from the button's own dataset at click time
+        // (set below on every initCompatibility() call), so a single
+        // listener correctly targets whichever game is currently
+        // displayed even across SPA navigations.
+        btn.dataset.compatBound = "true";
+        btn.addEventListener("click", () => {
+            const currentAppId = btn.dataset.compatAppId;
+            if (currentAppId) _runCompatibilityCheck(currentAppId);
+        });
+    }
+    if (btn) btn.dataset.compatAppId = game.app_id;
 }

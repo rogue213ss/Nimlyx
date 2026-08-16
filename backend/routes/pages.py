@@ -192,6 +192,7 @@ def home():
     try:
         cc = get_region_code()
         top_sellers_raw = fetch_browse_category("topsellers", cc=cc)
+        seen_ids = set()
 
         # ---------------- HERO + NIMLYX PICKS ----------------
         # Both come from the same Insight Engine build: the hero
@@ -258,27 +259,45 @@ def home():
                 }
                 for g in top_sellers_raw[:5]
             ]
+        
+        for g in featured_games:
+            if g.get("id"):
+                seen_ids.add(str(g["id"]))
 
         nimlyx_picks = [c.to_pick_dict() for c in select_worth_buying(all_candidates)]
+        for p in nimlyx_picks:
+            if p.get("app_id"):
+                seen_ids.add(str(p["app_id"]))
 
         # ---------------- TRENDING TODAY ----------------
         # Real Steam top-seller ordering, rendered as large landscape
         # cards instead of the old small grid — same underlying data
         # as the previous "Top Sellers" section, new visual treatment.
-        trending_games = [
-            {
+        trending_raw_filtered = [g for g in top_sellers_raw if str(g.get("id")) not in seen_ids]
+        trending_games = []
+        for i, g in enumerate(trending_raw_filtered[:6]):
+            trending_games.append({
                 "id": g.get("id"),
                 "name": g.get("name"),
                 "header_image": hero_image_url(g.get("id"), g.get("image")),
-                "image_candidates": build_image_candidates(g.get("id")),
+                # Rank #1 renders as a full-height feature card (see
+                # .trending-showcase-feature); ranks 2-6 are small
+                # landscape thumbnails. They need differently-shaped
+                # source art -- library_hero.jpg (~3:1 panoramic) was
+                # winning the upgrade race for every rank including
+                # #1, then getting force-cropped into a tall box,
+                # cutting off most of the actual artwork. Only the
+                # feature slot asks for portrait-first candidates.
+                "image_candidates": build_image_candidates(
+                    g.get("id"), orientation="portrait" if i == 0 else "landscape"
+                ),
                 # Same fix as HeroCandidate._build_base_dict -- link by
                 # the app_id Steam's top-sellers list already gave us.
                 "analyze_url": f"/search?app_id={g.get('id')}",
                 "rank": i + 1,
                 "price": format_price(g.get("final_price")),
-            }
-            for i, g in enumerate(top_sellers_raw[:6])
-        ]
+            })
+            seen_ids.add(str(g.get("id")))
 
         # ---------------- NEW RELEASES ----------------
         # Every field here is real, verified against Steam's own
@@ -295,23 +314,20 @@ def home():
             logger.exception("New Releases verification failed for region %s.", cc)
             verified_new_releases = []
 
-        new_release_games = [
-            {
+        new_releases_filtered = [g for g in verified_new_releases if str(g.get("id")) not in seen_ids]
+        new_release_games = []
+        for g in new_releases_filtered:
+            new_release_games.append({
                 "id": g["id"],
                 "name": g["name"],
                 "header_image": g["image"],
                 "image_candidates": build_image_candidates(g["id"]),
-                # Same fix as HeroCandidate._build_base_dict -- g["id"]
-                # is already the verified app_id fetch_verified_new_releases
-                # confirmed the release date against; link straight to it.
                 "analyze_url": f"/search?app_id={g['id']}",
                 "recency_label": g["recency_label"],
-                # No invented "Free" or placeholder price when Steam
-                # simply didn't return price data for this region.
                 "price": g["price"] or "—",
-            }
-            for g in verified_new_releases
-        ]
+                "primary_genre": g.get("primary_genre"),
+            })
+            seen_ids.add(str(g["id"]))
 
         return render_template(
             "index.html",
@@ -320,6 +336,7 @@ def home():
             trending_games=trending_games,
             new_release_games=new_release_games,
             hero_pending=hero_pending,
+            seen_ids=list(seen_ids),
         )
 
     except requests.exceptions.RequestException:
@@ -334,6 +351,7 @@ def home():
             # isn't quietly finishing somewhere, there's nothing to
             # poll for, so no pending notice.
             hero_pending=False,
+            seen_ids=[],
         )
 
 
@@ -358,3 +376,18 @@ def discover():
 @pages_bp.route("/search")
 def search_page():
     return render_template("search.html")
+
+
+@pages_bp.route("/about")
+def about_page():
+    return render_template("about.html")
+
+
+@pages_bp.route("/privacy")
+def privacy_page():
+    return render_template("privacy.html")
+
+
+@pages_bp.route("/terms")
+def terms_page():
+    return render_template("terms.html")

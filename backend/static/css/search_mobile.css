@@ -176,3 +176,21 @@
   .search-landing-subtitle{ font-size:.88rem; }
   .search-landing-chips{ gap:8px; }
 }
+
+@media (max-width:980px){
+  /* Compatibility Check: 3-selector + button row -> stacked. Same
+     breakpoint as .stats-spotlight/.requirements-grid above since
+     it's the same "two-column-ish desktop layout needs room" case. */
+  .compat-form{ grid-template-columns:1fr; }
+  .compat-components{ grid-template-columns:1fr; }
+}
+
+@media (max-width:700px){
+  .compat-check-btn{ width:100%; }
+  .compat-verdict{ padding:18px; gap:12px; }
+  .compat-verdict__icon{ width:44px; height:44px; font-size:1.1rem; }
+  .compat-verdict__title{ font-size:1.02rem; }
+  /* Shorter listbox on small screens so it doesn't push the rest of
+     the form off-screen while still leaving room to scroll results. */
+  .compat-combobox__listbox{ max-height:200px; }
+}

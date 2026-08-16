@@ -117,8 +117,10 @@ def to_discover_card(game):
         # swaps one in on a successful onload.
         "image_candidates": game.get("image_candidates") or [],
         "price": game.get("final_price"),
+        "original_price": game.get("original_price"),
         "discount": parse_discount(game.get("discount_percent")),
         "review_percentage": game.get("review_percent"),
+        "review_summary": game.get("review_summary"),
         "review_count": None,
         "genres": [],
     }

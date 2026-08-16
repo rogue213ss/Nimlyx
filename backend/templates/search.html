@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/discover.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/search_list.css') }}">
 </head>
-<body class="home-page">
+<body class="home-page search-page">
 
 <!-- ================= HEADER =================
      Now the literal, UNMODIFIED .home-header markup from index.html /
@@ -126,8 +126,9 @@
             <p class="search-landing-subtitle">Explore games, analyze player opinions, and discover what is worth playing.</p>
             <form class="search-landing-box" action="/search" method="get" role="search">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" name="q" placeholder="Search games…" autocomplete="off" aria-label="Search games" autofocus>
+                <input type="text" id="landingGameInput" name="q" placeholder="Search games…" autocomplete="off" aria-label="Search games" autofocus>
                 <button type="submit" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+                <div id="landingSuggestions" class="suggestions-dropdown"></div>
             </form>
             <!-- Popular Searches: a fixed curated list, not backend-driven
                  -- plain <a href="/search?q=..."> links straight to the
@@ -146,29 +147,6 @@
         </div>
     </div>
 
-    <!-- Trending Games: reuses /api/featured -- the exact endpoint the
-         homepage already calls for its own Trending Today rail -- so
-         this page adds zero new Steam requests. loadLandingTrending()
-         in search.js hides this whole section (not an empty state)
-         if that fetch fails or returns nothing, per "never show empty
-         sections". Markup/classes copied from the More From
-         Developer/Publisher carousels above, so this doesn't look or
-         behave like a new pattern on the page. -->
-    <section class="panel carousel-panel is-hidden" id="landingTrendingSection">
-        <div class="panel__head">
-            <span class="panel__eyebrow">Discover</span>
-            <h2 class="panel__title">Trending Games</h2>
-        </div>
-        <div class="trending-wrap">
-            <button type="button" class="trending-arrow trending-arrow-left" id="landingTrendingPrev" aria-label="Scroll left">
-                <i class="fa-solid fa-chevron-left"></i>
-            </button>
-            <div class="trending-scroll" id="landingTrendingScroll"></div>
-            <button type="button" class="trending-arrow trending-arrow-right" id="landingTrendingNext" aria-label="Scroll right">
-                <i class="fa-solid fa-chevron-right"></i>
-            </button>
-        </div>
-    </section>
 
 </section>
 
@@ -484,6 +462,93 @@
         <div class="requirements-grid" id="requirementsGrid"></div>
     </section>
 
+    <!-- ================= COMPATIBILITY CHECK =================
+         New feature: backend compatibility engine (see
+         services/hardware/compatibility.py, requirement_matching.py,
+         ram_parsing.py, rankings_loader.py) exposed via
+         POST /api/game/<app_id>/compatibility. CPU/GPU selectors are
+         populated from GET /api/hardware/catalog (the same validated
+         ranking catalog the engine itself reads -- NOT the dormant
+         SQL HardwareDevice table). All comparison logic lives on the
+         backend; this section only renders whatever the API returns,
+         same "no client-side parsing" rule requirementsPanel above
+         already follows. Hidden until a game has at least one usable
+         requirement string to check against (mirrors
+         requirementsPanel's own is-hidden default). -->
+    <section class="panel compatibility-panel reveal is-hidden" id="compatibilityPanel">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Can your PC run this?</span>
+            <h2 class="panel__title">Compatibility Check</h2>
+        </div>
+
+        <div class="compat-form">
+            <div class="compat-field">
+                <label class="compat-field__label" for="compatCpuInput">CPU</label>
+                <!-- Searchable combobox -- replaces a native <select>
+                     that had to list all ~418 catalog CPUs. The
+                     hidden input is what _runCompatibilityCheck()
+                     already reads (document.getElementById(
+                     "compatCpuSelect")?.value), so the submit path
+                     and the API contract are untouched; only how the
+                     user picks a value changed. See
+                     search.js::_initHardwareCombobox(). -->
+                <div class="compat-combobox" id="compatCpuCombobox">
+                    <div class="compat-combobox__control">
+                        <input type="text" class="compat-combobox__input" id="compatCpuInput"
+                               placeholder="Search your CPU…" autocomplete="off" role="combobox"
+                               aria-expanded="false" aria-autocomplete="list" aria-controls="compatCpuListbox">
+                        <button type="button" class="compat-combobox__clear is-hidden" id="compatCpuClear" aria-label="Clear CPU selection">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <ul class="compat-combobox__listbox is-hidden" id="compatCpuListbox" role="listbox" aria-label="CPU results"></ul>
+                </div>
+                <input type="hidden" id="compatCpuSelect" value="">
+            </div>
+            <div class="compat-field">
+                <label class="compat-field__label" for="compatGpuInput">GPU</label>
+                <div class="compat-combobox" id="compatGpuCombobox">
+                    <div class="compat-combobox__control">
+                        <input type="text" class="compat-combobox__input" id="compatGpuInput"
+                               placeholder="Search your GPU…" autocomplete="off" role="combobox"
+                               aria-expanded="false" aria-autocomplete="list" aria-controls="compatGpuListbox">
+                        <button type="button" class="compat-combobox__clear is-hidden" id="compatGpuClear" aria-label="Clear GPU selection">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <ul class="compat-combobox__listbox is-hidden" id="compatGpuListbox" role="listbox" aria-label="GPU results"></ul>
+                </div>
+                <input type="hidden" id="compatGpuSelect" value="">
+            </div>
+            <div class="compat-field">
+                <label class="compat-field__label" for="compatRamSelect">RAM</label>
+                <!-- Unchanged: only a handful of options, a native
+                     select is still the right control here. -->
+                <select class="compat-select" id="compatRamSelect">
+                    <option value="">Select RAM…</option>
+                    <option value="4">4 GB</option>
+                    <option value="6">6 GB</option>
+                    <option value="8">8 GB</option>
+                    <option value="12">12 GB</option>
+                    <option value="16">16 GB</option>
+                    <option value="24">24 GB</option>
+                    <option value="32">32 GB</option>
+                    <option value="64">64 GB</option>
+                </select>
+            </div>
+            <button type="button" class="home-btn home-btn-primary compat-check-btn" id="compatCheckBtn">
+                <i class="fa-solid fa-magnifying-glass-chart" id="compatCheckBtnIcon"></i>
+                <span id="compatCheckBtnText">Check Compatibility</span>
+            </button>
+        </div>
+
+        <p class="compat-hint" id="compatHint">Select your CPU and GPU to check compatibility.</p>
+
+        <div class="compat-error is-hidden" id="compatError"></div>
+
+        <div class="compat-result is-hidden" id="compatResult"></div>
+    </section>
+
     <!-- ================= MORE FROM DEVELOPER =================
          Sprint 4 Phase 3. Reuses the homepage's own Trending Today
          component (.trending-wrap/.trending-scroll/.trending-card,
@@ -560,6 +625,8 @@
      mp4/webm) -- see _build_movie_entry in routes/game.py. Pinned to
      the major version (@1), per hls.js's own docs, so patch/minor
      releases apply automatically but a future breaking v2 won't. -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script src="{{ url_for('static', filename='js/image-upgrade.js') }}"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
 <script src="{{ url_for('static', filename='js/search_list.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>

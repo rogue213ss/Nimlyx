@@ -18,8 +18,8 @@
     const dots = Array.from(document.querySelectorAll(".home-hero-dot"));
     const titleEl = document.getElementById("homeHeroTitle");
     const ctaEl = document.getElementById("homeHeroCta");
-    const insightHeadlineEl = document.getElementById("homeInsightHeadline");
-    const insightWhyEl = document.getElementById("homeInsightWhy");
+    const insightHeadlineEl = document.getElementById("homeHeroInsightHeadline");
+    const insightWhyEl = document.getElementById("homeHeroInsightWhy");
 
     if (slides.length <= 1) return;
 

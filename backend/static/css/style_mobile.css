@@ -118,3 +118,33 @@
   .purchase-option__side{ flex-wrap:wrap; gap:10px; }
   .purchase-option__cta{ width:100%; justify-content:center; }
 }
+
+/* ================================================================
+   HOMEPAGE (index.html) — unified card system responsive rules.
+   Rows stay horizontal-scroll on mobile (that's already the
+   lightest-weight, least-overflow-prone pattern for browsing a
+   list on a narrow screen) but cards shrink and section padding
+   tightens so nothing clips or forces page-level horizontal scroll.
+   ================================================================ */
+@media (max-width:900px){
+  .nimlyx-section{ padding:52px 0; }
+  .nimlyx-section-head h2{ font-size:2.1rem; }
+  .nimlyx-why-grid{ grid-template-columns:1fr; gap:22px; }
+  .trending-showcase{ grid-template-columns:1fr; gap:16px; }
+  .trending-showcase-feature .nimlyx-rank{ font-size:2.6rem; }
+}
+
+@media (max-width:700px){
+  .home-container{ padding:0 18px; }
+  .nimlyx-section{ padding:40px 0; }
+  .nimlyx-card--portrait{ width:158px; }
+  .nimlyx-card--portrait .nimlyx-card-body{ padding:14px; }
+  .nimlyx-card--wide{ width:270px; }
+  .nimlyx-card--wide .nimlyx-card-body{ padding:16px; }
+  .nimlyx-row .nimlyx-card--compact{ width:240px; }
+  .nimlyx-card--compact .nimlyx-card-media{ width:96px; }
+  .nimlyx-card--compact .nimlyx-card-title{ font-size:.88rem; }
+  .nimlyx-card-context{ font-size:.7rem; }
+  .nimlyx-card--wide .nimlyx-card-discount{ font-size:1rem; padding:5px 10px; }
+  .nimlyx-row{ gap:12px; padding:2px 12px 8px 2px; }
+}

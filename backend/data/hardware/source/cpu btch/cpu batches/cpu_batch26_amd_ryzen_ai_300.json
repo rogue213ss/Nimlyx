@@ -1,0 +1,122 @@
+[
+  {
+    "external_id": "cpu-amd-ryzen-ai-9-hx-370",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI 9 HX 370",
+    "architecture": "Zen 5 / Zen 5c (Strix Point)",
+    "release_year": 2024,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 2000,
+    "boost_clock_mhz": 5100,
+    "gpu_shaders": null,
+    "cpu_cores": 12,
+    "cpu_threads": 24,
+    "tdp_w": 28,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-9-hx-370.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Hybrid Zen5/Zen5c design: 4x Zen 5 cores + 8x Zen 5c cores, 12 cores/24 threads total. AMD's headline blended Base Clock is 2.0 GHz (AMD lists both 'Zen5 Base Clock' and 'Zen5c Base Clock' as 2.0 GHz identically); boost_clock_mhz stores the Max Boost Clock of 5.1 GHz (Zen 5 core), while Max Zen5c Clock is 3.3 GHz per AMD's spec page. Default TDP is 28W with AMD Configurable TDP (cTDP) range of 15-54W; tdp_w field stores the Default TDP. Includes Radeon 890M integrated graphics (16 CUs, up to 2.9 GHz). Codename Strix Point."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-9-hx-375",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI 9 HX 375",
+    "architecture": "Zen 5 / Zen 5c (Strix Point)",
+    "release_year": 2024,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 2000,
+    "boost_clock_mhz": 5100,
+    "gpu_shaders": null,
+    "cpu_cores": 12,
+    "cpu_threads": 24,
+    "tdp_w": 28,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-9-hx-375.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Hybrid Zen5/Zen5c design: 4x Zen 5 cores + 8x Zen 5c cores, 12 cores/24 threads total, identical CPU/GPU silicon to the HX 370. AMD's headline blended Base Clock is 2.0 GHz; boost_clock_mhz stores Max Boost Clock of 5.1 GHz (Zen 5 core), Max Zen5c Clock is 3.3 GHz per AMD's spec page. Default TDP 28W, cTDP range 15-54W; tdp_w field stores Default TDP. Primary differentiator from the HX 370 is a higher-rated NPU (up to 55 TOPS vs 50 TOPS), not CPU clocks. Includes Radeon 890M integrated graphics. Codename Strix Point; notably launched quietly after the HX 370 per corroborating secondary coverage (Notebookcheck)."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-9-365",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI 9 365",
+    "architecture": "Zen 5 / Zen 5c (Strix Point)",
+    "release_year": 2024,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 2000,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 10,
+    "cpu_threads": 20,
+    "tdp_w": 28,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-9-365.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Hybrid Zen5/Zen5c design: 4x Zen 5 cores + 6x Zen 5c cores, 10 cores/20 threads total (cut-down from the HX 370/375's 12c/24t). AMD's headline blended Base Clock is 2.0 GHz; boost_clock_mhz stores Max Boost Clock of 5.0 GHz (Zen 5 core), Max Zen5c Clock is 3.3 GHz per AMD's spec page. Default TDP 28W, cTDP range 15-54W; tdp_w field stores Default TDP. Includes a cut-down Radeon 880M integrated GPU (12 CUs vs 16 on the HX 370), corroborated by Phoronix review. Codename Strix Point."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-7-350",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI 7 350",
+    "architecture": "Zen 5 / Zen 5c (Krackan Point)",
+    "release_year": 2025,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 2000,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 8,
+    "cpu_threads": 16,
+    "tdp_w": 28,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-7-350.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Different die/family from Strix Point: uses the smaller Krackan Point die. Hybrid design: 4x Zen 5 cores + 4x Zen 5c cores, 8 cores/16 threads total. AMD's headline blended Base Clock is 2.0 GHz; boost_clock_mhz stores Max Boost Clock of 5.0 GHz (Zen 5 core), Max Zen5c Clock is 3.5 GHz per AMD spec/PRO-variant page (corroborated by itechguides, pchardware, cputronic). Default TDP 28W, cTDP range 15-54W (some secondary sources list 15W base TDP / 54W max turbo instead of a 28W default; AMD's own PRO 350 spec page, used here, lists Default TDP 28W). Includes Radeon 860M integrated graphics. Launched Feb 2025."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-5-340",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI 5 340",
+    "architecture": "Zen 5 / Zen 5c (Krackan Point)",
+    "release_year": 2025,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 2000,
+    "boost_clock_mhz": 4800,
+    "gpu_shaders": null,
+    "cpu_cores": 6,
+    "cpu_threads": 12,
+    "tdp_w": 28,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-5-340.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Krackan Point die, entry-level SKU of the Ryzen AI 300 line. Hybrid design: 3x Zen 5 cores + 3x Zen 5c cores, 6 cores/12 threads total. AMD's headline blended Base Clock is 2.0 GHz; boost_clock_mhz stores Max Boost Clock of 4.8 GHz (Zen 5 core), Max Zen5c Clock is 3.4 GHz per AMD's spec page (corroborated by Phoronix launch review and LaptopMedia). Default TDP 28W, cTDP range 15-54W. Includes Radeon 840M integrated graphics (4 CUs). Released Q1 2025."
+    }
+  }
+]
