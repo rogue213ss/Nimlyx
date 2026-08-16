@@ -1414,6 +1414,11 @@
   text-transform:uppercase; color:var(--home-text-muted);
 }
 .compat-combobox__option-name{ color:var(--home-text-primary); }
+.compat-combobox__option-vram{
+  flex-shrink:0; margin-left:auto;
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.03em;
+  color:var(--home-text-muted);
+}
 .compat-combobox__empty{
   padding:14px 10px; text-align:center;
   font-family:var(--home-font-body); font-size:.83rem; color:var(--home-text-muted);

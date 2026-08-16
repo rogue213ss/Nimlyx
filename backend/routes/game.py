@@ -330,6 +330,15 @@ def _hardware_catalog_payload():
             "external_id": g["external_id"],
             "name": g["name"],
             "vendor": g["vendor"],
+            # VRAM is display-only context for the selector (helping
+            # disambiguate e.g. "GTX 1060 3GB" vs "GTX 1060 6GB" in the
+            # dropdown) -- not used by the resolver/comparison engine,
+            # which already handles VRAM-variant resolution itself.
+            # Some normalized records legitimately have no VRAM value;
+            # this stays None rather than fabricating one, and the
+            # frontend simply omits the tag when absent ("where
+            # possible").
+            "vram_gb": g.get("vram_gb"),
         }
         for g in get_gpus_with_rankings()
     ]

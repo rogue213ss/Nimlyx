@@ -1887,6 +1887,19 @@ function _initHardwareCombobox({ inputId, listboxId, clearBtnId, hiddenId, items
         currentResults = [];
     }
 
+// VRAM is GPU-only, catalog-provided (vram_gb), display-only context --
+// never sent to the backend, never used in matching. Shown "where
+// possible": only when the catalog actually has a value for this record,
+// never fabricated for records with missing data. Whole-GB values print
+// without a decimal ("4GB"), fractional ones keep one decimal ("1.5GB").
+function _vramLabel(item) {
+    const vram = item && item.vram_gb;
+    if (vram === null || vram === undefined || Number.isNaN(Number(vram))) return "";
+    const num = Number(vram);
+    const formatted = Number.isInteger(num) ? String(num) : num.toFixed(1);
+    return `${formatted}GB`;
+}
+
 function _displayHardwareName(item, vendorKey) {
     // Some catalog names already include the vendor (CPU
     // model_name is always "Intel ..."/"AMD ..."), others don't (GPU
@@ -1895,8 +1908,14 @@ function _displayHardwareName(item, vendorKey) {
     // so the display never doubles up ("AMD AMD Ryzen 5 2600").
     const vendor = (item[vendorKey] || "").trim();
     const name = (item.name || "").trim();
-    if (!vendor || name.toUpperCase().startsWith(vendor.toUpperCase())) return name;
-    return `${vendor} ${name}`;
+    const base = (!vendor || name.toUpperCase().startsWith(vendor.toUpperCase()))
+        ? name
+        : `${vendor} ${name}`;
+    const vramLabel = _vramLabel(item);
+    // Skip appending if the catalog name already spells out the VRAM
+    // (e.g. "GeForce GTX 1060 6 GB") to avoid a redundant "...6 GB (6GB)".
+    if (!vramLabel || base.toUpperCase().includes(vramLabel.toUpperCase())) return base;
+    return `${base} (${vramLabel})`;
 }
 
     function selectItem(item) {
@@ -1933,12 +1952,15 @@ function _displayHardwareName(item, vendorKey) {
             // GPUs (name has no vendor prefix) still get the tag.
             const vendor = (item[vendorKey] || "").trim();
             const showVendorTag = vendor && !item.name.trim().toUpperCase().startsWith(vendor.toUpperCase());
+            const vramLabel = _vramLabel(item);
+            const showVram = vramLabel && !item.name.trim().toUpperCase().includes(vramLabel.toUpperCase());
             return `
             <li class="compat-combobox__option${i === 0 ? " is-highlighted" : ""}"
                 role="option" id="${listboxId}-opt-${i}" data-index="${i}"
                 aria-selected="${i === 0 ? "true" : "false"}">
                 ${showVendorTag ? `<span class="compat-combobox__option-vendor">${vendor}</span>` : ""}
                 <span class="compat-combobox__option-name">${item.name}</span>
+                ${showVram ? `<span class="compat-combobox__option-vram">${vramLabel}</span>` : ""}
             </li>
         `;
         }).join("");
