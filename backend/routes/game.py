@@ -13,6 +13,7 @@ from services.analysis.tag_honesty import compute_tag_honesty
 from services.analysis.spotlight_reviews import compute_spotlight_reviews
 from services.game.related_games import get_developer_games, get_publisher_games
 from services.game.requirements import parse_requirements
+from services.hardware.compatibility import evaluate_compatibility, HardwareProfile, serialize_compatibility_result
 
 game_bp = Blueprint("game", __name__)
 
@@ -235,6 +236,67 @@ def game_detail_by_id(app_id):
     clean_data["highlighted_package_id"] = request.args.get("package_id")
 
     return jsonify(clean_data)
+
+
+@game_bp.route("/api/game/<app_id>/compatibility", methods=["POST"])
+def game_compatibility(app_id):
+    """Compatibility-engine integration (read-only). Takes a user's
+    selected hardware (by ranking-catalog external_id -- see
+    services/hardware/rankings_loader.py) plus RAM in GB, and returns
+    whether that hardware meets this game's minimum/recommended specs.
+
+    Deliberately a SEPARATE endpoint from /api/game-detail/<app_id>,
+    not a field added onto it: game-detail's response shape is a
+    stable contract several existing frontend call sites already
+    depend on (see build_game_detail's own docstring note that
+    `requirements` is kept stable specifically as this future input),
+    and a per-request hardware selection isn't part of "the game"
+    the way requirements/reviews/media are -- it varies per visitor,
+    per request, so it doesn't belong baked into the cacheable game
+    payload. Splitting it out also means this endpoint can be
+    called repeatedly (e.g. the user tries a few different GPUs) with
+    no need to re-fetch or reprocess the rest of the game detail data
+    each time.
+
+    Body (all fields optional -- a missing selection is handled by
+    evaluate_compatibility() as "insufficient data" for that
+    component, never as a guessed pass/fail):
+        {
+          "cpu_external_id": "cpu-intel-i5-2500k",
+          "gpu_external_id": "nvidia-geforce-rtx-4090",
+          "ram_gb": 16
+        }
+
+    Only fetches raw appdetails + parses requirements -- it does NOT
+    call build_game_detail() (which also runs the review-summary,
+    reputation-trajectory, community-pulse, spotlight-review, and
+    developer/publisher-games pipeline). Requirement text is the only
+    piece of the game payload this endpoint actually needs, so this
+    avoids re-doing everything else 1:1 game-detail-by-id already
+    computed on the page load that got the user here.
+    """
+    try:
+        cc = get_region_code()
+        raw = get_appdetails(app_id, cc)
+        if raw is None:
+            raw = get_appdetails(app_id, "US")  # same region fallback as build_game_detail
+        if raw is None:
+            return jsonify({"error": "Game not found"}), 404
+
+        requirements = parse_requirements(raw.get("pc_requirements"))
+
+        data = request.get_json(silent=True) or {}
+        profile = HardwareProfile(
+            cpu_external_id=data.get("cpu_external_id"),
+            gpu_external_id=data.get("gpu_external_id"),
+            ram_gb=data.get("ram_gb"),
+        )
+
+        result = evaluate_compatibility(requirements, profile)
+        return jsonify(serialize_compatibility_result(result))
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @game_bp.route("/api/find/<game_name>")
