@@ -218,6 +218,14 @@ def normalize_cpu_key(text):
     return _NON_ALNUM_RE.sub("", cleaned.upper())
 
 
+def normalize_gpu_strict_key(text):
+    """Deterministic comparison key for a GPU name PRESERVING memory sizes."""
+    if not text or not isinstance(text, str):
+        return ""
+    cleaned = _strip_words(text.strip(), _GPU_STRIP_WORDS)
+    return _NON_ALNUM_RE.sub("", cleaned.upper())
+
+
 def normalize_gpu_key(text):
     """Deterministic comparison key for a GPU name/requirement
     fragment. Strips vendor words and any trailing memory-size
@@ -289,16 +297,23 @@ def _cpu_catalog_index():
 
 @lru_cache(maxsize=1)
 def _gpu_catalog_index():
-    """Same as _cpu_catalog_index but for GPUs, keyed on `name`."""
+    """Builds two indices: strict (VRAM preserved) and base (VRAM stripped).
+    Returns (strict_index, base_index) where ambiguous keys are removed."""
     records = get_gpus_with_rankings()
-    key_to_ids = {}
+    strict_to_ids = {}
+    base_to_ids = {}
     for r in records:
-        key = normalize_gpu_key(r["name"])
-        if not key:
-            continue
-        key_to_ids.setdefault(key, set()).add(r["external_id"])
+        strict_key = normalize_gpu_strict_key(r["name"])
+        if strict_key:
+            strict_to_ids.setdefault(strict_key, set()).add(r["external_id"])
+            
+        base_key = normalize_gpu_key(r["name"])
+        if base_key:
+            base_to_ids.setdefault(base_key, set()).add(r["external_id"])
 
-    return {key: next(iter(ids)) for key, ids in key_to_ids.items() if len(ids) == 1}
+    strict_index = {key: next(iter(ids)) for key, ids in strict_to_ids.items() if len(ids) == 1}
+    base_index = {key: next(iter(ids)) for key, ids in base_to_ids.items() if len(ids) == 1}
+    return strict_index, base_index
 
 
 @lru_cache(maxsize=1)
@@ -374,13 +389,18 @@ def resolve_gpu_requirement(text):
     """Returns a list[ResolvedAlternative] for a GPU requirement
     string (may contain 'or' alternatives). Empty input returns []."""
     alternatives = split_alternatives(text)
-    index = _gpu_catalog_index()
+    strict_index, base_index = _gpu_catalog_index()
     by_id = _gpu_by_id()
 
     results = []
     for raw in alternatives:
-        key = normalize_gpu_key(raw)
-        external_id = index.get(key) if key else None
+        strict_key = normalize_gpu_strict_key(raw)
+        base_key = normalize_gpu_key(raw)
+        
+        external_id = strict_index.get(strict_key)
+        if not external_id:
+            external_id = base_index.get(base_key)
+            
         if not external_id:
             results.append(ResolvedAlternative(raw, resolved=False))
             continue
