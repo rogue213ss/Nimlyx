@@ -125,7 +125,7 @@ _NON_ALNUM_RE = re.compile(r"[^A-Z0-9]")
 # uniformly from BOTH the query string and the catalog's own
 # name/model_name at comparison time is what makes all four variants
 # collapse to the same key.
-_CPU_STRIP_WORDS = {"INTEL", "AMD", "CORE", "PROCESSOR"}
+_CPU_STRIP_WORDS = {"INTEL", "AMD", "CORE", "PROCESSOR", "EIGHT-CORE", "SIX-CORE", "QUAD-CORE", "DUAL-CORE"}
 # NOTE: originally just the three company names. That left the
 # catalog's own GPU `name` field (which is ALWAYS brand-prefixed,
 # e.g. "Radeon RX 480", "GeForce RTX 5050") permanently mismatched
@@ -211,7 +211,9 @@ def normalize_cpu_key(text):
     3)."""
     if not text or not isinstance(text, str):
         return ""
-    cleaned = _strip_trailing_clock(text.strip())
+    # Strip trademarks before alphanumeric stripping to avoid leaving 'R' or 'TM'
+    cleaned = re.sub(r"\(R\)|\(TM\)|®|™", "", text, flags=re.IGNORECASE)
+    cleaned = _strip_trailing_clock(cleaned.strip())
     cleaned = _strip_words(cleaned, _CPU_STRIP_WORDS)
     return _NON_ALNUM_RE.sub("", cleaned.upper())
 
@@ -251,21 +253,38 @@ def detect_gpu_vendor_hint(text):
 # Catalog indices (built once, from rankings_loader -- read-only)
 # ---------------------------------------------------------------------------
 
+_GENERIC_CPU_KEYS = {
+    "RYZEN", "CORE", "COREI3", "COREI5", "COREI7", "COREI9",
+    "RYZEN3", "RYZEN5", "RYZEN7", "RYZEN9", "PENTIUM", "CELERON",
+    "ATHLON", "FX", "EPYC", "XEON", "OPTERON", "THREADRIPPER"
+}
+
 @lru_cache(maxsize=1)
 def _cpu_catalog_index():
     """Maps normalize_cpu_key(model_name) -> external_id, EXCLUDING any
     key that more than one distinct CPU record normalizes to (an
     ambiguous key is removed entirely rather than arbitrarily picking
-    one -- see module docstring point 4)."""
+    one -- see module docstring point 4). Also indexes aliases and blocks generic families."""
     records = get_cpus_with_rankings()
     key_to_ids = {}
     for r in records:
         key = normalize_cpu_key(r["model_name"])
-        if not key:
-            continue
-        key_to_ids.setdefault(key, set()).add(r["external_id"])
+        if key:
+            key_to_ids.setdefault(key, set()).add(r["external_id"])
+            
+        aliases_str = r.get("aliases", "")
+        if aliases_str:
+            for alias in aliases_str.split(","):
+                akey = normalize_cpu_key(alias.strip())
+                if akey:
+                    key_to_ids.setdefault(akey, set()).add(r["external_id"])
 
-    return {key: next(iter(ids)) for key, ids in key_to_ids.items() if len(ids) == 1}
+    # Discard ambiguous keys and explicitly generic families
+    valid_index = {}
+    for key, ids in key_to_ids.items():
+        if len(ids) == 1 and key not in _GENERIC_CPU_KEYS:
+            valid_index[key] = next(iter(ids))
+    return valid_index
 
 
 @lru_cache(maxsize=1)
