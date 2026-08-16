@@ -223,14 +223,21 @@ def _evaluate_gpu(minimum_text, recommended_text, user_gpu_record):
     else:
         notes.append("GPU: no user GPU selected -- cannot evaluate.")
 
-    cross_vendor_seen = [False]  # mutable flag for the closure below
-
     def _judge(text, tier_label):
+        """Returns (result, tier_cross_vendor_seen). tier_cross_vendor_seen
+        is tracked PER TIER (not globally) so the caller can tell whether a
+        cross-vendor alternative was merely present vs. whether it was the
+        actual reason this tier's result came back None. A cross-vendor
+        branch that co-exists with a same-vendor branch that already
+        produced a definitive True/False is irrelevant noise and must not
+        trigger the cross-vendor uncertainty note."""
+        tier_cross_vendor_seen = False
+
         alts = resolve_gpu_requirement(text)
         if not alts:
             if text:
                 notes.append(f"GPU {tier_label}: requirement could not be resolved to a known GPU ('{text}').")
-            return None
+            return None, tier_cross_vendor_seen
 
         unresolved = [a for a in alts if not a.resolved]
         if unresolved:
@@ -246,17 +253,29 @@ def _evaluate_gpu(minimum_text, recommended_text, user_gpu_record):
                 continue
             same_vendor = user_vendor is not None and a.vendor == user_vendor
             if not same_vendor:
-                cross_vendor_seen[0] = True
+                tier_cross_vendor_seen = True
                 pairs.append((False, None))  # not judgeable -- cross-vendor
                 continue
             pairs.append((True, a.score))
 
-        return _evaluate_alternatives_same_kind(pairs, user_score)
+        return _evaluate_alternatives_same_kind(pairs, user_score), tier_cross_vendor_seen
 
-    meets_minimum = _judge(minimum_text, "minimum") if user_score is not None else None
-    meets_recommended = _judge(recommended_text, "recommended") if user_score is not None else None
+    if user_score is not None:
+        meets_minimum, minimum_cross_vendor_seen = _judge(minimum_text, "minimum")
+        meets_recommended, recommended_cross_vendor_seen = _judge(recommended_text, "recommended")
+    else:
+        meets_minimum, minimum_cross_vendor_seen = None, False
+        meets_recommended, recommended_cross_vendor_seen = None, False
 
-    if cross_vendor_seen[0]:
+    # Only surface the cross-vendor uncertainty note for a tier whose
+    # result is actually None -- i.e. cross-vendor alternatives existed
+    # AND no same-vendor branch was available to definitively resolve the
+    # tier. If a same-vendor branch already produced a definitive
+    # True/False, the cross-vendor branches are irrelevant to that result
+    # and the note would be misleading.
+    if (minimum_cross_vendor_seen and meets_minimum is None) or (
+        recommended_cross_vendor_seen and meets_recommended is None
+    ):
         notes.append(
             "GPU: this game's requirement lists a GPU from a different vendor than your "
             "selected GPU for at least one tier. Shader-unit counts (CUDA cores / stream "
