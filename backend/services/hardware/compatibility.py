@@ -151,7 +151,6 @@ def _evaluate_alternatives_same_kind(alternatives, user_score):
         checked and all failed)
     """
     judgeable = [s for (judgeable_flag, s) in alternatives if judgeable_flag]
-    all_judgeable = all(judgeable_flag for judgeable_flag, _ in alternatives) if alternatives else False
 
     if not alternatives:
         return None
@@ -159,9 +158,7 @@ def _evaluate_alternatives_same_kind(alternatives, user_score):
         return True
     if not judgeable:
         return None
-    if all_judgeable:
-        return False
-    return None
+    return False
 
 
 def _evaluate_cpu(minimum_text, recommended_text, user_cpu_record):
