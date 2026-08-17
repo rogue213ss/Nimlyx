@@ -194,3 +194,80 @@
      the form off-screen while still leaving room to scroll results. */
   .compat-combobox__listbox{ max-height:200px; }
 }
+
+/* ================================================================
+   TRAILER PLAYER — MOBILE REFINEMENT
+   Desktop player (search.css: .player-controlbar, .featured-quality-*,
+   .featured-play-overlay, timeline, loading spinner) is untouched.
+   Same DOM, same HLS-manifest-driven quality logic, same auto-hide/
+   playback JS in search.js -- everything below only retunes sizing,
+   spacing and the quality menu's shape for a touch screen instead of
+   a mouse, so mobile stops reading as the desktop bar squeezed down.
+   ================================================================ */
+@media (max-width:700px){
+  .player-controlbar{ padding:20px 10px 8px; gap:4px; }
+  .player-controlbar__row{ gap:8px; }
+  .player-btn{ width:34px; height:34px; font-size:.85rem; border-radius:7px; }
+  .player-time{ font-size:.7rem; letter-spacing:-.01em; }
+  .player-timeline{ padding:12px 0; margin:0; } /* wider invisible hit area than desktop; visible track itself stays 4px */
+
+  /* Center play/pause overlay: #featuredPlayOverlay.featured-play-overlay
+     (the ID-based mobile sizing rule already in this file) outranks
+     .featured-play-overlay.is-play/.is-pause on specificity alone, so
+     without this it was silently applying the .is-play optical-nudge
+     padding to the PAUSE icon too -- pause is symmetrical and needs
+     none, so that read as the button sitting visibly off-center
+     whenever the video was paused. Restated per-state here, at the
+     same ID+class specificity, so both icons land dead-center on the
+     video itself. (The button is still centered against .featured-shot,
+     same as desktop -- that box IS the video's own frame; the control
+     bar is a separate absolutely-positioned overlay on top of it and
+     never factors into this centering.) */
+  #featuredPlayOverlay.featured-play-overlay.is-play{ padding-left:3px; }
+  #featuredPlayOverlay.featured-play-overlay.is-pause{ padding-left:0; }
+
+  /* ---- Quality control: compact, mobile-native settings menu ----
+     Same #featuredQualityBtn/#featuredQualityMenu/#featuredQualityList
+     DOM and the same MANIFEST_PARSED-driven population in search.js --
+     presentation only below. Menu keeps anchoring bottom:100% (see
+     search.css) which already opens it upward into the video, the
+     only direction with room since the button sits in the bottom
+     control bar -- so it can never open below the player or get
+     clipped by the viewport edge. */
+  .featured-quality-btn{ width:34px; height:34px; font-size:.85rem; }
+  .featured-quality-menu{
+    width:auto;
+    min-width:116px;
+    max-width:148px;
+    /* The menu opens upward (bottom:100%, see search.css) into the
+       video, from a button that sits inside the bottom control bar --
+       so the room actually available above it is the video's height
+       minus the control bar's own height, not the video's full
+       height. Left uncapped, a menu with several quality rows (e.g.
+       Auto + 4 heights) grows taller than that available space and
+       its top rows get silently clipped by .featured-shot's own
+       overflow:hidden (the video's box) instead of visibly
+       overflowing -- which is what was cutting "Auto" off the top of
+       the list on shorter mobile players. Capping the menu's own
+       height and letting its internal list (already overflow-y:auto)
+       scroll keeps every option reachable and keeps the menu itself
+       exactly as compact as its content, never taller. */
+    max-height:132px;
+    border-radius:10px;
+    box-shadow:0 6px 24px rgba(0,0,0,.55);
+  }
+  .featured-quality-menu__header{ display:none; }
+  .featured-quality-menu__list{ padding:4px 0; }
+  .featured-quality-item{
+    padding:9px 12px;
+    font-size:12.5px;
+  }
+  .featured-quality-item.is-active::before{ margin-right:6px; }
+  .featured-quality-item:not(.is-active)::before{ width:13px; margin-right:6px; }
+}
+
+@media (max-width:400px){
+  .player-controlbar__row{ gap:6px; }
+  .player-time{ font-size:.66rem; }
+  .featured-quality-menu{ min-width:104px; max-width:130px; max-height:112px; }
+}

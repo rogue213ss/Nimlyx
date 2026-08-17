@@ -553,8 +553,216 @@
   color:var(--home-text-primary);
   transition:background .2s var(--home-ease), transform .2s var(--home-ease);
 }
-.featured-shot__expand:hover{ background:rgba(10,10,13,.8); transform:scale(1.06); }
+/* Player-Redesign: quality control now lives inside .player-controlbar
+   (search.html) instead of floating in the top-right corner, so it's
+   positioned as a normal flex child of the control bar row -- the menu
+   itself still opens as an absolutely-positioned popover anchored to
+   this wrapper, just anchored from the bottom of the bar (bottom:100%)
+   instead of dropping down from the top. */
+.featured-quality-wrapper{
+  position:relative;
+  display:flex;
+  align-items:center;
+}
+.featured-quality-btn {
+  position:relative;
+  flex-shrink:0;
+}
+.featured-quality-menu {
+  position:absolute; bottom:calc(100% + 10px); right:0;
+  width: 160px;
+  background:rgba(15,15,15,0.85);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.1);
+  color:#fff;
+  overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+  display:flex; flex-direction:column;
+  z-index: 25;
+  pointer-events: auto;
+  min-height: 0;
+}
+.featured-quality-menu__header {
+  padding:12px 16px;
+  font-size:14px;
+  font-weight:600;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.05);
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .featured-quality-menu { width: auto; min-width: 130px; }
+  .featured-quality-menu__header { display: none; }
+}
+.featured-quality-menu__list {
+  display:flex; flex-direction:column;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.featured-quality-item {
+  padding: 10px 16px;
+  font-size:13px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  background:transparent;
+  border:none;
+  color:#ccc;
+  text-align:left;
+  width:100%;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.featured-quality-item:hover, .featured-quality-item:focus {
+  background:rgba(255,255,255,0.1);
+  color:#fff;
+}
+.featured-quality-item.is-active {
+  color:#fff;
+  font-weight: 600;
+}
+.featured-quality-item.is-active::before {
+  content: "✓";
+  margin-right: 8px;
+  font-weight: bold;
+}
+.featured-quality-item:not(.is-active)::before {
+  content: "";
+  display: inline-block;
+  width: 17px; /* Matches checkmark width */
+  margin-right: 8px;
+}
+@media (max-width: 768px) {
+  .featured-quality-item {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+}
 .featured-shot img{ cursor:zoom-in; }
+
+/* ================================================================
+   PLAYER-REDESIGN: YouTube-style bottom control bar + loading state
+   Interaction principles borrowed from modern video players (fade
+   in/out on activity, generous touch targets, controls anchored to
+   the video) -- no YouTube branding/colors/icons, everything themed
+   off the existing --home-* tokens and .featured-shot__expand glass
+   look already used elsewhere in this panel.
+   ================================================================ */
+.player-controlbar{
+  position:absolute; left:0; right:0; bottom:0;
+  z-index:15;
+  display:flex; flex-direction:column; gap:6px;
+  padding:28px 14px 10px;
+  /* Gradient reaches well above the bar itself so the fade into the
+     video reads as ambient shadow, not a hard-edged strip. */
+  background:linear-gradient(to top, rgba(6,7,10,.82) 0%, rgba(6,7,10,.55) 45%, transparent 100%);
+  opacity:1; transform:translateY(0);
+  transition:opacity .25s var(--home-ease), transform .25s var(--home-ease);
+}
+/* Auto-hide: .is-idle is toggled by initPlayerControlbar() in
+   search.js while playing + no recent pointer/keyboard activity.
+   Only the video itself keeps rendering underneath -- paused,
+   errored, or screenshot states never get .is-idle (see JS guards). */
+.featured-shot.is-idle .player-controlbar,
+.featured-shot.is-idle .featured-shot__expand{
+  opacity:0; transform:translateY(6px);
+  pointer-events:none;
+}
+.player-controlbar__row{
+  display:flex; align-items:center; gap:10px;
+}
+.player-controlbar__spacer{ flex:1 1 auto; }
+.player-btn{
+  display:flex; align-items:center; justify-content:center;
+  width:34px; height:34px;
+  flex-shrink:0;
+  border-radius:8px;
+  border:none;
+  background:transparent;
+  color:var(--home-text-primary);
+  font-size:.95rem;
+  cursor:pointer;
+  transition:background .15s var(--home-ease), transform .15s var(--home-ease);
+}
+.player-btn:hover{ background:rgba(255,255,255,.12); }
+.player-btn:active{ transform:scale(.92); }
+.player-time{
+  font-family:var(--home-font-mono);
+  font-size:.78rem;
+  color:var(--home-text-primary);
+  white-space:nowrap;
+  min-width:0;
+}
+
+/* Timeline: a slim visible track with a much taller invisible hit
+   area layered on top of it (via padding, not height, so the click/
+   drag target is comfortably bigger than the visible line on both
+   desktop and mobile without the bar itself looking thick). */
+.player-timeline{
+  position:relative;
+  padding:10px 0;
+  margin:0 2px;
+  cursor:pointer;
+  touch-action:none;
+}
+.player-timeline__track{
+  position:relative;
+  height:4px;
+  border-radius:2px;
+  background:rgba(255,255,255,.22);
+  transition:height .12s var(--home-ease);
+}
+.player-timeline__buffered{
+  position:absolute; top:0; left:0; height:100%;
+  width:0%;
+  border-radius:2px;
+  background:rgba(255,255,255,.34);
+}
+.player-timeline__played{
+  position:absolute; top:0; left:0; height:100%;
+  width:0%;
+  border-radius:2px;
+  background:var(--home-cta-blue);
+}
+.player-timeline__handle{
+  position:absolute; top:50%; left:0%;
+  width:12px; height:12px;
+  transform:translate(-50%,-50%) scale(0);
+  border-radius:50%;
+  background:var(--home-cta-blue);
+  box-shadow:0 0 0 3px rgba(59,130,246,.25);
+  transition:transform .12s var(--home-ease);
+}
+.player-timeline:hover .player-timeline__track,
+.player-timeline.is-scrubbing .player-timeline__track{ height:6px; }
+.player-timeline:hover .player-timeline__handle,
+.player-timeline.is-scrubbing .player-timeline__handle{ transform:translate(-50%,-50%) scale(1); }
+.player-timeline:focus-visible{
+  outline:2px solid var(--home-accent, var(--home-cta-blue));
+  outline-offset:4px;
+  border-radius:4px;
+}
+
+/* Subtle buffering indicator -- centered spinner, no dark scrim, so
+   the dynamic background/poster frame stays visible underneath. */
+.player-loading{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  z-index:8;
+  pointer-events:none;
+}
+.player-loading__spin{
+  width:34px; height:34px;
+  border-radius:50%;
+  border:3px solid rgba(255,255,255,.25);
+  border-top-color:var(--home-cta-blue);
+  animation:playerSpin .8s linear infinite;
+}
+@keyframes playerSpin{ to{ transform:rotate(360deg); } }
 
 .featured-play-overlay{
   position:absolute; top:50%; left:50%;
@@ -575,10 +783,12 @@
   font-size:1.7rem;
   cursor:pointer;
   transition:background .2s var(--home-ease), transform .2s var(--home-ease), box-shadow .2s var(--home-ease);
-  /* Play glyph sits visually left-of-center in a circle if it's just
-     centered as-is -- nudging it a hair right corrects for that. */
-  padding-left:6px;
 }
+/* Play glyph sits visually left-of-center in a circle if it's just
+   centered as-is -- nudging it a hair right corrects for that.
+   Pause glyph is symmetrical, so we remove the padding. */
+.featured-play-overlay.is-play { padding-left: 6px; }
+.featured-play-overlay.is-pause { padding-left: 0; }
 .featured-play-overlay:hover{
   background:rgba(10,14,20,.95);
   transform:translate(-50%,-50%) scale(1.08);
@@ -1045,6 +1255,54 @@
   gap:clamp(20px,2.6vw,32px);
   flex-wrap:wrap;
 }
+
+/* Sentiment filter chips -- same pill look as .nimlyx-topic-pill
+   above (glass fill, pill radius, same border token) so it reads as
+   part of this dashboard rather than a new control style. Active
+   state borrows the same blue-tint treatment already used for
+   .discover-sort-option.is-active in discover.css. */
+/* Reviews section heading -- just the real total_reviews count,
+   same quiet label treatment as .nimlyx-topic-group__label above. */
+.nimlyx-reviews-heading{
+  font-family:var(--home-font-mono); font-size:.72rem; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--home-text-faint);
+  margin-bottom:14px;
+}
+.nimlyx-reviews-heading.is-hidden{ display:none; }
+
+.nimlyx-review-filter{
+  display:flex; flex-wrap:wrap; gap:8px;
+  margin-bottom:18px;
+}
+.nimlyx-review-filter.is-hidden{ display:none; }
+.nimlyx-review-filter__btn{
+  font-family:var(--home-font-body); font-size:.82rem; font-weight:600;
+  color:var(--home-text-muted);
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:999px;
+  padding:7px 16px;
+  cursor:pointer;
+  transition:background .2s var(--home-ease), color .2s var(--home-ease), border-color .2s var(--home-ease);
+}
+.nimlyx-review-filter__btn:hover{ color:var(--home-text-primary); }
+.nimlyx-review-filter__btn.is-active{
+  color:var(--home-text-primary);
+  background:rgba(59,130,246,0.14);
+  border-color:var(--home-cta-blue);
+}
+
+/* Shown only when the selected sentiment has no matching quote to
+   display (see applyNimlyxReviewFilter() in search.js) -- e.g. a game
+   with only a positive spotlight and "Negative" selected. Reuses the
+   same quiet, muted-text treatment as .nimlyx-empty below rather than
+   inventing a second empty-state look. */
+.nimlyx-review-filter-empty{
+  font-size:.88rem; color:var(--home-text-muted);
+  padding:18px 4px;
+}
+.nimlyx-review-filter-empty.is-hidden{ display:none; }
+
 .nimlyx-quote{
   flex:1 1 320px;
   display:flex; flex-direction:column; gap:14px;
@@ -1080,6 +1338,29 @@
   white-space:nowrap;
 }
 .nimlyx-quote__link:hover{ text-decoration:underline; }
+
+/* Steam CTA -- sits below the up-to-10-card preview, always the same
+   size regardless of how many cards are showing (obvious, not
+   oversized -- see task's UX requirement). Reuses the same pill/glass
+   language as .nimlyx-review-filter__btn so it reads as part of this
+   dashboard rather than a generic link. */
+.nimlyx-reviews-cta{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  margin-top:20px;
+  font-family:var(--home-font-body); font-size:.85rem; font-weight:600;
+  color:var(--home-cta-blue);
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border-strong);
+  border-radius:999px;
+  padding:11px 20px;
+  text-decoration:none;
+  transition:background .2s var(--home-ease), border-color .2s var(--home-ease);
+}
+.nimlyx-reviews-cta:hover{
+  background:rgba(59,130,246,0.14);
+  border-color:var(--home-cta-blue);
+}
+.nimlyx-reviews-cta.is-hidden{ display:none; }
 
 /* ---- Empty state: no analysis data at all for this game ---- */
 .nimlyx-empty{
