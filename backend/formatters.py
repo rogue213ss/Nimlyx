@@ -1,6 +1,7 @@
 """Helpers that reshape raw scraped/JSON game data into the dicts the
 Jinja templates and frontend JS expect."""
 import re
+from datetime import date as _date
 
 from steam_images import build_image_candidates
 
@@ -71,6 +72,20 @@ def trim_review_quote(text, target_min=180, target_max=250):
     return collapsed[:cut].rstrip(",;:- ") + "..."
 
 
+def parse_discount_percent(value):
+    """Normalizes a scraped Steam discount value (e.g. "-50%", None,
+    or an already-int percent) into a plain int, 0 when there's no
+    discount at all. Shared by to_discover_card's card-shaping (below)
+    and sort_discover_games's "Most Discounted" sort (also below) so
+    there's exactly one place that knows how to read this field."""
+    if value is None:
+        return 0
+    if isinstance(value, int):
+        return value
+    digits = re.sub(r"[^\d]", "", str(value))
+    return int(digits) if digits else 0
+
+
 def to_discover_card(game):
     """Shapes a scraped game into Nimlyx's canonical result-card
     contract (Sprint 3 Phase 4) -- the same shape /api/search-results
@@ -95,12 +110,7 @@ def to_discover_card(game):
     """
 
     def parse_discount(value):
-        if value is None:
-            return 0
-        if isinstance(value, int):
-            return value
-        digits = re.sub(r"[^\d]", "", str(value))
-        return int(digits) if digits else 0
+        return parse_discount_percent(value)
 
     return {
         "app_id": game.get("id"),
@@ -123,4 +133,101 @@ def to_discover_card(game):
         "review_summary": game.get("review_summary"),
         "review_count": None,
         "genres": [],
+        # ISO date string (see steam._scrape_search_results) or None --
+        # used by Discover's "Newest" sort (see sort_discover_games
+        # below). Sorting happens server-side on the raw scraped
+        # "release_date" field before this shaping step; this is just
+        # carried through so the frontend could display it later if
+        # ever needed, same reasoning as review_count already being
+        # forwarded even though today's UI doesn't render it.
+        "release_date": game.get("release_date"),
     }
+
+
+# ================= DISCOVER "SORT BY" =================
+# Sorts the RAW scraped game dicts (steam.fetch_discover_games's own
+# shape -- "final_price"/"discount_percent"/"review_percent"/
+# "release_date", not yet reshaped by to_discover_card above) so this
+# runs in routes/discover.py BEFORE the offset slice/pagination and
+# BEFORE per-page live price enrichment. That ordering matters: it's
+# what makes "Newest" (etc.) apply to the full ~100-game buffer a
+# filter combination returns, not just whatever 12 happen to be on
+# the current page -- see task note on sorting needing to be
+# consistent across pagination, not just the visible page.
+
+# current page -- see task note on sorting needing to be
+# consistent across pagination, not just the visible page.
+
+
+def _rating_sort_key(game):
+    value = game.get("review_percent")
+    return value if isinstance(value, int) else None
+
+
+def _discount_sort_key(game):
+    # Always a real int (0 when there's genuinely no discount, not
+    # "missing") -- see parse_discount_percent's own docstring.
+    return parse_discount_percent(game.get("discount_percent"))
+
+
+def _release_date_sort_key(game):
+    raw = game.get("release_date")
+    if not raw:
+        return None
+    try:
+        return _date.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def _price_sort_key(game):
+    raw = game.get("final_price")
+    if raw is None:
+        return None
+    text = str(raw)
+    return int(text) if text.isdigit() else None
+
+
+# sort param (from the Sort By UI, see discover.js) -> (key function,
+# reverse). "recommended" isn't listed here on purpose -- it's handled
+# as a no-op by sort_discover_games below, preserving Steam's own
+# default/relevance order exactly as returned rather than resorting it.
+_SORT_KEY_FUNCS = {
+    "highest_rated": (_rating_sort_key, True),
+    "most_discounted": (_discount_sort_key, True),
+    "newest": (_release_date_sort_key, True),
+    "price_low": (_price_sort_key, False),
+    "price_high": (_price_sort_key, True),
+}
+
+
+def sort_discover_games(games, sort_mode):
+    """Sorts Discover's scraped game-candidate list by `sort_mode`
+    (one of the _SORT_KEY_FUNCS keys above, or "recommended"/anything
+    unrecognized, both of which are a no-op).
+
+    Games missing the relevant field (e.g. no release_date, no
+    review_percent, unparseable price) are kept in the results --
+    never dropped -- but pushed to the end, in their original
+    relative order, regardless of ascending/descending, since there's
+    no honest way to rank an unknown value against known ones. Python
+    list.sort() is stable, so games with genuinely equal values (or
+    all the "missing" ones together) keep their existing relative
+    order rather than shuffling -- see task note on stable sorting.
+    """
+    if sort_mode not in _SORT_KEY_FUNCS:
+        return games  # "recommended" (default) or an unrecognized value
+
+    key_func, reverse = _SORT_KEY_FUNCS[sort_mode]
+
+    with_value = []
+    without_value = []
+    for g in games:
+        value = key_func(g)
+        if value is None:
+            without_value.append(g)
+        else:
+            with_value.append((value, g))
+
+    with_value.sort(key=lambda pair: pair[0], reverse=reverse)
+    return [g for _, g in with_value] + without_value

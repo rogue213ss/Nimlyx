@@ -107,21 +107,21 @@
           <div class="filter-add-panel" id="filterAddPanel"><div class="filter-add-panel-inner" id="filterAddPanelInner"></div></div>
         </div>
 
-        <!-- Sort menu — visual only for now. No JS hook exists to make
-             these functional yet; wiring them up would mean adding a
-             sort param to discover.js's fetch call and /api/discover,
-             which is out of scope for this HTML/CSS-only pass. -->
+        <!-- Sort menu -- wired up in discover.js (see applySortToGames /
+             the sort click handler in init()). Options are real
+             buttons now, same pattern as .wizard-option above; sort
+             state round-trips through the URL exactly like the five
+             QUESTIONS filters (see restoreStateFromUrl/syncStateToUrl). -->
         <div class="discover-sidebar-sort">
           <h3 class="discover-sidebar-subtitle">Sort By</h3>
-          <div class="discover-sort-options" aria-disabled="true">
-            <span class="discover-sort-option is-active">Recommended</span>
-            <span class="discover-sort-option">Highest Rated</span>
-            <span class="discover-sort-option">Most Discounted</span>
-            <span class="discover-sort-option">Newest</span>
-            <span class="discover-sort-option">Price: Low → High</span>
-            <span class="discover-sort-option">Price: High → Low</span>
+          <div class="discover-sort-options" id="discoverSortOptions">
+            <button type="button" class="discover-sort-option is-active" data-sort="recommended">Recommended</button>
+            <button type="button" class="discover-sort-option" data-sort="highest_rated">Highest Rated</button>
+            <button type="button" class="discover-sort-option" data-sort="most_discounted">Most Discounted</button>
+            <button type="button" class="discover-sort-option" data-sort="newest">Newest</button>
+            <button type="button" class="discover-sort-option" data-sort="price_low">Price: Low → High</button>
+            <button type="button" class="discover-sort-option" data-sort="price_high">Price: High → Low</button>
           </div>
-          <p class="discover-sort-note">Sorting is coming soon.</p>
         </div>
 
       </div>

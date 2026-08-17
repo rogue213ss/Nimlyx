@@ -453,6 +453,18 @@ def _scrape_search_results(params, cc):
         discount_span = row.find("div", class_="discount_pct")
         discount_percent = discount_span.text.strip() if discount_span else None
 
+        # Steam marks each row's release date with a
+        # "search_released" div (e.g. "21 Jun, 2023") -- used by
+        # Discover's "Newest" sort (see formatters.sort_discover_games).
+        # Reuses the existing parse_steam_release_date() parser (same
+        # one fetch_new_release_candidates already relies on) rather
+        # than a second date parser, and stores it as an ISO string
+        # (JSON-safe) or None -- never a guess when Steam's own text
+        # isn't one of the concrete formats that parser trusts.
+        released_div = row.find("div", class_="search_released")
+        release_date_obj = parse_steam_release_date(released_div.text.strip()) if released_div else None
+        release_date = release_date_obj.isoformat() if release_date_obj else None
+
         # Platform icons -- Steam marks each supported OS with its own
         # <span class="platform_img win/mac/linux"> inside the row.
         # Not previously extracted here (Discover/credit-games callers
@@ -480,6 +492,7 @@ def _scrape_search_results(params, cc):
             "review_percent": parse_review_percent(row),
             "review_summary": parse_review_summary(row),
             "platforms": platforms,
+            "release_date": release_date,
         })
 
     return games

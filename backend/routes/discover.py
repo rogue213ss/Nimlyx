@@ -9,7 +9,7 @@ from steam import (
     fetch_discover_games,
     fetch_authoritative_price,
 )
-from formatters import to_discover_card
+from formatters import to_discover_card, sort_discover_games
 from steam_images import default_header_image, build_image_candidates
 
 discover_bp = Blueprint("discover_api", __name__)
@@ -22,6 +22,7 @@ def discover_api():
     budget = request.args.get("budget")
     review_score = request.args.get("reviewScore", "any")
     platform = request.args.get("platform")
+    sort_mode = request.args.get("sort", "recommended")
 
     try:
         offset = int(request.args.get("offset", 0))
@@ -84,6 +85,13 @@ def discover_api():
         # guarantee only genuinely free titles are returned.
         if budget == "free":
             games = [g for g in games if g.get("final_price") in ("0", 0)]
+
+        # Sort By -- applied to the full filtered candidate buffer,
+        # BEFORE the offset slice below, so it's consistent across
+        # "load more" pages too, not just whatever 12 are on the
+        # current page. See formatters.sort_discover_games's own
+        # docstring for the missing-data/stable-sort rules.
+        games = sort_discover_games(games, sort_mode)
 
         # ==========================================================
         # NIMLYX TRADITION #007

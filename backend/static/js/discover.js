@@ -29,10 +29,13 @@
         { id: "question-5", key: "platform", label: "Platform" }
     ];
 
+    const SORT_OPTIONS = ["recommended", "highest_rated", "most_discounted", "newest", "price_low", "price_high"];
+
     const LIVE_UPDATE_DEBOUNCE_MS = 350;
     const WIZARD_TRANSITION_MS = 450; // must match discover.css's .discover-wizard transition duration
 
     const state = {};
+    let sortState = "recommended"; // one of SORT_OPTIONS' data-sort values; default preserves the existing/unsorted order
     let isFetching = false;
     let liveUpdateTimer = null;
     let isCompactMode = false;
@@ -64,6 +67,7 @@
     let wizardEl, chipsContainer, clearFiltersBtn, resultsGrid, resultsSubtitle;
     let resultsSection, resultsCount, resultsLoaderEl, sidebarPanelEl;
     let addFilterBtn, addFilterPanel, addFilterPanelInner;
+    let sortOptionsEl;
 
     /* ------------------------------------------------------------
        INIT
@@ -81,6 +85,7 @@
         addFilterBtn = document.getElementById("filterAddBtn");
         addFilterPanel = document.getElementById("filterAddPanel");
         addFilterPanelInner = document.getElementById("filterAddPanelInner");
+        sortOptionsEl = document.getElementById("discoverSortOptions");
 
         if (!wizardEl) return;
 
@@ -100,6 +105,20 @@
 
         if (addFilterBtn) {
             addFilterBtn.addEventListener("click", toggleAddFilterPanel);
+        }
+
+        // Sort By -- wired exactly once here, same as every other
+        // control in init(). Reuses selectOption's "click, don't
+        // rebuild" pattern: the six buttons are the same persistent
+        // DOM nodes for the page's lifetime, so this can't produce
+        // duplicate listeners across re-renders (renderResults() only
+        // ever touches #discoverResultsGrid, never this sidebar).
+        if (sortOptionsEl) {
+            sortOptionsEl.addEventListener("click", (event) => {
+                const btn = event.target.closest("[data-sort]");
+                if (!btn) return;
+                selectSort(btn.dataset.sort);
+            });
         }
 
         // Closing the Add Filter panel when clicking anywhere outside
@@ -151,6 +170,12 @@
             };
             option.classList.add("is-selected");
         });
+
+        const sortValue = params.get("sort");
+        if (sortValue && SORT_OPTIONS.includes(sortValue)) {
+            sortState = sortValue;
+        }
+        syncSortUI();
     }
 
     function syncStateToUrl() {
@@ -159,6 +184,10 @@
             const answer = state[question.key];
             if (answer) params.set(question.key, answer.value);
         });
+        // Only added when non-default, same convention as the five
+        // filters above (an unset filter has no key either) — keeps
+        // the default/most-common URL clean.
+        if (sortState !== "recommended") params.set("sort", sortState);
 
         const query = params.toString();
         const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
@@ -207,6 +236,29 @@
 
         syncUIAfterStateChange();
         scheduleLiveUpdate();
+    }
+
+    /* ------------------------------------------------------------
+       SORT BY
+       Independent of the five QUESTIONS filters -- selecting a sort
+       mode never touches `state`, so it can never reset a filter, and
+       changing a filter (selectOption above) never touches
+       `sortState`, so it can never reset the active sort. Both just
+       feed into the same runLiveSearch() request together.
+    ------------------------------------------------------------ */
+    function selectSort(sortValue) {
+        if (!SORT_OPTIONS.includes(sortValue) || sortValue === sortState) return;
+
+        sortState = sortValue;
+        syncSortUI();
+        scheduleLiveUpdate();
+    }
+
+    function syncSortUI() {
+        if (!sortOptionsEl) return;
+        sortOptionsEl.querySelectorAll("[data-sort]").forEach((btn) => {
+            btn.classList.toggle("is-active", btn.dataset.sort === sortState);
+        });
     }
 
     /* ------------------------------------------------------------
@@ -488,6 +540,11 @@
             const answer = state[question.key];
             if (answer) params.set(question.key, answer.value);
         });
+        // Same convention as syncStateToUrl -- only sent when it's not
+        // the default, so the common case (Recommended) is exactly
+        // the same request shape /api/discover always got before this
+        // change (no new param, no behavior change for the default).
+        if (sortState !== "recommended") params.set("sort", sortState);
         currentSearchParams = params;
 
         try {

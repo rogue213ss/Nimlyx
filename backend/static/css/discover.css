@@ -234,24 +234,21 @@
 .discover-sort-options{
   display:flex; flex-direction:column; gap:2px;
 }
-.discover-sort-options[aria-disabled="true"] .discover-sort-option{
-  cursor:not-allowed;
-}
 .discover-sort-option{
   display:block;
-  font-size:.86rem; color:var(--home-text-muted);
+  width:100%;
+  font-family:inherit; font-size:.86rem; color:var(--home-text-muted);
+  background:none; border:none;
   padding:9px 12px;
   border-radius:var(--home-radius-sm);
+  text-align:left;
+  cursor:pointer;
   transition:background .2s var(--home-ease), color .2s var(--home-ease);
 }
 .discover-sort-option:hover{ background:var(--home-glass-fill); }
 .discover-sort-option.is-active{
   color:var(--home-text-primary); font-weight:600;
   background:rgba(59,130,246,0.1);
-}
-.discover-sort-note{
-  font-family:var(--home-font-mono); font-size:.72rem; color:var(--home-text-faint);
-  margin:12px 2px 0;
 }
 
 /* ================================================================
