@@ -816,6 +816,10 @@ function pluralize(count, singular, plural) {
 function renderMedia(game) {
     const featuredImg = document.getElementById("featuredImg");
     const featuredVideo = document.getElementById("featuredVideo");
+    const featuredQualityWrap = document.getElementById("featuredQualityWrap");
+    const featuredQualityBtn = document.getElementById("featuredQualityBtn");
+    const featuredQualityMenu = document.getElementById("featuredQualityMenu");
+    const featuredQualityList = document.getElementById("featuredQualityList");
     const thumbStrip = document.getElementById("thumbStrip");
     const wrap = document.querySelector(".featured-wrap");
     const panelTitle = document.getElementById("mediaPanelTitle");
@@ -871,12 +875,22 @@ function renderMedia(game) {
     // tracked here so switching trailers (or media items) always tears
     // the old one down first -- letting instances pile up across clicks
     // leaks buffered segments and eventually stalls playback.
+    function resetQualitySelector() {
+        if (featuredQualityWrap) {
+            featuredQualityWrap.style.display = "none";
+            featuredQualityMenu.style.display = "none";
+            featuredQualityList.innerHTML = "";
+            featuredQualityBtn.onclick = null;
+        }
+    }
+
     let currentHls = null;
     function destroyCurrentHls() {
         if (currentHls) {
             currentHls.destroy();
             currentHls = null;
         }
+        resetQualitySelector();
     }
 
     // QA Pass: hls.js/Safari's native HLS were both playing correctly
@@ -889,10 +903,15 @@ function renderMedia(game) {
     const errorBox = document.getElementById("featuredMediaError");
     const errorLink = document.getElementById("featuredMediaErrorLink");
     const playOverlay = document.getElementById("featuredPlayOverlay");
+    const expandBtnEl = document.getElementById("featuredExpandBtn");
+    const controlbarEl = document.getElementById("playerControlbar");
 
     function showMediaError() {
         destroyCurrentHls();
         if (playOverlay) playOverlay.style.display = "none";
+        if (controlbarEl) controlbarEl.style.display = "none";
+        const shotEl = document.getElementById("featuredShot");
+        if (shotEl) shotEl.classList.remove("is-idle");
         if (errorLink) {
             errorLink.href = game.app_id
                 ? `https://store.steampowered.com/app/${game.app_id}/`
@@ -940,6 +959,62 @@ function renderMedia(game) {
                         showMediaError();
                     }
                 });
+
+                currentHls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                    if (!featuredQualityWrap || !data.levels || data.levels.length <= 1) return;
+                    
+                    const uniqueHeights = new Map();
+                    data.levels.forEach((level, index) => {
+                        if (level.height && !uniqueHeights.has(level.height)) {
+                            uniqueHeights.set(level.height, index);
+                        }
+                    });
+                    
+                    if (uniqueHeights.size <= 1) return;
+
+                    const sortedLevels = Array.from(uniqueHeights.entries()).sort((a, b) => b[0] - a[0]);
+
+                    let html = '<button type="button" class="featured-quality-item is-active" data-val="-1">Auto</button>';
+                    sortedLevels.forEach(([height, originalIndex]) => {
+                        html += `<button type="button" class="featured-quality-item" data-val="${originalIndex}">${height}p</button>`;
+                    });
+                    
+                    featuredQualityList.innerHTML = html;
+                    featuredQualityWrap.style.display = "";
+                    
+                    featuredQualityBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        featuredQualityMenu.style.display = featuredQualityMenu.style.display === "none" ? "flex" : "none";
+                    };
+                    
+                    // Close menu when clicking outside
+                    const closeMenu = (e) => {
+                        if (featuredQualityMenu.style.display !== "none" && !featuredQualityWrap.contains(e.target)) {
+                            featuredQualityMenu.style.display = "none";
+                        }
+                    };
+                    document.addEventListener("click", closeMenu);
+                    
+                    // Cleanup listener when destroyed
+                    const oldDestroy = currentHls.destroy.bind(currentHls);
+                    currentHls.destroy = () => {
+                        document.removeEventListener("click", closeMenu);
+                        oldDestroy();
+                    };
+
+                    Array.from(featuredQualityList.children).forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            if (currentHls) {
+                                currentHls.currentLevel = parseInt(btn.dataset.val, 10);
+                                Array.from(featuredQualityList.children).forEach(b => b.classList.remove("is-active"));
+                                btn.classList.add("is-active");
+                            }
+                            featuredQualityMenu.style.display = "none";
+                        };
+                    });
+                });
+
                 currentHls.loadSource(item.movie.hls_url);
                 currentHls.attachMedia(featuredVideo);
             } else if (featuredVideo.canPlayType("application/vnd.apple.mpegurl")) {
@@ -968,6 +1043,12 @@ function renderMedia(game) {
 
             featuredVideo.style.display = "";
             featuredImg.style.display = "none";
+            // Player-Redesign: fullscreen for the trailer lives in the
+            // control bar now (#playerFullscreenBtn) -- the top-corner
+            // expand button stays reserved for the screenshot lightbox
+            // so there aren't two overlapping fullscreen affordances.
+            if (expandBtnEl) expandBtnEl.style.display = "none";
+            if (controlbarEl) controlbarEl.style.display = "";
         } else {
             destroyCurrentHls();
             featuredVideo.pause();
@@ -976,6 +1057,10 @@ function renderMedia(game) {
             featuredVideo.style.display = "none";
             featuredImg.style.display = "";
             featuredImg.src = item.url;
+            if (expandBtnEl) expandBtnEl.style.display = "";
+            if (controlbarEl) controlbarEl.style.display = "none";
+            const shotEl = document.getElementById("featuredShot");
+            if (shotEl) shotEl.classList.remove("is-idle");
         }
     }
 
@@ -1076,6 +1161,27 @@ function renderMedia(game) {
    that "the video already has native fullscreen via its own controls"
    covered it -- true for the controls bar, but the corner expand
    button itself did nothing while a trailer was playing. */
+// Safari (desktop and iOS) doesn't implement the standard
+// requestFullscreen() on <video>/other elements the same way -- iOS
+// Safari specifically only exposes the older webkitEnterFullscreen()
+// on the video element itself. Trying the standard API first and
+// falling back covers both without needing separate browser-sniffing.
+// Module-level (not nested in initScreenshotLightbox()) so both the
+// screenshot lightbox's corner-button fallback path and the new
+// #playerFullscreenBtn in the control bar (initPlayerControlbar())
+// share one implementation instead of two copies drifting apart.
+function requestVideoFullscreen() {
+    const featuredVideo = document.getElementById("featuredVideo");
+    if (!featuredVideo) return;
+    if (featuredVideo.requestFullscreen) {
+        featuredVideo.requestFullscreen();
+    } else if (featuredVideo.webkitRequestFullscreen) {
+        featuredVideo.webkitRequestFullscreen();
+    } else if (featuredVideo.webkitEnterFullscreen) {
+        featuredVideo.webkitEnterFullscreen();
+    }
+}
+
 function initScreenshotLightbox() {
     const featuredImg = document.getElementById("featuredImg");
     const featuredVideo = document.getElementById("featuredVideo");
@@ -1096,22 +1202,6 @@ function initScreenshotLightbox() {
     function closeLightbox() {
         lightbox.classList.remove("is-open");
         document.body.style.overflow = "";
-    }
-
-    // Safari (desktop and iOS) doesn't implement the standard
-    // requestFullscreen() on <video>/other elements the same way --
-    // iOS Safari specifically only exposes the older
-    // webkitEnterFullscreen() on the video element itself. Trying the
-    // standard API first and falling back covers both without
-    // needing separate browser-sniffing.
-    function requestVideoFullscreen() {
-        if (featuredVideo.requestFullscreen) {
-            featuredVideo.requestFullscreen();
-        } else if (featuredVideo.webkitRequestFullscreen) {
-            featuredVideo.webkitRequestFullscreen();
-        } else if (featuredVideo.webkitEnterFullscreen) {
-            featuredVideo.webkitEnterFullscreen();
-        }
     }
 
     function handleExpandClick() {
@@ -1268,6 +1358,23 @@ function initFeaturedPlayOverlay() {
     const overlay = document.getElementById("featuredPlayOverlay");
     if (!featuredVideo || !overlay) return;
 
+    const overlayIcon = overlay.querySelector('i');
+    let overlayHideTimer = null;
+
+    function updateOverlayState() {
+        if (featuredVideo.paused) {
+            overlayIcon.className = "fa-solid fa-play";
+            overlay.className = "featured-play-overlay is-play";
+            overlay.style.display = "";
+            clearTimeout(overlayHideTimer);
+        } else {
+            overlayIcon.className = "fa-solid fa-pause";
+            overlay.className = "featured-play-overlay is-pause";
+            overlay.style.display = "none";
+            clearTimeout(overlayHideTimer);
+        }
+    }
+
     function show() { overlay.style.display = ""; }
     function hide() { overlay.style.display = "none"; }
 
@@ -1284,24 +1391,38 @@ function initFeaturedPlayOverlay() {
         }
     }
 
-    // "loadstart" fires whenever a new trailer is loaded into the
-    // element -- whether that's hls.js calling loadSource() or Safari's
-    // native path setting .src directly -- which is exactly when the
-    // overlay should reappear, since a freshly loaded video is always
-    // paused at that point regardless of which trailer thumb was clicked.
-    featuredVideo.addEventListener("loadstart", show);
-    featuredVideo.addEventListener("play", hide);
-    featuredVideo.addEventListener("pause", show);
-    featuredVideo.addEventListener("ended", show);
+    let lastNativeStateChange = 0;
+    featuredVideo.addEventListener("loadstart", updateOverlayState);
+    featuredVideo.addEventListener("play", () => { lastNativeStateChange = Date.now(); updateOverlayState(); });
+    featuredVideo.addEventListener("pause", () => { lastNativeStateChange = Date.now(); updateOverlayState(); });
+    featuredVideo.addEventListener("ended", updateOverlayState);
 
-    overlay.addEventListener("click", () => {
-        featuredVideo.play().catch(() => {});
+    overlay.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (featuredVideo.paused) {
+            featuredVideo.play().catch(() => {});
+        } else {
+            featuredVideo.pause();
+        }
     });
 
-    // Clicking the video canvas directly toggles play ↔ pause
-    featuredVideo.addEventListener("click", (e) => {
+    // Clicking the video canvas directly toggles play/pause.
+    // We bind to pointerdown and preventDefault to completely suppress
+    // Chromium's native click-to-pause behavior, ensuring we only toggle once.
+    featuredVideo.addEventListener("pointerdown", (e) => {
         // Pointer coarse (mobile touch) handles single vs double tap separately below
         if (window.matchMedia("(pointer: coarse)").matches) return;
+        if (e.pointerType !== "mouse") return;
+        
+        // Exclude the bottom 44px where native controls live
+        const rect = featuredVideo.getBoundingClientRect();
+        const NATIVE_CONTROLS_BAR_HEIGHT = 44;
+        if (e.clientY > rect.bottom - NATIVE_CONTROLS_BAR_HEIGHT) return;
+
+        // Prevent native browser behavior (e.g., Chrome double toggle)
+        e.preventDefault();
+        
         togglePlayPause(e);
     });
 
@@ -1356,7 +1477,19 @@ function initFeaturedPlayOverlay() {
                 clearTimeout(tapTimer);
                 tapTimer = setTimeout(() => {
                     lastTapAt = 0;
-                    togglePlayPause(e);
+                    // Mobile Requirement: Tapping the video itself must NOT pause playback natively.
+                    // The tap natively reveals the existing controls, but we also want to show our 
+                    // custom large center PAUSE button temporarily if playing.
+                    if (!featuredVideo.paused) {
+                        overlayIcon.className = "fa-solid fa-pause";
+                        overlay.className = "featured-play-overlay is-pause";
+                        overlay.style.display = "";
+                        
+                        clearTimeout(overlayHideTimer);
+                        overlayHideTimer = setTimeout(() => {
+                            overlay.style.display = "none";
+                        }, 3000);
+                    }
                 }, DOUBLE_TAP_WINDOW_MS);
             }
         });
@@ -1364,6 +1497,189 @@ function initFeaturedPlayOverlay() {
 }
 
 initFeaturedPlayOverlay();
+
+/* ---------------- PLAYER CONTROL BAR (Player-Redesign) ----------------
+   YouTube-style bottom bar layered on top of the existing playback
+   system -- does not replace it. #featuredVideo, the HLS setup in
+   showFeaturedMedia(), the center #featuredPlayOverlay, and the
+   mobile double-tap-seek gesture in initFeaturedPlayOverlay() above
+   are all untouched; this only adds a timeline/time/fullscreen row
+   and auto-hide behavior, and keeps the play button here in sync
+   with the same video element both of those already drive.
+
+   Wired exactly once at script load -- #featuredVideo/#playerControlbar
+   and their children are the same persistent DOM nodes for the page's
+   lifetime (only what showFeaturedMedia() loads into the video
+   changes), matching every other init*() in this file. */
+function initPlayerControlbar() {
+    const shot = document.getElementById("featuredShot");
+    const video = document.getElementById("featuredVideo");
+    const bar = document.getElementById("playerControlbar");
+    const playBtn = document.getElementById("playerPlayBtn");
+    const playIcon = playBtn ? playBtn.querySelector("i") : null;
+    const timeEl = document.getElementById("playerTime");
+    const timeline = document.getElementById("playerTimeline");
+    const buffered = document.getElementById("playerBuffered");
+    const played = document.getElementById("playerPlayed");
+    const handle = document.getElementById("playerHandle");
+    const fullscreenBtn = document.getElementById("playerFullscreenBtn");
+    const loading = document.getElementById("playerLoading");
+    if (!shot || !video || !bar || !playBtn || !timeline) return;
+
+    function fmt(seconds) {
+        if (!isFinite(seconds) || seconds < 0) return "0:00";
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60).toString().padStart(2, "0");
+        return `${m}:${s}`;
+    }
+
+    function updatePlayIcon() {
+        if (!playIcon) return;
+        const playing = !video.paused && !video.ended;
+        playIcon.className = playing ? "fa-solid fa-pause" : "fa-solid fa-play";
+        playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+    }
+
+    function updateTime() {
+        const duration = video.duration || 0;
+        if (timeEl) timeEl.textContent = `${fmt(video.currentTime)} / ${fmt(duration)}`;
+        if (!duration || isScrubbing) return;
+        const pct = Math.min(100, Math.max(0, (video.currentTime / duration) * 100));
+        played.style.width = pct + "%";
+        handle.style.left = pct + "%";
+        timeline.setAttribute("aria-valuenow", Math.round(pct));
+    }
+
+    function updateBuffered() {
+        const duration = video.duration || 0;
+        if (!duration || !video.buffered || video.buffered.length === 0) return;
+        const end = video.buffered.end(video.buffered.length - 1);
+        buffered.style.width = Math.min(100, (end / duration) * 100) + "%";
+    }
+
+    // ---- Play/pause button ----
+    playBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (video.paused) video.play().catch(() => {}); else video.pause();
+    });
+    ["play", "pause", "ended", "loadstart"].forEach(evt => video.addEventListener(evt, updatePlayIcon));
+
+    // ---- Time / progress ----
+    video.addEventListener("timeupdate", updateTime);
+    video.addEventListener("loadedmetadata", () => { updateTime(); updateBuffered(); });
+    video.addEventListener("durationchange", updateTime);
+    video.addEventListener("progress", updateBuffered);
+
+    // ---- Timeline scrub (click + drag), desktop and touch alike.
+    // stopPropagation throughout: the timeline sits as a sibling over
+    // the video, not a video descendant, so it can't natively bubble
+    // into #featuredVideo's own pointerdown/pointerup handlers -- but
+    // it CAN bubble up into #featuredShot's own activity listeners
+    // (which is fine/wanted) and into the document-level quality-menu
+    // closeMenu listener (which would otherwise flash-close an open
+    // quality menu on every seek). Only ever calls play()/pause()
+    // implicitly through scrubbing, never toggles playback state. ----
+    let isScrubbing = false;
+
+    function pctFromEvent(e) {
+        const rect = timeline.getBoundingClientRect();
+        const x = (e.clientX ?? (e.touches && e.touches[0] && e.touches[0].clientX)) - rect.left;
+        return Math.min(1, Math.max(0, x / rect.width));
+    }
+
+    function scrubTo(e) {
+        const duration = video.duration || 0;
+        if (!duration) return;
+        const pct = pctFromEvent(e);
+        played.style.width = (pct * 100) + "%";
+        handle.style.left = (pct * 100) + "%";
+        timeline.setAttribute("aria-valuenow", Math.round(pct * 100));
+        video.currentTime = pct * duration;
+    }
+
+    timeline.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        isScrubbing = true;
+        timeline.classList.add("is-scrubbing");
+        try { timeline.setPointerCapture(e.pointerId); } catch (err) {}
+        scrubTo(e);
+        showControls();
+    });
+    timeline.addEventListener("pointermove", (e) => {
+        if (!isScrubbing) return;
+        e.stopPropagation();
+        scrubTo(e);
+    });
+    ["pointerup", "pointercancel"].forEach(evt => {
+        timeline.addEventListener(evt, (e) => {
+            if (!isScrubbing) return;
+            e.stopPropagation();
+            isScrubbing = false;
+            timeline.classList.remove("is-scrubbing");
+        });
+    });
+    timeline.addEventListener("click", (e) => e.stopPropagation());
+    timeline.addEventListener("keydown", (e) => {
+        const duration = video.duration || 0;
+        if (!duration) return;
+        if (e.key === "ArrowLeft") { video.currentTime = Math.max(0, video.currentTime - 5); showControls(); }
+        else if (e.key === "ArrowRight") { video.currentTime = Math.min(duration, video.currentTime + 5); showControls(); }
+    });
+
+    // ---- Fullscreen ----
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            requestVideoFullscreen();
+        });
+    }
+
+    // ---- Loading indicator: hls.js's own load/decode retries (see
+    // showFeaturedMedia) are separate from this -- purely cosmetic,
+    // keyed off the native media events so it can't get out of sync
+    // with what's actually happening. ----
+    function showLoading() { if (loading) loading.style.display = ""; }
+    function hideLoading() { if (loading) loading.style.display = "none"; }
+    video.addEventListener("waiting", showLoading);
+    video.addEventListener("seeking", showLoading);
+    video.addEventListener("playing", hideLoading);
+    video.addEventListener("canplay", hideLoading);
+    video.addEventListener("pause", hideLoading);
+    video.addEventListener("ended", hideLoading);
+    video.addEventListener("loadstart", hideLoading);
+
+    // ---- Auto-hide: controls fade out ~3s after the last interaction
+    // while the video is actually playing; any interaction, or pausing,
+    // or an open quality menu, brings them straight back. ----
+    let idleTimer = null;
+    const IDLE_MS = 3000;
+
+    function showControls() {
+        shot.classList.remove("is-idle");
+        clearTimeout(idleTimer);
+        const qualityMenu = document.getElementById("featuredQualityMenu");
+        const menuOpen = qualityMenu && qualityMenu.style.display !== "none";
+        if (!video.paused && !video.ended && !isScrubbing && !menuOpen) {
+            idleTimer = setTimeout(() => {
+                const stillMenuOpen = qualityMenu && qualityMenu.style.display !== "none";
+                if (!video.paused && !video.ended && !isScrubbing && !stillMenuOpen) {
+                    shot.classList.add("is-idle");
+                }
+            }, IDLE_MS);
+        }
+    }
+
+    ["mousemove", "pointermove", "touchstart", "click", "keydown"].forEach(evt => {
+        shot.addEventListener(evt, () => { if (video.style.display !== "none") showControls(); }, { passive: true });
+    });
+    video.addEventListener("play", showControls);
+    video.addEventListener("pause", () => { shot.classList.remove("is-idle"); clearTimeout(idleTimer); });
+    video.addEventListener("ended", () => { shot.classList.remove("is-idle"); clearTimeout(idleTimer); });
+
+    updatePlayIcon();
+}
+
+initPlayerControlbar();
 
 /* ---------------- NIMLYX ANALYSIS ----------------
    One premium dashboard, not six independent cards (Sprint 2 spec).
@@ -1376,9 +1692,12 @@ initFeaturedPlayOverlay();
      - community_pulse         -> null if no real signal in the last
                                    100 reviews; positives/concerns
                                    each capped to 5 topics here
-     - spotlight_reviews       -> positive/negative each independently
-                                   null if that game has no reviews in
-                                   that direction
+     - review_preview          -> up to 10 real Steam reviews total
+                                   (see spotlight_reviews.compute_
+                                   review_preview), pre-split into
+                                   .positive/.negative arrays -- each
+                                   independently empty if that game
+                                   has no reviews in that direction
 ------------------------------------------------------------------ */
 
 const NIMLYX_TOPIC_EMOJI = {
@@ -1403,8 +1722,8 @@ function renderNimlyxAnalysis(game) {
     const hasTrajectory = !!game.reputation_trajectory;
     const hasLoved = !!(game.community_pulse && game.community_pulse.positives && game.community_pulse.positives.length);
     const hasMentioned = !!(game.community_pulse && game.community_pulse.concerns && game.community_pulse.concerns.length);
-    const hasPositiveReview = !!(game.spotlight_reviews && game.spotlight_reviews.positive);
-    const hasNegativeReview = !!(game.spotlight_reviews && game.spotlight_reviews.negative);
+    const hasPositiveReview = !!(game.review_preview && game.review_preview.positive && game.review_preview.positive.length);
+    const hasNegativeReview = !!(game.review_preview && game.review_preview.negative && game.review_preview.negative.length);
 
     const hasAnything = hasScore || hasTrajectory || hasLoved || hasMentioned || hasPositiveReview || hasNegativeReview;
 
@@ -1523,10 +1842,10 @@ function renderNimlyxQuote(review, kind, steamReviewsUrl) {
     const voteWord = review.votes_up === 1 ? "player" : "players";
 
     return `
-        <div class="nimlyx-quote nimlyx-quote--${kind}">
+        <div class="nimlyx-quote nimlyx-quote--${kind}" data-sentiment="${kind}">
             <div class="nimlyx-quote__label">
                 <i class="fa-solid ${isPositive ? "fa-thumbs-up" : "fa-thumbs-down"}"></i>
-                Most Helpful ${isPositive ? "Positive" : "Negative"} Review
+                ${isPositive ? "Recommended" : "Not Recommended"}
             </div>
             <div class="nimlyx-quote__body">&ldquo;${escapeHtml(review.quote)}&rdquo;</div>
             <div class="nimlyx-quote__footer">
@@ -1540,23 +1859,157 @@ function renderNimlyxQuote(review, kind, steamReviewsUrl) {
     `;
 }
 
+/* Interleaves the positive/negative arrays for the "All" view so the
+   default list isn't just every positive review followed by every
+   negative one -- alternates sides, then appends whatever's left
+   over on the longer side. Order within each side (Steam's own
+   helpfulness ranking) is preserved either way. */
+function interleaveReviews(positive, negative) {
+    const merged = [];
+    const max = Math.max(positive.length, negative.length);
+    for (let i = 0; i < max; i++) {
+        if (positive[i]) merged.push({ review: positive[i], kind: "positive" });
+        if (negative[i]) merged.push({ review: negative[i], kind: "negative" });
+    }
+    return merged;
+}
+
 function renderNimlyxReviews(game) {
     const reviewsEl = document.getElementById("nimlyxReviews");
     const dividerEl = document.getElementById("nimlyxReviewsDivider");
-    const spotlight = game.spotlight_reviews;
+    const filterEl = document.getElementById("nimlyxReviewFilter");
+    const filterEmptyEl = document.getElementById("nimlyxReviewFilterEmpty");
+    const headingEl = document.getElementById("nimlyxReviewsHeading");
+    const ctaEl = document.getElementById("nimlyxReviewsCta");
+    const preview = game.review_preview;
 
-    const positiveHtml = spotlight ? renderNimlyxQuote(spotlight.positive, "positive", game.steam_reviews_url) : "";
-    const negativeHtml = spotlight ? renderNimlyxQuote(spotlight.negative, "negative", game.steam_reviews_url) : "";
+    const positive = (preview && preview.positive) || [];
+    const negative = (preview && preview.negative) || [];
 
-    if (!positiveHtml && !negativeHtml) {
+    if (!positive.length && !negative.length) {
+        // Clear out any previous game's cards -- reviewsEl.innerHTML
+        // is only ever swapped below, never appended to, but this
+        // guards against stale nodes lingering when a new game
+        // simply has no reviews at all.
+        reviewsEl.innerHTML = "";
         reviewsEl.classList.add("is-hidden");
         dividerEl.classList.add("is-hidden");
+        if (filterEl) filterEl.classList.add("is-hidden");
+        if (filterEmptyEl) filterEmptyEl.classList.add("is-hidden");
+        if (headingEl) headingEl.classList.add("is-hidden");
+        if (ctaEl) ctaEl.classList.add("is-hidden");
         return;
     }
 
-    reviewsEl.innerHTML = positiveHtml + negativeHtml;
-    reviewsEl.classList.remove("is-hidden");
+    // Cache the current game's shaped review data + sentiment counts
+    // on the row element itself so applyNimlyxReviewFilter() (called
+    // both here and from the click handler) can re-render per
+    // sentiment without re-deriving anything or touching `game`
+    // again -- avoids stale-closure bugs when the user switches games
+    // between clicks.
+    reviewsEl.dataset.steamReviewsUrl = game.steam_reviews_url || "";
+    reviewsEl._nimlyxReviewData = { positive, negative };
+
+    if (headingEl) {
+        const total = game.total_reviews;
+        headingEl.textContent = total ? `${total.toLocaleString()} reviews` : "Reviews";
+        headingEl.classList.remove("is-hidden");
+    }
+
+    if (ctaEl && game.steam_reviews_url) {
+        ctaEl.href = game.steam_reviews_url;
+        ctaEl.classList.remove("is-hidden");
+    } else if (ctaEl) {
+        ctaEl.classList.add("is-hidden");
+    }
+
     dividerEl.classList.remove("is-hidden");
+
+    // Sentiment Filter: game.review_preview is already sentiment-split
+    // by the backend and already fully present in `game` -- no
+    // separate fetch, no pagination, nothing to recalculate. Reset to
+    // "All" on every render (new game, or a repeat render of the same
+    // one) so switching games never leaves a stale Positive/Negative
+    // selection, and never leaves the previous game's cards behind.
+    if (filterEl) filterEl.classList.remove("is-hidden");
+    applyNimlyxReviewFilter("all");
+}
+
+/* ---------------- REVIEW SENTIMENT FILTER ----------------
+   Toggles which of the two already-rendered .nimlyx-quote cards
+   (#nimlyxReviews, built by renderNimlyxReviews() above) are visible,
+   using the existing .is-hidden convention already defined for them
+   in search.css. No new sentiment classification and no separate
+   review fetch -- "positive"/"negative" here are exactly
+   game.review_preview.positive/.negative, unchanged.
+
+   Click handling is wired exactly ONCE at script load, same pattern
+   as initMediaGlow()/initScreenshotLightbox() above: #nimlyxReviewFilter
+   and its three buttons are the same persistent DOM nodes for the
+   page's lifetime (renderNimlyxReviews() only ever swaps what's
+   inside #nimlyxReviews, never rebuilds the filter itself), so this
+   can't produce duplicate listeners/duplicate handling across repeat
+   renders. */
+function initNimlyxReviewFilter() {
+    const filterEl = document.getElementById("nimlyxReviewFilter");
+    if (!filterEl) return;
+
+    filterEl.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-sentiment]");
+        if (!btn) return;
+        applyNimlyxReviewFilter(btn.dataset.sentiment);
+    });
+}
+
+initNimlyxReviewFilter();
+
+function applyNimlyxReviewFilter(sentiment) {
+    const filterEl = document.getElementById("nimlyxReviewFilter");
+    const emptyEl = document.getElementById("nimlyxReviewFilterEmpty");
+    const reviewsEl = document.getElementById("nimlyxReviews");
+    if (!filterEl || !reviewsEl) return;
+
+    // Re-render (not toggle) the up-to-10 cards for the selected
+    // sentiment from the data cached on #nimlyxReviews by
+    // renderNimlyxReviews() -- data.positive/.negative are the same
+    // arrays every time, so switching tabs never appends onto
+    // whatever was there before and never leaves duplicate/stale
+    // nodes behind (see task note on avoiding stale DOM on filter
+    // switches and on game-to-game navigation).
+    const data = reviewsEl._nimlyxReviewData || { positive: [], negative: [] };
+    const steamReviewsUrl = reviewsEl.dataset.steamReviewsUrl || "";
+
+    let cards;
+    if (sentiment === "positive") {
+        cards = data.positive.map(r => ({ review: r, kind: "positive" }));
+    } else if (sentiment === "negative") {
+        cards = data.negative.map(r => ({ review: r, kind: "negative" }));
+    } else {
+        cards = interleaveReviews(data.positive, data.negative);
+    }
+
+    reviewsEl.innerHTML = cards.map(c => renderNimlyxQuote(c.review, c.kind, steamReviewsUrl)).join("");
+    reviewsEl.classList.toggle("is-hidden", cards.length === 0);
+
+    // Empty state: only when the selected sentiment genuinely has no
+    // reviews in this game's preview (e.g. only positive reviews
+    // exist and "Negative" is selected) -- "All" can never hit this,
+    // since renderNimlyxReviews() already hides the whole section
+    // (filter included) when the preview is empty on both sides.
+    if (emptyEl) {
+        if (cards.length === 0) {
+            emptyEl.textContent = `No ${sentiment} reviews found.`;
+            emptyEl.classList.remove("is-hidden");
+        } else {
+            emptyEl.classList.add("is-hidden");
+        }
+    }
+
+    filterEl.querySelectorAll("[data-sentiment]").forEach(btn => {
+        const active = btn.dataset.sentiment === sentiment;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+    });
 }
 
 /* ---------------- PURCHASE OPTIONS ----------------

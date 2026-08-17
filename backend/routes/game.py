@@ -11,7 +11,7 @@ from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
 from services.analysis.community_pulse import compute_pulse
 from services.analysis.tag_honesty import compute_tag_honesty
-from services.analysis.spotlight_reviews import compute_spotlight_reviews
+from services.analysis.spotlight_reviews import compute_review_preview
 from services.game.related_games import get_developer_games, get_publisher_games
 from services.game.requirements import parse_requirements
 from services.hardware.compatibility import evaluate_compatibility, HardwareProfile, serialize_compatibility_result
@@ -497,10 +497,10 @@ def build_game_detail(app_id, cc):
     with ThreadPoolExecutor(max_workers=5) as executor:
         summary_trajectory_future = executor.submit(_fetch_review_summary_and_trajectory)
         pulse_honesty_future = executor.submit(_fetch_pulse_and_honesty)
-        # Spotlight's own 2 calls (positive/negative helpful review)
-        # are genuinely independent of each other too -- see
+        # Review preview's own 2 calls (positive/negative helpful
+        # reviews) are genuinely independent of each other too -- see
         # spotlight_reviews.py's own internal parallelization below.
-        spotlight_future = executor.submit(compute_spotlight_reviews, app_id, cc)
+        review_preview_future = executor.submit(compute_review_preview, app_id, cc)
         dev_future = executor.submit(get_developer_games, developers, app_id, cc)
         pub_future = (
             executor.submit(get_publisher_games, publishers, app_id, cc)
@@ -509,7 +509,7 @@ def build_game_detail(app_id, cc):
 
         review_summary, reputation_trajectory = summary_trajectory_future.result()
         community_pulse, tag_honesty = pulse_honesty_future.result()
-        spotlight_reviews = spotlight_future.result()
+        review_preview = review_preview_future.result()
         developer_games = dev_future.result()
         publisher_games = pub_future.result() if pub_future else []
 
@@ -585,7 +585,7 @@ def build_game_detail(app_id, cc):
         "reputation_trajectory": reputation_trajectory,
         "community_pulse": community_pulse,
         "tag_honesty": tag_honesty,
-        "spotlight_reviews": spotlight_reviews,
+        "review_preview": review_preview,
         "metacritic": raw.get("metacritic", {}).get("score"),
         "short_description": raw.get("short_description"),
         "platforms": raw.get("platforms", {}),

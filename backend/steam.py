@@ -1142,6 +1142,80 @@ def get_top_helpful_review(app_id, cc="US", voted_up=True, num_reviews=20):
         return None
 
 
+def get_helpful_reviews(app_id, cc="US", voted_up=True, limit=5, num_reviews=20):
+    """Fetches up to `limit` of the most-helpful reviews for a game in
+    one sentiment direction (positive or negative) -- the multi-review
+    sibling of get_top_helpful_review() above, built for the game
+    page's 10-review preview (see services/analysis/spotlight_reviews.
+    compute_review_preview) rather than a single spotlight quote.
+
+    Same request shape and same Steam helpfulness ordering as
+    get_top_helpful_review() (filter=all, review_type=positive/
+    negative -- Steam's own helpfulness sort, not chronological, no
+    client-side re-ranking). The difference is purely how many
+    non-empty reviews are collected out of that same response before
+    returning, so this shares get_top_helpful_review()'s cache
+    entries only when `limit`/`num_reviews` also match -- otherwise
+    it's cached under its own key at the same 10-minute TTL (a
+    game's most-helpful reviews don't meaningfully change minute to
+    minute, same reasoning as the rest of this file).
+
+    Returns a list (never None) of dicts, each with the raw review
+    text, Steam's own helpful-vote count (votes_up), and the review's
+    timestamp -- shortest possible list is [], meaning this game has
+    no usable reviews in that direction. Callers must treat an empty
+    list as "nothing to show here", never pad it with another game's
+    review or a placeholder.
+    """
+    if not app_id:
+        return []
+
+    review_type = "positive" if voted_up else "negative"
+
+    cache_key = ("helpful_reviews", app_id, cc, review_type, limit, num_reviews)
+    cached = _cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
+
+    try:
+        url = (
+            f"https://store.steampowered.com/appreviews/{app_id}"
+            f"?json=1&filter=all&language=english&cc={cc}"
+            f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
+            f"&review_type={review_type}"
+        )
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if not data.get("success"):
+            return []
+
+        reviews = data.get("reviews", [])
+        # Same helpfulness order as get_top_helpful_review() -- walk
+        # it only to skip empty-body reviews and stop once we have
+        # `limit` of them, never to re-sort it.
+        results = []
+        for review in reviews:
+            text = (review.get("review") or "").strip()
+            if not text:
+                continue
+
+            results.append({
+                "text": text,
+                "votes_up": review.get("votes_up", 0),
+                "timestamp_created": review.get("timestamp_created"),
+            })
+            if len(results) >= limit:
+                break
+
+        _cache_set(cache_key, results)
+        return results
+
+    except (requests.exceptions.RequestException, ValueError):
+        return []
+
+
 def _fetch_packagedetails_payload(package_id, cc="US"):
     """Raw, cached fetch of Steam's packagedetails endpoint for one
     package ("sub") id. Shared by resolve_package_primary_app() (which
