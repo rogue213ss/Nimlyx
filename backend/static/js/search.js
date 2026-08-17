@@ -867,6 +867,13 @@ function renderMedia(game) {
         ? mediaItems.findIndex(item => item.type === "video" && item.movie === featuredMovie)
         : 0;
 
+    // Trailer Auto-Next: tracks which mediaItems[] slot is currently
+    // featured so handleTrailerEnded() (wired below) always knows
+    // where to advance FROM -- kept in sync by every path that changes
+    // the featured item (initial load, manual thumb click, and
+    // auto-next itself), never recomputed by searching the DOM.
+    let currentMediaIndex = initialIndex;
+
     // Nimlyx Tradition: Steam's movies[] no longer ships flat mp4/webm
     // files (see _build_movie_entry in routes/game.py) -- only DASH and
     // HLS adaptive-streaming manifests. hls.js plays hls_url via Media
@@ -1110,6 +1117,7 @@ function renderMedia(game) {
         const item = mediaItems[index];
 
         showFeaturedMedia(item);
+        currentMediaIndex = index;
         if (item.type === "image") {
             featuredImg.style.animation = "none";
             featuredImg.offsetHeight;
@@ -1119,6 +1127,55 @@ function renderMedia(game) {
         freshThumbStrip.querySelectorAll(".thumb").forEach(t => t.classList.remove("is-active"));
         btn.classList.add("is-active");
     });
+
+    // Trailer Auto-Next: reuses showFeaturedMedia() (the same function
+    // manual thumb clicks already use) -- this only ever figures out
+    // WHICH item comes next and hands it off, never touches HLS/quality
+    // logic itself. mediaItems[] holds every trailer first, in their
+    // existing order, followed by screenshots (see its construction
+    // above), so "next" is simply currentMediaIndex + 1 as long as
+    // that slot exists AND is still a trailer -- one trailer, or
+    // reaching the last one, naturally falls through to nothing (the
+    // video's normal ended state), never wrapping to trailer 1 and
+    // never spilling over into the screenshots that follow.
+    function setActiveThumbByIndex(index) {
+        freshThumbStrip.querySelectorAll(".thumb").forEach(t => t.classList.remove("is-active"));
+        const target = freshThumbStrip.querySelector(`.thumb[data-index="${index}"]`);
+        if (target) target.classList.add("is-active");
+    }
+
+    function handleTrailerEnded() {
+        const nextIndex = currentMediaIndex + 1;
+        const nextItem = mediaItems[nextIndex];
+        if (!nextItem || nextItem.type !== "video") return;
+
+        currentMediaIndex = nextIndex;
+        showFeaturedMedia(nextItem);
+        setActiveThumbByIndex(nextIndex);
+
+        // The trailer that just ended was actively playing -- carry
+        // that into the next one automatically (task's autoplay
+        // requirement), rather than leaving it on the paused poster
+        // frame the way a fresh manual thumb click does. Browsers can
+        // still reject this per their own autoplay policy; if so,
+        // leave the player paused on the poster and let the existing
+        // play control (already wired to featuredVideo.play()
+        // elsewhere in this file) resume it -- never an uncaught
+        // rejection.
+        const playPromise = featuredVideo.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {});
+        }
+    }
+
+    // Property assignment (not addEventListener), same reasoning as
+    // featuredVideo.onerror elsewhere in this file: renderMedia() runs
+    // once per game load, so this line also runs once per game load --
+    // assigning to .onended replaces any previous game's handler
+    // outright instead of stacking a second one underneath it. Exactly
+    // one auto-next handler ever exists at a time, regardless of how
+    // many times the user switches games or trailers.
+    featuredVideo.onended = handleTrailerEnded;
 
     const freshStripPrev = document.getElementById("stripPrev").cloneNode(true);
     document.getElementById("stripPrev").replaceWith(freshStripPrev);
