@@ -61,6 +61,7 @@ def _enrich_one(scraped_game, cc):
     # new_release / special) — providers don't use it yet, but it's
     # cheap to carry forward and may become a confidence signal later.
     raw["sources"] = scraped_game.get("sources", [])
+    raw["scraped_image"] = scraped_game.get("image")
 
     return raw
 

@@ -13,7 +13,25 @@ from concurrent.futures import ThreadPoolExecutor
 import requests
 from bs4 import BeautifulSoup
 
+from services.analysis.wilson_score import compute_nimlyx_score
+
 HARDWARE_KEYWORDS = ["steam deck", "steam controller", "steam machine", "steam link"]
+
+# Steam's store endpoints frequently 403 requests with no browser-like
+# User-Agent (especially from cloud/datacenter IPs, e.g. Render).  A
+# bare `_session.get(url)` with no headers was silently turning into a
+# RequestException on every homepage load, which routes/pages.py's
+# top-level except catches and renders as an all-sections-empty
+# homepage. Route every Steam call through this shared session so
+# they all send a normal browser UA instead of Python's default.
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+})
 
 
 def _is_single_app_id(app_id):
@@ -277,7 +295,7 @@ def fetch_browse_category(category, count=25, cc="US"):
         f"?query=&start=0&count={count}&filter={category}&category1=998&cc={cc}&l=english"
     )
 
-    response = requests.get(url, timeout=10)
+    response = _session.get(url, timeout=10)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -384,7 +402,7 @@ def _scrape_search_results(params, cc):
     searched for."""
     url = "https://store.steampowered.com/search/results/"
 
-    response = requests.get(url, params=params, timeout=10)
+    response = _session.get(url, params=params, timeout=10)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -718,7 +736,7 @@ def fetch_authoritative_price(app_id, cc="US"):
             # Even small query parameter differences create a different
             # Steam CDN cache key and may return stale pricing.
             url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={region}"
-            response = requests.get(url, timeout=8)
+            response = _session.get(url, timeout=8)
             response.raise_for_status()
             data = response.json()
             entry = data.get(str(app_id))
@@ -853,7 +871,7 @@ def fetch_new_release_candidates(count=40, cc="US"):
         f"&category1=998&cc={cc}&l=english"
     )
 
-    response = requests.get(url, timeout=10)
+    response = _session.get(url, timeout=10)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -942,6 +960,21 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
         genres_data = raw.get("genres") or []
         genres = [g.get("description") for g in genres_data]
 
+        # Same appdetails-adjacent enrichment as the hero builder --
+        # this function already makes one live Steam call per
+        # candidate (for the release date) inside a background
+        # rebuild thread (see _rebuild_new_releases_cache in
+        # routes/pages.py), so one more call here for review stats
+        # costs nothing extra on the request path. See
+        # services/hero/candidate.py for the matching hero/Picks path.
+        review_summary = get_review_summary(candidate["id"], cc)
+        nimlyx_score = None
+        if review_summary:
+            nimlyx_score = compute_nimlyx_score(
+                total_positive=review_summary["total_positive"],
+                total_reviews=review_summary["total_reviews"],
+            )
+
         verified.append({
             "id": candidate["id"],
             "name": raw.get("name") or candidate["name"],
@@ -950,6 +983,7 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
             "recency_label": recency_label,
             "price": price,
             "primary_genre": genres[0] if genres else None,
+            "nimlyx_score": nimlyx_score,
         })
 
     verified.sort(key=lambda g: g["release_date"], reverse=True)
@@ -1004,7 +1038,7 @@ def get_review_summary(app_id, cc="US", day_range=None):
         if day_range:
             url += f"&day_range={day_range}"
 
-        response = requests.get(url, timeout=8)
+        response = _session.get(url, timeout=8)
         response.raise_for_status()
         data = response.json()
 
@@ -1068,7 +1102,7 @@ def get_review_texts(app_id, cc="US", num_reviews=100):
             f"?json=1&filter=recent&language=english&cc={cc}"
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
         )
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1125,7 +1159,7 @@ def get_top_helpful_review(app_id, cc="US", voted_up=True, num_reviews=20):
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
             f"&review_type={review_type}"
         )
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1197,7 +1231,7 @@ def get_helpful_reviews(app_id, cc="US", voted_up=True, limit=5, num_reviews=20)
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
             f"&review_type={review_type}"
         )
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1251,7 +1285,7 @@ def _fetch_packagedetails_payload(package_id, cc="US"):
 
     try:
         url = "https://store.steampowered.com/api/packagedetails/"
-        response = requests.get(url, params={"packageids": package_id, "cc": cc, "l": "english"}, timeout=10)
+        response = _session.get(url, params={"packageids": package_id, "cc": cc, "l": "english"}, timeout=10)
         response.raise_for_status()
         payload = response.json().get(package_id, {})
     except (requests.exceptions.RequestException, ValueError):
@@ -1512,7 +1546,7 @@ def get_appdetails(app_id, cc):
 
     url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
     try:
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
     except (requests.exceptions.RequestException, ValueError):
@@ -1608,11 +1642,8 @@ def fetch_homepage_row(category_id, cc="US", seen_ids=None):
                 app_id = g.get("id")
                 g["final_price"] = g.get("final_price") or "0"
                 # A real, Steam-scraped image (guaranteed to exist --
-                # fetch_browse_category already skips any row without
-                # one) beats a guessed CDN path. default_header_image()
-                # only fills in when scraping genuinely came up empty.
-                g["header_default"] = g.get("image") or default_header_image(app_id)
-                g["image_candidates"] = build_image_candidates(app_id)
+                g["header_default"] = default_header_image(app_id)
+                g["image_candidates"] = build_image_candidates(app_id, fallback_image=g.get("image"))
             return [to_discover_card(g) for g in paid_specials]
 
         elif category_id == "action":
@@ -1632,8 +1663,8 @@ def fetch_homepage_row(category_id, cc="US", seen_ids=None):
                 # Fallback prices to scraped values
                 g["final_price"] = g.get("final_price") or "0"
                 g["discount_percent"] = g.get("discount_percent") or 0
-                g["header_default"] = g.get("image") or default_header_image(g.get("id"))
-                g["image_candidates"] = build_image_candidates(g.get("id"))
+                g["header_default"] = default_header_image(g.get("id"))
+                g["image_candidates"] = build_image_candidates(g.get("id"), fallback_image=g.get("image"))
                 filtered_action.append(g)
             return [to_discover_card(g) for g in filtered_action]
         else:

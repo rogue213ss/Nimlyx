@@ -176,4 +176,31 @@ if (typeof window.searchGame !== "function") {
             suggestionsBox.appendChild(item);
         });
     }
+
+    // ------------------------------------------------------------
+    // REVEAL — wires the shared .reveal entrance-motion utility
+    // (see static/css/style.css) to every top-level homepage
+    // section. Reused as-is by home-rows.js when lazy feed rows
+    // (Biggest Deals, Action) get injected later.
+    // ------------------------------------------------------------
+    function initReveal(root) {
+        const targets = (root || document).querySelectorAll(".reveal:not(.in-view)");
+        if (!targets.length) return;
+        if (!("IntersectionObserver" in window)) {
+            targets.forEach(el => el.classList.add("in-view"));
+            return;
+        }
+        const io = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("in-view");
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { rootMargin: "0px 0px -60px 0px", threshold: 0.1 });
+        targets.forEach(el => io.observe(el));
+    }
+
+    document.addEventListener("DOMContentLoaded", () => initReveal(document));
+    window.NimlyxReveal = { init: initReveal };
 })();

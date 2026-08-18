@@ -34,6 +34,16 @@ for anything rendering more than one card.
 import time
 import requests
 
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+})
+
+
 STEAM_APPDETAILS_URL = "https://store.steampowered.com/api/appdetails"
 STEAM_STORESEARCH_URL = "https://store.steampowered.com/api/storesearch/"
 STEAM_CDN = "https://cdn.akamai.steamstatic.com/steam/apps"
@@ -80,7 +90,7 @@ def _asset_exists(url, timeout=3):
         return False
 
 
-def build_image_candidates(app_id, orientation="landscape"):
+def build_image_candidates(app_id, orientation="landscape", fallback_image=None):
     """Cheap, UNVERIFIED higher-resolution candidate URLs, built purely
     from Steam's CDN naming convention -- zero HTTP calls made here.
 
@@ -107,18 +117,29 @@ def build_image_candidates(app_id, orientation="landscape"):
     library_600x900.jpg (a real 2:3 portrait asset) first instead."""
     if not app_id:
         return []
+        
+    header = default_header_image(app_id)
+    
     landscape_order = [
         f"{STEAM_LIBRARY_CDN}/{app_id}/library_hero.jpg",
         f"{STEAM_LIBRARY_CDN}/{app_id}/library_600x900.jpg",
         f"{STEAM_CDN}/{app_id}/capsule_616x353.jpg",
+        header,
     ]
     if orientation == "portrait":
-        return [
+        candidates = [
             f"{STEAM_LIBRARY_CDN}/{app_id}/library_600x900.jpg",
             f"{STEAM_CDN}/{app_id}/capsule_616x353.jpg",
             f"{STEAM_LIBRARY_CDN}/{app_id}/library_hero.jpg",
+            header,
         ]
-    return landscape_order
+    else:
+        candidates = landscape_order
+
+    if fallback_image:
+        candidates.append(fallback_image)
+        
+    return candidates
 
 
 def fetch_app_artwork(app_id, verify_library_hero=False):
@@ -141,7 +162,7 @@ def fetch_app_artwork(app_id, verify_library_hero=False):
         return None
 
     try:
-        response = requests.get(
+        response = _session.get(
             STEAM_APPDETAILS_URL,
             params={"appids": app_id, "l": "english"},
             timeout=10,
@@ -225,7 +246,7 @@ def get_artwork_by_name(game_name, use_case="discover", verify_library_hero=Fals
     already makes, so this is a drop-in for anywhere you only have a
     game name, not an app_id, on hand."""
     try:
-        response = requests.get(
+        response = _session.get(
             STEAM_STORESEARCH_URL,
             params={"term": game_name, "l": "english", "cc": "US"},
             timeout=10,

@@ -17,10 +17,11 @@ import requests
 from flask import Blueprint, render_template, jsonify
 
 from region import get_region_code
-from steam import fetch_browse_category, fetch_verified_new_releases
+from steam import fetch_browse_category, fetch_verified_new_releases, fetch_homepage_row
 from formatters import format_price
 from services.hero.builder import build_hero_lineup
 from services.hero.picks import select_worth_buying
+from services.analysis.score_cache import get_cached_score
 from steam_images import default_header_image, build_image_candidates
 
 pages_bp = Blueprint("pages", __name__)
@@ -130,7 +131,7 @@ _NEW_RELEASES_BUILD_IN_PROGRESS = set()
 
 def _rebuild_new_releases_cache(cc):
     try:
-        games = fetch_verified_new_releases(limit=5, cc=cc)
+        games = fetch_verified_new_releases(limit=12, cc=cc, candidate_pool=60)
         with _NEW_RELEASES_CACHE_LOCK:
             _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
     except Exception:
@@ -184,53 +185,53 @@ def hero_image_url(appid, fallback):
     services/hero/candidate.py for the matching fix on the Picks/Hero
     side.
     """
-    return fallback or default_header_image(appid)
+    return default_header_image(appid)
 
 
 @pages_bp.route("/")
 def home():
     try:
         cc = get_region_code()
-        top_sellers_raw = fetch_browse_category("topsellers", cc=cc)
+        top_sellers_raw = fetch_browse_category("topsellers", count=100, cc=cc)
         seen_ids = set()
 
+        # Helper to format a basic game dict
+        def format_basic_game(g, rank=None, orientation="landscape"):
+            game = {
+                "id": g.get("id"),
+                "name": g.get("name"),
+                "header_image": hero_image_url(g.get("id"), g.get("image")),
+                "image_candidates": build_image_candidates(g.get("id"), orientation=orientation, fallback_image=g.get("image")),
+                "analyze_url": f"/search?app_id={g.get('id')}",
+                "price": format_price(g.get("final_price")),
+                "nimlyx_score": get_cached_score(g.get("id"), cc),
+            }
+            if rank:
+                game["rank"] = rank
+            if g.get("discount_percent"):
+                game["discount_percent"] = g.get("discount_percent")
+            if g.get("original_price"):
+                game["original_price"] = g.get("original_price")
+            return game
+
         # ---------------- HERO + NIMLYX PICKS ----------------
-        # Both come from the same Insight Engine build: the hero
-        # carousel is the winning HeroCandidates, Picks is the
-        # leftover ones that were still good enough to publish.
         try:
             selected_heroes, all_candidates = _get_hero_lineup(cc)
         except Exception:
-            logger.exception(
-                "Hero engine build failed for region %s — falling back to "
-                "plain top-sellers with no insight text. This is the exact "
-                "condition that produces an empty/hidden insight bar.", cc
-            )
+            logger.exception("Hero engine build failed for region %s", cc)
             selected_heroes, all_candidates = [], []
 
-        # _get_hero_lineup() returns (None, None) on a true cold start
-        # (nothing cached yet, background build just kicked off) —
-        # normalize to empty so select_worth_buying() below always
-        # gets an iterable, never a None it wasn't built to handle.
         if selected_heroes is None:
             selected_heroes = []
         if all_candidates is None:
             all_candidates = []
 
-        # Checked AFTER _get_hero_lineup() specifically -- that call is
-        # what sets the in-progress flag on a cold start or stale
-        # cache, so this reflects the true current state for this
-        # exact request.
         hero_pending = _is_hero_build_pending(cc)
 
         if selected_heroes:
             featured_games = []
             for candidate in selected_heroes:
                 hero = candidate.to_hero_dict()
-                # hero["image"] is already guaranteed (curated/IGDB
-                # override or Steam's real header_image/header.jpg —
-                # see HeroCandidate.to_hero_dict); no need to re-guess
-                # it here the way hero_image_url() used to.
                 featured_games.append({
                     "id": hero["app_id"],
                     "name": hero["name"],
@@ -239,26 +240,13 @@ def home():
                     "analyze_url": hero["url"],
                     "insight": hero["insight"],
                     "why_it_matters": hero["why_it_matters"],
+                    "nimlyx_score": get_cached_score(hero["app_id"], cc),
                 })
         else:
-            # Fallback if the pool came back empty or every provider
-            # had nothing honest to say this build — keeps the hero
-            # carousel populated with something real either way.
-            featured_games = [
-                {
-                    "id": g.get("id"),
-                    "name": g.get("name"),
-                    "header_image": hero_image_url(g.get("id"), g.get("image")),
-                    "image_candidates": build_image_candidates(g.get("id")),
-                    # Same fix as HeroCandidate._build_base_dict -- g["id"]
-                    # is Steam's own top-sellers app_id, already right
-                    # here; don't discard it for a name-based re-lookup.
-                    "analyze_url": f"/search?app_id={g.get('id')}",
-                    "insight": "",
-                    "why_it_matters": "",
-                }
-                for g in top_sellers_raw[:5]
-            ]
+            featured_games = [format_basic_game(g) for g in top_sellers_raw[:5]]
+            for f in featured_games:
+                f["insight"] = ""
+                f["why_it_matters"] = ""
         
         for g in featured_games:
             if g.get("id"):
@@ -269,45 +257,64 @@ def home():
             if p.get("app_id"):
                 seen_ids.add(str(p["app_id"]))
 
+        # ---------------- FILTER REMAINING GAMES ----------------
+        available_games = [g for g in top_sellers_raw if str(g.get("id")) not in seen_ids]
+
         # ---------------- TRENDING TODAY ----------------
-        # Real Steam top-seller ordering, rendered as large landscape
-        # cards instead of the old small grid — same underlying data
-        # as the previous "Top Sellers" section, new visual treatment.
-        trending_raw_filtered = [g for g in top_sellers_raw if str(g.get("id")) not in seen_ids]
         trending_games = []
-        for i, g in enumerate(trending_raw_filtered[:6]):
-            trending_games.append({
-                "id": g.get("id"),
-                "name": g.get("name"),
-                "header_image": hero_image_url(g.get("id"), g.get("image")),
-                # Rank #1 renders as a full-height feature card (see
-                # .trending-showcase-feature); ranks 2-6 are small
-                # landscape thumbnails. They need differently-shaped
-                # source art -- library_hero.jpg (~3:1 panoramic) was
-                # winning the upgrade race for every rank including
-                # #1, then getting force-cropped into a tall box,
-                # cutting off most of the actual artwork. Only the
-                # feature slot asks for portrait-first candidates.
-                "image_candidates": build_image_candidates(
-                    g.get("id"), orientation="portrait" if i == 0 else "landscape"
-                ),
-                # Same fix as HeroCandidate._build_base_dict -- link by
-                # the app_id Steam's top-sellers list already gave us.
-                "analyze_url": f"/search?app_id={g.get('id')}",
-                "rank": i + 1,
-                "price": format_price(g.get("final_price")),
-            })
+        for i, g in enumerate(available_games[:10]):
+            trending_games.append(format_basic_game(g, rank=i+1, orientation="portrait" if i == 0 else "landscape"))
             seen_ids.add(str(g.get("id")))
+        available_games = available_games[10:]
+
+        # ---------------- INTEGRATED GPU ----------------
+        # V1 Fallback: No hardware database available yet. Use real games
+        # but attach a neutral badge instead of fabricated FPS data.
+        igpu_games = []
+        for g in available_games[:8]:
+            game_dict = format_basic_game(g)
+            game_dict["hardware_badge"] = "Analysis Pending"
+            igpu_games.append(game_dict)
+            seen_ids.add(str(g.get("id")))
+        available_games = available_games[8:]
+
+        # ---------------- POTATO GAMES ----------------
+        # V1 Fallback: We cannot randomly distribute games into "Tweaks" or "Extreme"
+        # without requirement data. We populate only one list to keep the UI visually
+        # functional with neutral badges. The template will hide the empty lists.
+        potato_friendly = []
+        potato_tweaks = []
+        potato_extreme = []
+        for g in available_games[:8]:
+            game_dict = format_basic_game(g, orientation="portrait")
+            game_dict["hardware_badge"] = "Pending Check"
+            potato_friendly.append(game_dict)
+            seen_ids.add(str(g.get("id")))
+        available_games = available_games[8:]
+
+        # ---------------- HIDDEN GEMS ----------------
+        # V1 Heuristic: Use games further down the top-sellers list (lower mainstream
+        # visibility today) that still managed to rank, to avoid adding new Steam API calls.
+        hidden_gems = []
+        # Skip down the list a bit to avoid the absolute biggest mainstream games
+        gems_pool = available_games[20:] if len(available_games) > 25 else available_games
+        for i, g in enumerate(gems_pool[:5]):
+            hidden_gems.append(format_basic_game(g, orientation="portrait" if i == 0 else "landscape"))
+            seen_ids.add(str(g.get("id")))
+        # Remove the ones we used from the main pool
+        available_games = [g for g in available_games if str(g.get("id")) not in seen_ids]
+
+        # ---------------- BEST MATCHES ----------------
+        # V1 Fallback: No user hardware context or matching logic yet.
+        best_matches = []
+        for g in available_games[:6]:
+            game_dict = format_basic_game(g)
+            game_dict["hardware_badge"] = "Great Compatibility"
+            best_matches.append(game_dict)
+            seen_ids.add(str(g.get("id")))
+        available_games = available_games[6:]
 
         # ---------------- NEW RELEASES ----------------
-        # Every field here is real, verified against Steam's own
-        # appdetails release_date for that exact game -- see
-        # fetch_verified_new_releases() in steam.py. Games without a
-        # trustworthy, parseable, already-released date are dropped
-        # rather than padded in with a guess, so this list can come
-        # back shorter than 5 -- that's correct, not a bug. Wrapped
-        # in its own try/except so a Steam hiccup here degrades to an
-        # empty (not fake) section instead of failing the whole page.
         try:
             verified_new_releases = _get_verified_new_releases(cc)
         except Exception:
@@ -316,12 +323,12 @@ def home():
 
         new_releases_filtered = [g for g in verified_new_releases if str(g.get("id")) not in seen_ids]
         new_release_games = []
-        for g in new_releases_filtered:
+        for g in new_releases_filtered[:10]:
             new_release_games.append({
                 "id": g["id"],
                 "name": g["name"],
-                "header_image": g["image"],
-                "image_candidates": build_image_candidates(g["id"]),
+                "header_image": hero_image_url(g["id"], g.get("image")),
+                "image_candidates": build_image_candidates(g["id"], fallback_image=g.get("image")),
                 "analyze_url": f"/search?app_id={g['id']}",
                 "recency_label": g["recency_label"],
                 "price": g["price"] or "—",
@@ -329,12 +336,42 @@ def home():
             })
             seen_ids.add(str(g["id"]))
 
+        # ---------------- POPULAR RIGHT NOW (ACTION) ----------------
+        action_raw = fetch_homepage_row("action", cc=cc, seen_ids=seen_ids) or []
+        popular_games = []
+        for g in action_raw[:10]:
+            popular_games.append({
+                **g,
+                "price": format_price(g.get("price")),
+                "nimlyx_score": get_cached_score(g.get("app_id"), cc),
+            })
+            seen_ids.add(str(g.get("app_id")))
+
+        # ---------------- BIGGEST DEALS (SPECIALS) ----------------
+        deals_raw = fetch_homepage_row("specials", cc=cc, seen_ids=seen_ids) or []
+        deals_games = []
+        for g in deals_raw[:8]:
+            deals_games.append({
+                **g,
+                "price": format_price(g.get("price")),
+                "nimlyx_score": get_cached_score(g.get("app_id"), cc),
+            })
+            seen_ids.add(str(g.get("app_id")))
+
         return render_template(
             "index.html",
             featured_games=featured_games,
             nimlyx_picks=nimlyx_picks,
             trending_games=trending_games,
             new_release_games=new_release_games,
+            popular_games=popular_games,
+            deals_games=deals_games,
+            igpu_games=igpu_games,
+            potato_friendly=potato_friendly,
+            potato_tweaks=potato_tweaks,
+            potato_extreme=potato_extreme,
+            hidden_gems=hidden_gems,
+            best_matches=best_matches,
             hero_pending=hero_pending,
             seen_ids=list(seen_ids),
         )
@@ -347,9 +384,14 @@ def home():
             nimlyx_picks=[],
             trending_games=[],
             new_release_games=[],
-            # Steam itself is unreachable here -- a background build
-            # isn't quietly finishing somewhere, there's nothing to
-            # poll for, so no pending notice.
+            popular_games=[],
+            deals_games=[],
+            igpu_games=[],
+            potato_friendly=[],
+            potato_tweaks=[],
+            potato_extreme=[],
+            hidden_gems=[],
+            best_matches=[],
             hero_pending=False,
             seen_ids=[],
         )

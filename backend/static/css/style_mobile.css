@@ -120,6 +120,42 @@
 }
 
 /* ================================================================
+   HOMEPAGE HERO (v3 redesign) — mobile composition, not just a
+   squashed desktop layout (spec section 19). Height shrinks in two
+   steps, content keeps its own comfortable padding instead of
+   inheriting .home-container's desktop gutter untouched, and the
+   button row stacks full-width once two side-by-side buttons would
+   get cramped.
+   ================================================================ */
+@media (max-width:700px){
+  .home-hero{ height:clamp(460px, 92vw, 560px); }
+  .home-hero-content{ max-width:100%; padding:28px 0 34px; justify-content:flex-end; }
+  .home-hero-overlay{
+    background:
+      linear-gradient(180deg,
+        rgba(6,6,8,0.55) 0%,
+        rgba(6,6,8,0.86) 46%,
+        rgba(6,6,8,0.98) 68%,
+        rgba(6,6,8,1) 100%);
+  }
+  .home-hero-title{ font-size:1.6rem; max-width:100%; }
+  .home-hero-desc{ font-size:.88rem; max-width:100%; }
+  .home-hero-meta{ margin-bottom:16px; }
+  .home-hero-actions{ flex-direction:column; align-items:stretch; gap:10px; }
+  .home-hero-cta, .home-hero-cta-secondary{ justify-content:center; width:100%; }
+  .home-hero-controls{ display:none; }
+  .home-hero-indicators{ display:none; }
+}
+
+@media (max-width:480px){
+  .home-hero{ height:clamp(440px, 96vw, 520px); }
+  .home-hero-title{ font-size:1.4rem; }
+  .home-hero-kicker{ font-size:.62rem; margin-bottom:8px; }
+  .home-hero-desc{ font-size:.84rem; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+  .home-hero-meta{ gap:6px; }
+}
+
+/* ================================================================
    HOMEPAGE (index.html) — unified card system responsive rules.
    Rows stay horizontal-scroll on mobile (that's already the
    lightest-weight, least-overflow-prone pattern for browsing a
@@ -130,8 +166,6 @@
   .nimlyx-section{ padding:52px 0; }
   .nimlyx-section-head h2{ font-size:2.1rem; }
   .nimlyx-why-grid{ grid-template-columns:1fr; gap:22px; }
-  .trending-showcase{ grid-template-columns:1fr; gap:16px; }
-  .trending-showcase-feature .nimlyx-rank{ font-size:2.6rem; }
 }
 
 @media (max-width:700px){
@@ -140,11 +174,35 @@
   .nimlyx-card--portrait{ width:158px; }
   .nimlyx-card--portrait .nimlyx-card-body{ padding:14px; }
   .nimlyx-card--wide{ width:270px; }
+  .nimlyx-grid .nimlyx-card--wide{ width:100%; }
   .nimlyx-card--wide .nimlyx-card-body{ padding:16px; }
-  .nimlyx-row .nimlyx-card--compact{ width:240px; }
-  .nimlyx-card--compact .nimlyx-card-media{ width:96px; }
-  .nimlyx-card--compact .nimlyx-card-title{ font-size:.88rem; }
   .nimlyx-card-context{ font-size:.7rem; }
   .nimlyx-card--wide .nimlyx-card-discount{ font-size:1rem; padding:5px 10px; }
   .nimlyx-row{ gap:12px; padding:2px 12px 8px 2px; }
+}
+
+@media (max-width:900px){
+  .editorial-gems { grid-template-columns: 1fr; }
+  .editorial-gems-main { height: 320px; }
+  .nimlyx-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+}
+
+@media (max-width:700px){
+  .home-cta h2 { font-size: 32px; }
+  .genre-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Redesigned homepage sections: hardware showcase, potato tiers,
+   compatibility roster. Rows keep horizontal-scroll (same pattern
+   as the rest of the homepage); grids/lists stack to one column. */
+@media (max-width:700px){
+  .hw-showcase-head{ max-width:100%; }
+  #integrated-gpu .nimlyx-row{ gap:14px; }
+  #integrated-gpu{ padding-bottom:16px; }
+  #potato-games{ padding-top:16px; }
+  .potato-list-row{ padding:9px 12px; gap:10px; }
+  .potato-list-thumb{ width:38px; height:38px; }
+  .potato-extreme-grid{ grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); gap:10px; }
+  .match-row{ padding:10px 12px; gap:10px; }
+  .match-row-thumb{ width:44px; height:44px; }
 }

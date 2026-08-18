@@ -1,7 +1,18 @@
 import requests
+
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+})
+
 from flask import Blueprint, jsonify, render_template
 from region import get_region_code
 from steam import fetch_browse_category
+from services.analysis.score_cache import get_cached_score
 
 browse_bp = Blueprint("browse", __name__)
 
@@ -61,7 +72,7 @@ def featured_games_api():
 
     url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
     try:
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.RequestException as e:
@@ -150,6 +161,14 @@ def feed_row(category):
     # user). Building fresh dict copies for the template keeps the
     # cached originals untouched.
     games = [dict(g, price=format_price(g.get("price"))) for g in games]
+
+    # Neither the specials nor action feed source makes a per-game
+    # Steam review-stats call (see fetch_homepage_row's own "avoids
+    # N+1 appdetails hits" comment) -- score comes from the same
+    # non-blocking async cache Trending uses. get_cached_score()
+    # never blocks this request; a cold cache means the fallback
+    # state renders once, then fills in on a later request.
+    games = [dict(g, nimlyx_score=get_cached_score(g.get("app_id"), cc)) for g in games]
 
     # For Phase 1 prototype, we map the visual treatments.
     title = ""

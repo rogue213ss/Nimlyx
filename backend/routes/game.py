@@ -1,5 +1,15 @@
 import re
 import requests
+
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+})
+
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from flask import Blueprint, jsonify, request
@@ -46,7 +56,7 @@ def search_game(game_name):
         cc = get_region_code()
         term = clean_search_term(game_name)
         url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
-        response = requests.get(url, timeout=10)
+        response = _session.get(url, timeout=10)
         response.raise_for_status()
         return jsonify(response.json())
 
@@ -378,7 +388,7 @@ def find_game(game_name):
     term = clean_search_term(game_name)
 
     search_url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
-    search_data = requests.get(search_url).json()
+    search_data = _session.get(search_url).json()
 
     for item in search_data.get("items", []):
         if item.get("type") != "app":

@@ -25,18 +25,19 @@ def platform_label(platforms):
 def to_game_dict(item, stat_fields=None):
     """Shapes a raw scraped game dict into what index.html expects.
 
-    header_image here is the scraped search-result thumbnail Steam
-    itself just served us -- guaranteed to exist, nothing guessed.
+    header_image here is default_header_image(app_id) (header.jpg),
+    which is the first image the frontend will attempt to load.
     image_candidates are unverified higher-res URLs the frontend may
-    upgrade to client-side (see image-upgrade.js); they're never
-    rendered directly.
+    upgrade to client-side (see image-upgrade.js), with the scraped
+    thumbnail (item.get("image")) appended as the final fallback.
     """
     app_id = item.get("id")
+    from steam_images import default_header_image
     base = {
         "id": app_id,
         "name": item.get("name"),
-        "header_image": item.get("image"),
-        "image_candidates": build_image_candidates(app_id),
+        "header_image": default_header_image(app_id),
+        "image_candidates": build_image_candidates(app_id, fallback_image=item.get("image")),
         "analyze_url": f"/search?q={item.get('name', '')}",
     }
     if stat_fields:

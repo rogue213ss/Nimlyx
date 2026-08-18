@@ -223,13 +223,21 @@
 }
 
 /* ================================================================
-   HERO — cinematic slide, minimal text (title + CTA only). The
-   editorial "why this matters" content lives entirely in the
-   Insight bar directly below, not duplicated here.
+   HERO — dense cinematic panel (v3 redesign). Fixed, moderate
+   height rather than a viewport-relative one, so the first content
+   section is always visible without scrolling on a normal desktop
+   viewport (redesign spec section 9). Text sits vertically centered
+   in the left ~60% of the panel; a left-to-right scrim keeps that
+   zone reliably dark regardless of the artwork's own brightness, so
+   white text stays legible without per-image color sampling — the
+   explicit fallback the spec allows for "mixed artwork" (section 18).
+   Artwork itself is untouched/undimmed past ~65% width, so it still
+   reads as the dominant visual on the right like the reference.
    ================================================================ */
 .home-hero{
   position:relative;
-  height:75vh; min-height:600px;
+  height:clamp(600px, 75vh, 800px);
+  min-height:600px;
   overflow:hidden;
 }
 .home-hero-track{ position:absolute; inset:0; }
@@ -245,71 +253,162 @@
 .home-hero-overlay{
   position:absolute; inset:0;
   background:
-    /* Cinematic left-to-right scrim */
+    /* Cinematic left-to-right scrim — the readable text zone.
+       Stops well short of 100% width so the artwork on the right
+       stays clearly visible, matching the reference's dense
+       text-left/art-right composition instead of dimming the whole
+       panel uniformly. */
     linear-gradient(90deg,
-      rgba(6,6,8,0.95) 0%,
-      rgba(6,6,8,0.7) 35%,
-      rgba(6,6,8,0.3) 60%,
-      rgba(6,6,8,0) 100%),
-    /* Heavy bottom fade so the hero grounds seamlessly into the background */
-    linear-gradient(180deg, rgba(10,10,13,0) 40%, rgba(10,10,13,1) 100%);
+      rgba(6,6,8,0.96) 0%,
+      rgba(6,6,8,0.86) 30%,
+      rgba(6,6,8,0.5) 52%,
+      rgba(6,6,8,0.12) 72%,
+      rgba(6,6,8,0) 88%),
+    /* Light bottom fade so the hero grounds into the section below
+       without a hard seam — kept subtle so it doesn't eat into the
+       hero's own (already modest) height. */
+    linear-gradient(180deg, rgba(10,10,13,0) 78%, rgba(10,10,13,0.9) 100%);
 }
 
 .home-hero-content{
-  position:absolute; left:0; right:0; bottom:0; z-index:2;
-  padding-bottom:44px;
+  position:relative; z-index:2; height:100%;
+  display:flex; flex-direction:column; justify-content:center;
+  max-width:560px; padding:36px 0;
+  gap:0;
+  /* Bug fix: this element also carries the shared .home-container
+     class for its max-width:1240px/margin:0 auto/padding:0 32px --
+     but .home-hero-content's own max-width:560px (below, same
+     specificity, later in source) already overrides the 1240px,
+     which left `margin:0 auto` centering a 560px box inside the full
+     hero instead of pinning it to the left edge, and this rule's
+     padding:36px 0 (left/right 0) silently dropped the container's
+     32px side padding entirely. Both together pushed the hero text
+     far right of where every other section's content starts. Reset
+     the margin and restate the left inset explicitly, matching the
+     same left edge (100%-1240px)/2 + 32px that .home-container uses
+     on wide viewports, so the hero content lines up with the nav
+     logo and the rows below it instead of floating centered. */
+  margin:0;
+  padding-left:max(32px, calc((100% - 1240px) / 2 + 32px));
 }
 .home-hero-kicker{
-  display:inline-block;
-  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--home-cta-blue); margin-bottom:18px;
-  background:rgba(6,6,8,0.7);
-  border:1px solid rgba(59,130,246,0.45);
-  padding:6px 13px; border-radius:var(--home-radius-sm);
-  backdrop-filter:blur(3px);
+  display:inline-flex; align-items:center; gap:7px; width:fit-content;
+  font-family:var(--home-font-mono); font-size:.68rem; letter-spacing:.13em; text-transform:uppercase;
+  color:#e7c565; margin-bottom:12px;
 }
 .home-hero-title{
-  font-family:var(--home-font-display); font-weight:700;
-  font-size:clamp(2.3rem, 4.6vw, 3.7rem);
-  letter-spacing:-0.01em; line-height:1.06;
-  margin-bottom:24px; max-width:760px;
+  font-family:var(--home-font-serif);
+  font-size:clamp(3rem, 5vw, 5rem);
+  letter-spacing:-0.02em; line-height:1;
+  margin:0 0 16px 0;
   color:#ffffff;
-  text-shadow:0 2px 24px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.8);
+  text-shadow:0 4px 32px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.9);
   transition:opacity .3s ease;
 }
+.home-hero-desc{
+  font-size:1.1rem; line-height:1.6; color:var(--home-text-primary);
+  opacity:.9; margin:0 0 24px 0; max-width:54ch;
+  text-shadow:0 2px 8px rgba(0,0,0,0.8);
+}
 
-.hero-insight-integration{
-  max-width: 600px;
-  margin-bottom: 24px;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+/* Meta row — genre / review-sentiment / discount pills, all real
+   fields already on the hero payload (see HeroCandidate.to_hero_dict
+   in services/hero/candidate.py). Any field the current pick doesn't
+   have is simply absent from the DOM, not rendered as "N/A".
+   These are hero-specific (.home-hero-pill, not .nimlyx-chip) so the
+   filled-pill look doesn't bleed into the border-left chips used
+   elsewhere on the page (Discover/Search/rows). */
+.home-hero-meta{
+  display:flex; align-items:center; flex-wrap:wrap; gap:8px;
+  margin-bottom:20px;
 }
-.hero-insight-integration .home-insight-headline{
-  font-size: 1.1rem;
-  color: #fff;
-  margin-bottom: 8px;
-  line-height: 1.4;
+.home-hero-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:6px;
+  font-family:var(--home-font-mono); font-size:.76rem; font-weight:600;
+  background:rgba(10,10,14,0.55);
+  border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
 }
-.hero-insight-integration .home-insight-why{
-  font-size: 0.95rem;
-  color: var(--home-text-secondary);
-  line-height: 1.5;
+.home-hero-pill--review.is-positive{ color:var(--home-verdict-worth); border-color:rgba(96,192,140,0.35); }
+.home-hero-pill--review.is-negative{ color:var(--home-verdict-critic); border-color:rgba(224,120,90,0.35); }
+.home-hero-pill--review.is-neutral{ color:var(--home-text-primary); }
+.home-hero-pill--discount{
+  gap:8px; border-color:rgba(224,154,114,0.4);
 }
-.home-hero-indicators{ display:flex; gap:8px; margin-top:26px; }
+.home-hero-pill-off{ color:var(--home-verdict-worth); font-weight:700; }
+.home-hero-pill-price{ color:#fff; }
+.home-hero-pill-price-was{ color:var(--home-text-muted); text-decoration:line-through; font-weight:500; }
+
+.home-hero-actions{ display:flex; align-items:center; gap:12px; }
+
+/* Hero CTA — the one obvious next action. Arrow nudges right on
+   hover/focus as a small confirming motion; .home-btn-primary
+   already supplies color/shape, so this only adds the arrow
+   choreography. */
+.home-hero-cta{ gap: 10px; padding:12px 22px; font-size:.86rem; }
+.home-hero-cta-arrow{
+  display: inline-block;
+  transition: transform .25s var(--home-ease);
+}
+.home-hero-cta:hover .home-hero-cta-arrow,
+.home-hero-cta:focus-visible .home-hero-cta-arrow{
+  transform: translateX(4px);
+}
+
+/* Secondary hero action — understated on purpose (spec section 7):
+   glass fill, no shadow/glow, so it never competes with the primary
+   blue CTA for attention. */
+.home-btn-secondary{
+  padding:12px 20px; font-size:.86rem;
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+}
+.home-btn-secondary:hover{
+  background:rgba(255,255,255,0.1);
+  border-color:rgba(255,255,255,0.28);
+}
+
+/* Circular prev/next controls — reuses the same visual language as
+   .nimlyx-row-arrow (dark glass disc, blue-fill hover) rather than
+   inventing a second control style, per the "reuse existing
+   architecture" rule. Positioned bottom-right of the panel, small
+   and low-noise like the reference. */
+.home-hero-controls{
+  position:absolute; z-index:3; right:32px; bottom:26px;
+  display:flex; gap:8px;
+}
+.home-hero-arrow{
+  width:34px; height:34px; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; cursor:pointer;
+  background:rgba(10,10,14,0.6); border:1px solid var(--home-glass-border-strong);
+  color:var(--home-text-primary);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  transition:background .2s var(--home-ease), border-color .2s var(--home-ease), color .2s var(--home-ease);
+}
+.home-hero-arrow:hover{ background:var(--home-cta-blue); border-color:var(--home-cta-blue); color:#fff; }
+
+.home-hero-indicators{
+  position:absolute; z-index:3; left:32px; bottom:30px;
+  display:flex; gap:8px;
+}
 .home-hero-dot{
-  width:26px; height:3px; border-radius:2px;
-  background:rgba(255,255,255,0.14);
+  width:22px; height:3px; border-radius:2px;
+  background:rgba(255,255,255,0.18);
   position:relative; overflow:hidden; padding:0;
   cursor: pointer;
   transition:width .3s var(--home-ease), background .3s var(--home-ease);
 }
-.home-hero-dot:hover{ background:rgba(255,255,255,0.28); }
-.home-hero-dot.is-active{ width:32px; background:rgba(255,255,255,0.1); }
+.home-hero-dot:hover{ background:rgba(255,255,255,0.32); }
+.home-hero-dot.is-active{ width:28px; background:rgba(255,255,255,0.14); }
 .home-hero-dot.is-active::after{
   content:''; position:absolute; inset:0;
   background: var(--home-accent);
   border-radius: 2px;
   transform-origin:left;
-  animation:homeDotFill 4s linear forwards;
+  animation:homeDotFill 6s linear forwards;
 }
 @keyframes homeDotFill{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
 
@@ -816,7 +915,7 @@ main{ counter-reset: nimlyx-section; }
    "part of the design" instead of decoration.
    ================================================================ */
 
-.nimlyx-section{ padding:72px 0; position:relative; }
+.nimlyx-section{ padding:44px 0; position:relative; }
 .nimlyx-section--elevated{ background:var(--home-bg-elevated); }
 .nimlyx-section--glow{ overflow:hidden; }
 .nimlyx-section--glow::before{
@@ -828,21 +927,95 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-section--glow > .home-container{ position:relative; z-index:1; }
 .nimlyx-section-head{
   display:flex; align-items:flex-end; justify-content:space-between;
-  gap:24px; margin-bottom:36px; flex-wrap:wrap;
+  gap:24px; margin-bottom:20px; flex-wrap:wrap;
 }
 .nimlyx-section-head h2{
-  font-family:var(--home-font-display); font-size:2.75rem; font-weight:700;
-  letter-spacing:-0.015em; line-height:1.08; margin:10px 0 0 0; color:var(--home-text-primary);
+  font-family:var(--home-font-display); font-size:1.9rem; font-weight:700;
+  letter-spacing:-0.015em; line-height:1.1; margin:4px 0 0 0; color:var(--home-text-primary);
 }
 .nimlyx-section-sub{
-  display:block; font-size:.95rem; color:var(--home-text-muted); margin-top:8px;
+  display:block; font-size:.87rem; color:var(--home-text-muted); margin-top:4px;
+}
+/* Header variation -- not every section needs the small mono
+   eyebrow + heading pattern. "Standalone" drops the eyebrow entirely
+   for a section whose visuals (editorial photo, tile grid) already
+   carry enough identity that a label above the heading is noise.
+   "Compact" shrinks the heading for a secondary/roster-style
+   section (Best Matches) that shouldn't compete visually with the
+   cinematic sections around it. */
+.nimlyx-section-head--standalone h2{ font-size:2.3rem; }
+.nimlyx-section-head--compact h2{ font-size:1.5rem; }
+@media (max-width:640px){
+  .nimlyx-section-head--standalone h2{ font-size:1.7rem; }
+}
+
+/* Optional per-section CTA -- only rendered where a real destination
+   exists (see index.html), so it never appears as a dead button.
+   Deliberately quiet: text + arrow, no button chrome, so it stays
+   secondary to the section content per the constitution. */
+.nimlyx-section-cta{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--home-font-mono); font-size:.82rem; font-weight:600;
+  color:var(--home-text-muted);
+  padding-bottom:3px; flex-shrink:0;
+  transition:color .2s var(--home-ease), gap .2s var(--home-ease);
+}
+.nimlyx-section-cta:hover{ color:var(--home-cta-blue); gap:10px; }
+
+/* ================================================================
+   DISCOVER SHOWCASE -- one dominant editorial pick plus the rest of
+   the row beneath it, instead of every pick competing at the same
+   size. Extends the existing .nimlyx-card DNA (same media/body/
+   overlay/hover machinery); .nimlyx-card--feature only changes
+   proportions and adds the insight copy that's unique to a lead
+   pick.
+   ================================================================ */
+.discover-showcase{ display:flex; flex-direction:column; gap:16px; }
+
+.nimlyx-card--feature{
+  position:relative; width:100%;
+  aspect-ratio:21/9; min-height:280px;
+}
+.nimlyx-card--feature .nimlyx-card-media{ position:absolute; inset:0; aspect-ratio:auto; }
+.nimlyx-card--feature .nimlyx-card-media .nimlyx-card-overlay{
+  background:linear-gradient(90deg,
+    rgba(4,4,7,0.94) 0%, rgba(4,4,7,0.72) 32%, rgba(4,4,7,0.25) 62%, rgba(4,4,7,0.02) 100%),
+    linear-gradient(to top, rgba(4,4,7,0.75) 0%, rgba(4,4,7,0) 55%);
+}
+.nimlyx-card--feature .nimlyx-card-body{
+  position:absolute; left:0; bottom:0; z-index:2;
+  max-width:min(560px, 82%);
+  padding:32px 28px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:12px;
+}
+.nimlyx-card--feature .nimlyx-chip{ font-size:.72rem; }
+.nimlyx-card--feature .nimlyx-card-title{
+  font-size:1.7rem; white-space:normal; line-height:1.15; margin:0;
+  text-shadow:0 2px 20px rgba(0,0,0,0.5);
+}
+.discover-feature-insight{
+  font-size:.95rem; line-height:1.5; color:var(--home-text-secondary);
+  margin:0; max-width:52ch;
+}
+.discover-feature-link{
+  display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--home-font-mono); font-size:.8rem; font-weight:700;
+  letter-spacing:.02em; color:#fff; margin-top:4px;
+}
+.discover-feature-link span{ transition:transform .25s var(--home-ease); }
+.nimlyx-card--feature:hover .discover-feature-link span{ transform:translateX(4px); }
+
+@media (max-width:760px){
+  .nimlyx-card--feature{ aspect-ratio:4/5; min-height:360px; }
+  .nimlyx-card--feature .nimlyx-card-body{ max-width:100%; padding:24px 20px; }
+  .nimlyx-card--feature .nimlyx-card-title{ font-size:1.35rem; }
 }
 
 /* Horizontal scrolling row shell, reused by Discover/Deals/New
    Releases/Action. Native scroll + snap so it's cheap and works
    without JS; arrow controls are optional sugar, not required. */
 .nimlyx-row{
-  display:flex; gap:22px; overflow-x:auto; padding:2px 58px 8px 2px;
+  display:flex; gap:14px; overflow-x:auto; padding:2px 58px 8px 2px;
   scroll-snap-type:x proximity; scrollbar-width:none; -ms-overflow-style:none;
   -webkit-overflow-scrolling:touch;
 }
@@ -913,7 +1086,7 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-card-media img{ position:relative; z-index:1; }
 .nimlyx-card-media img[data-broken="true"]{ display:none; }
 .nimlyx-card-media img{
-  width:100%; height:100%; object-fit:cover; display:block;
+  width:100%; height:100%; object-fit:cover; object-position: center center; display:block;
   transition:transform .5s var(--home-ease);
 }
 .nimlyx-card:hover .nimlyx-card-media img{ transform:scale(1.06); }
@@ -936,18 +1109,57 @@ main{ counter-reset: nimlyx-section; }
    content, sized close to the title rather than buried in it. */
 .nimlyx-card-context{
   display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-  font-family:var(--home-font-mono); font-size:.78rem; font-weight:600;
+  font-size:.78rem; font-weight:500;
   letter-spacing:.01em; margin-top:5px; color:var(--home-text-muted);
 }
 .nimlyx-card-context .dot{ color:var(--home-text-faint); }
+/* Freeform metadata (genre, review summary) sitting inside a
+   context row -- deliberately NOT mono. Mono is reserved for actual
+   numbers (price, discount, score); a genre name or review summary
+   is a label, not a quantity. */
+.nimlyx-card-meta{ color:var(--home-text-muted); font-weight:500; }
+/* Numeric card info (price, "Free") -- the one thing in a context
+   row that IS a quantity, so it gets the mono treatment consistent
+   with .price-now/.price-was on the wide deal cards. */
+.nimlyx-card-price{ font-family:var(--home-font-mono); color:var(--home-text-muted); font-weight:600; }
 .nimlyx-chip{
   display:inline-flex; align-items:center; gap:5px;
   padding:2px 8px 2px 7px; border-radius:2px;
+  font-family:var(--home-font-mono);
   font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase;
   border-left:2px solid var(--home-glass-border-strong);
   color:var(--home-text-muted);
 }
 .nimlyx-chip--blue{ border-left-color:var(--home-cta-blue); color:#9dc4fc; }
+/* Freshness accent -- reuses the same --home-verdict-fresh token
+   already used for the "Fresh Pick" Discover badge, so New Releases'
+   recency label reads as "freshness" rather than a generic brand
+   tag. */
+.nimlyx-chip--fresh{ border-left-color:var(--home-verdict-fresh); color:var(--home-verdict-fresh); }
+
+/* Exploratory tag sitting directly on Action artwork -- pulls the
+   genre off the info bar (where it competed with price/reviews for
+   the same small text row) and onto the image itself, so browsing
+   Action reads as "doors into a genre" rather than a data row. */
+/* Corner tag sitting directly on card artwork — pulls contextual
+   info (genre, rank, recency) off the info bar and onto the image
+   itself. Reused by Action's genre tag (feed_row.html), Trending's
+   rank tag, and New Releases' recency tag, so all three portrait
+   rows share one visual language. Legacy `.nimlyx-genre-tag` name
+   kept as an alias since feed_row.html's Action markup still uses
+   it. */
+.nimlyx-genre-tag,
+.nimlyx-card-tag{
+  position:absolute; top:10px; left:10px; z-index:2;
+  font-family:var(--home-font-mono); font-size:.66rem; font-weight:700;
+  letter-spacing:.05em; text-transform:uppercase; color:#fff;
+  background:rgba(6,6,9,0.72); border:1px solid rgba(255,255,255,0.16);
+  padding:4px 9px; border-radius:var(--home-radius-sm);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+}
+.nimlyx-card-tag--fresh{
+  color:var(--home-verdict-fresh); border-color:rgba(96,192,140,0.35);
+}
 
 /* ---- Portrait (Discover picks, Action) ----
    Artwork is the dominant element (~78% of card height); the info
@@ -974,6 +1186,7 @@ main{ counter-reset: nimlyx-section; }
    backdrop-filter blur -- legibility comes from the gradient/opacity
    alone. ---- */
 .nimlyx-card--wide{ width:340px; }
+.nimlyx-grid .nimlyx-card--wide{ width:100%; }
 .nimlyx-card--wide,
 .nimlyx-card--wide .nimlyx-card-media,
 .nimlyx-card--wide .nimlyx-card-media img,
@@ -1014,58 +1227,31 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-card--wide .nimlyx-card-discount{
   display:inline-flex; align-items:center;
   font-family:var(--home-font-display); font-weight:800; font-size:1.15rem; line-height:1;
-  color:#fff; background:var(--home-cta-blue);
+  color:#fff; background:var(--home-verdict-worth);
   padding:6px 12px; border-radius:var(--home-radius-sm);
-  box-shadow:0 6px 16px -4px rgba(59,130,246,0.55);
+  box-shadow:0 6px 16px -4px rgba(77,154,114,0.5);
   margin-right:auto;
 }
 .nimlyx-card--wide .price-now{ font-size:1.1rem; font-weight:700; color:#fff; }
 .nimlyx-card--wide .price-was{ font-size:.8rem; color:var(--home-text-faint); text-decoration:line-through; opacity:.8; }
 
-/* ---- Compact (Trending list rows, New Releases row) -- horizontal
-   thumbnail + info, used both inside a fixed row and inside the
-   Trending vertical stack. ---- */
-.nimlyx-card--compact{
-  display:flex; align-items:center; gap:14px; padding:10px;
-  background:var(--home-bg-card); border:1px solid var(--home-glass-border);
-  border-radius:var(--home-radius-md);
-}
-.nimlyx-card--compact:hover{ transform:none; background:var(--home-glass-fill-strong); border-color:var(--home-glass-border-strong); box-shadow:none; }
-.nimlyx-card--compact .nimlyx-card-media{ width:128px; aspect-ratio:16/9; border-radius:var(--home-radius-sm); flex-shrink:0; }
-.nimlyx-card--compact .nimlyx-card-media img{ transition:none; }
-.nimlyx-card--compact:hover .nimlyx-card-media img{ transform:none; }
-.nimlyx-card--compact .nimlyx-card-overlay{ display:none; }
-.nimlyx-card--compact .nimlyx-card-body{ min-width:0; flex:1; }
-.nimlyx-card--compact .nimlyx-card-title{ font-size:.98rem; }
-.nimlyx-row .nimlyx-card--compact{ width:300px; }
 
-/* Rank numeral -- Trending's own visual language, large and part of
-   the composition rather than a tucked-away label. */
-.nimlyx-rank{
-  font-family:var(--home-font-display); font-weight:800; color:var(--home-text-faint);
-  flex-shrink:0; text-align:center;
-}
-.nimlyx-card--compact .nimlyx-rank{ font-size:1.6rem; width:34px; }
+/* ================================================================
+   SECTION PERSONALITY -- same card/spacing DNA everywhere, but each
+   section's row/list rhythm is tuned to its purpose: Trending reads
+   dense and fast, Deals gets room to consider a price, New Releases
+   feels light, Action keeps the standard exploratory pace.
+   ================================================================ */
+#trending .nimlyx-row{ gap:20px; }
 
-/* ---- Trending Today composition: big #1 feature + ranked list ---- */
-.trending-showcase{ display:grid; grid-template-columns:1.15fr 1fr; gap:24px; align-items:stretch; }
-.trending-showcase-feature{ width:100%; height:100%; min-height:360px; }
-.trending-showcase-feature .nimlyx-card-media{ position:absolute; inset:0; aspect-ratio:auto; }
-.trending-showcase-feature .nimlyx-card-body{ position:absolute; left:0; right:0; bottom:0; padding:22px; }
-.trending-showcase-feature .nimlyx-rank{
-  position:absolute; top:16px; left:16px; z-index:2; font-size:3.4rem;
-  color:rgba(255,255,255,0.16); line-height:1;
-}
-.trending-showcase-feature .nimlyx-card-title{ font-size:1.4rem; white-space:normal; }
-.trending-showcase-list{ display:flex; flex-direction:column; gap:10px; }
+#feed-specials .nimlyx-row{ gap:28px; }
 
-@media (max-width:860px){
-  .trending-showcase{ grid-template-columns:1fr; }
-}
+#new-releases .nimlyx-row{ gap:20px; }
+
 
 /* ---- Why Nimlyx -- lighter than every card row around it, no
    glass box, editorial spacing only. ---- */
-.nimlyx-why-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:36px; }
+.nimlyx-why-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:24px; }
 .nimlyx-why-card{ padding:0; }
 .nimlyx-why-icon{ color:var(--home-cta-blue); margin-bottom:14px; }
 .nimlyx-why-title{
@@ -1080,7 +1266,7 @@ main{ counter-reset: nimlyx-section; }
 
 .nimlyx-section--closing{
   border-top:1px solid var(--home-glass-border);
-  padding-top:64px; padding-bottom:48px;
+  padding-top:40px; padding-bottom:40px;
 }
 .nimlyx-why-intro{ max-width:600px; margin:0 auto; text-align:center; }
 .nimlyx-section--closing .nimlyx-why-intro .home-eyebrow{ display:flex; justify-content:center; }
@@ -1108,72 +1294,6 @@ main{ counter-reset: nimlyx-section; }
    not a spacing tweak, the collapse simply never existed. 900px
    matches the breakpoint style_mobile.css/search_mobile.css already
    assume this collapse happens at (see their region-picker rules). */
-/* ============================================
-   FEED ROW VARIANTS (Phase 2)
-   ============================================ */
-.deal-board-scroll {
-  display: flex; gap: 14px; overflow-x: auto;
-  scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;
-  padding-bottom: 8px; /* Breathing room */
-}
-.deal-board-scroll::-webkit-scrollbar { display: none; }
-
-.deal-badge-pct {
-  background: #4ade80; color: #000;
-  font-family: var(--home-font-mono); font-weight: 800; font-size: 0.95rem;
-  padding: 2px 6px; border-radius: 4px; margin-right: 8px;
-}
-.deal-badge-price {
-  color: #fff; font-family: var(--home-font-mono); font-weight: 700; font-size: 1.05rem;
-}
-.deal-info {
-  padding: 0 4px;
-}
-.deal-title {
-  font-family: var(--home-font-display); font-size: 0.95rem; font-weight: 600;
-  color: #fff; line-height: 1.3;
-  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-/* Dense Genre Tape */
-.genre-tape-scroll {
-  display: flex; gap: 10px; overflow-x: auto;
-  scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;
-}
-.genre-tape-scroll::-webkit-scrollbar { display: none; }
-.genre-card {
-  flex: 0 0 140px;
-  position: relative; border-radius: var(--home-radius-sm); overflow: hidden;
-  transition: transform .2s var(--home-ease);
-}
-.genre-card:hover { transform: translateY(-2px); }
-.genre-media { width: 100%; aspect-ratio: 2/3; position: relative; }
-.genre-media img { width: 100%; height: 100%; object-fit: cover; }
-.genre-media-overlay {
-  position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(10,10,13,0.9) 0%, rgba(10,10,13,0) 50%);
-}
-.genre-info {
-  position: absolute; bottom: 0; left: 0; right: 0; padding: 10px;
-}
-.genre-title {
-  font-family: var(--home-font-display); font-size: 0.9rem; font-weight: 600;
-  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-}
-
-@media (max-width: 860px) {
-  /* 2-row layout on mobile for density */
-  .deal-board-scroll {
-    display: grid;
-    grid-template-rows: auto auto;
-    grid-auto-flow: column;
-    gap: 12px;
-  }
-  .deal-card {
-    flex: none; width: 200px;
-  }
-}
-
 @media (max-width:900px){
   .home-nav-burger{ display:flex; }
   .home-mobile-search-btn{ display:flex; }
@@ -1320,67 +1440,321 @@ main{ counter-reset: nimlyx-section; }
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 16px var(--home-glow-blue-subtle);
 }
 
-.atmospheric-bg {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: -1;
-  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05) 0%, transparent 70%);
+
+/* ================================================================
+   REVEAL — shared entrance-motion utility (constitution: reuse the
+   existing .reveal system rather than introducing an animation
+   framework). Mirrors static/css/search.css's .reveal so homepage
+   sections get the same restrained fade/rise on scroll. Wired up
+   in app.js via IntersectionObserver.
+   ================================================================ */
+.reveal{ opacity:0; transform:translateY(24px); transition:opacity .7s var(--home-ease), transform .7s var(--home-ease); }
+.reveal.in-view{ opacity:1; transform:none; }
+@media (prefers-reduced-motion: reduce){
+  .reveal{ opacity:1; transform:none; transition:none; }
 }
 
-.home-why { padding: 80px 0; position: relative; }
-.why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 40px; }
-.why-card { padding: 32px; text-align: left; border-radius: var(--home-radius-lg); background: linear-gradient(180deg, var(--home-glass-base) 0%, transparent 100%); border-top: 1px solid var(--home-border-glass); transition: var(--home-transition-smooth); }
-.why-card:hover { background: linear-gradient(180deg, var(--home-glass-hover) 0%, transparent 100%); border-top-color: var(--home-border-glass-hover); transform: translateY(-4px); }
-.why-icon { font-size: 24px; color: var(--home-cta-blue); margin-bottom: 20px; }
-.why-title { font-family: var(--home-font-display); font-size: 1.25rem; font-weight: 600; margin: 0 0 12px 0; color: #fff; }
-.why-desc { font-size: 0.95rem; color: var(--home-text-muted); line-height: 1.6; margin: 0; }
+/* ================================================================
+   NIMLYX-EMPTY — shared loading/empty-state skeleton language.
+   One component reused everywhere content is pending, instead of
+   ad-hoc inline-styled placeholder blocks per section.
+   ================================================================ */
+.nimlyx-empty{
+  background:var(--home-glass-fill);
+  border:1px solid var(--home-glass-border);
+  border-radius:var(--home-radius-md);
+  animation:nimlyx-empty-pulse 2s ease-in-out infinite;
+}
+.nimlyx-empty--title{ width:200px; height:28px; margin-bottom:24px; }
+.nimlyx-empty--row{ display:flex; gap:24px; overflow:hidden; }
+.nimlyx-empty--wide{ width:340px; height:220px; flex-shrink:0; }
+.nimlyx-empty--portrait{ width:220px; height:330px; flex-shrink:0; }
+@keyframes nimlyx-empty-pulse{
+  0%{ opacity:.6; } 50%{ opacity:.3; } 100%{ opacity:.6; }
+}
 
-.home-discover { padding: 60px 0; }
-.discover-masonry { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); grid-auto-rows: 240px; gap: 24px; margin-top: 32px; }
-.discover-card { position: relative; border-radius: var(--home-radius-md); overflow: hidden; display: block; transition: var(--home-transition-smooth); }
-.discover-card.large { grid-column: span 2; grid-row: span 2; }
-.discover-card:hover { transform: scale(1.02); z-index: 2; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px var(--home-glow-blue-subtle); }
-.discover-art { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: var(--home-transition-smooth); }
-.discover-card:hover .discover-art { transform: scale(1.05); }
-.discover-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 50%, transparent 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; }
-.discover-title { font-family: var(--home-font-display); font-size: 1.2rem; font-weight: 600; color: #fff; margin: 0 0 8px 0; }
-.discover-card.large .discover-title { font-size: 1.75rem; }
-.discover-meta { font-size: 0.85rem; color: var(--home-text-muted); display: flex; gap: 12px; align-items: center; }
+/* ================================================================
+   V1 HOMEPAGE OVERHAUL COMPONENTS
+   ================================================================ */
+   
+/* Popular - Grid Layout */
+.nimlyx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
 
-.home-trending { padding: 60px 0; }
+/* Editorial Hidden Gems */
+.editorial-gems {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+.editorial-gems-main {
+  position: relative;
+  border-radius: var(--home-radius-lg);
+  overflow: hidden;
+  height: 480px;
+}
+.editorial-gems-main img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+.editorial-gems-main .editorial-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 32px;
+  z-index: 2;
+}
+.editorial-gems-main .nimlyx-card-title {
+  font-size: 32px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.editorial-gems-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
 
-.home-deals { padding: 60px 0; position: relative; }
-.deals-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.03) 0%, transparent 80%); pointer-events: none; z-index: -1; }
-.deals-track { display: grid; grid-template-rows: 1fr; grid-auto-flow: column; grid-auto-columns: 400px; gap: 24px; overflow-x: auto; padding-bottom: 24px; margin-top: 32px; scrollbar-width: none; }
-.deals-track::-webkit-scrollbar { display: none; }
-.deal-card { border-radius: var(--home-radius-lg); overflow: hidden; background: var(--home-glass-base); border: 1px solid var(--home-border-glass); transition: var(--home-transition-smooth); display: flex; flex-direction: column; height: 100%; }
-.deal-card:hover { background: var(--home-glass-hover); border-color: var(--home-border-glass-hover); transform: translateY(-4px); }
-.deal-art-wrap { position: relative; width: 100%; aspect-ratio: 16/9; }
-.deal-art { width: 100%; height: 100%; object-fit: cover; }
-.deal-badge { position: absolute; top: 12px; right: 12px; background: var(--home-cta-blue); color: #fff; font-family: var(--home-font-mono); font-weight: 700; font-size: 1.1rem; padding: 4px 10px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.deal-info { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-.deal-title { font-family: var(--home-font-display); font-weight: 600; font-size: 1.1rem; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-.deal-prices { text-align: right; }
-.deal-price-old { font-size: 0.8rem; color: var(--home-text-faint); text-decoration: line-through; display: block; }
-.deal-price-new { font-size: 1.1rem; font-weight: 700; color: #fff; }
+/* Potato Tiers */
+.potato-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  margin-top: 32px;
+}
+.potato-tier-header {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--home-text-primary);
+}
+.hw-badge {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--home-glass-fill);
+  border: 1px solid var(--home-glass-border);
+  color: var(--home-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.hw-badge--igpu {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+}
+.hw-badge--potato-friendly { color: #4ade80; border-color: rgba(74, 222, 128, 0.3); }
+.hw-badge--potato-tweaks { color: #facc15; border-color: rgba(250, 204, 21, 0.3); }
+.hw-badge--potato-extreme { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+.hw-badge--pending { color: #9ca3af; }
 
-.home-new { padding: 60px 0; }
+/* ----------------------------------------------------------------
+   HARDWARE SHOWCASE (Integrated GPU) -- wide cinematic row, technical
+   header treatment. Exists so this section reads as "hardware story"
+   rather than a third copy of Popular's grid-of-wide-cards.
+   ---------------------------------------------------------------- */
+.hw-showcase-head{ margin-bottom:24px; max-width:640px; }
+.hw-showcase-tag{
+  display:inline-flex; align-items:center; gap:7px;
+  font-family:var(--home-font-mono); font-size:.72rem; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; color:#60a5fa;
+  border:1px solid rgba(59,130,246,0.3); background:rgba(59,130,246,0.08);
+  padding:5px 10px; border-radius:var(--home-radius-sm); margin-bottom:12px;
+}
+.hw-showcase-head h2{
+  font-family:var(--home-font-display); font-size:1.9rem; font-weight:700;
+  letter-spacing:-0.015em; line-height:1.1; margin:0 0 6px 0; color:var(--home-text-primary);
+}
+.hw-showcase-head .nimlyx-section-sub{ margin-top:0; }
 
-.home-action { padding: 60px 0; }
-.action-grid { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 24px; margin-top: 32px; scrollbar-width: none; }
-.action-grid::-webkit-scrollbar { display: none; }
-.action-card { flex: 0 0 220px; aspect-ratio: 2/3; border-radius: var(--home-radius-md); position: relative; overflow: hidden; transition: var(--home-transition-smooth); }
-.action-card:hover { transform: translateY(-8px); box-shadow: 0 16px 32px rgba(0,0,0,0.5), 0 0 20px rgba(59, 130, 246, 0.15); }
-.action-art { width: 100%; height: 100%; object-fit: cover; }
-.action-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%); display: flex; flex-direction: column; justify-content: flex-end; padding: 16px; opacity: 0.8; transition: var(--home-transition-smooth); }
-.action-card:hover .action-overlay { opacity: 1; }
-.action-title { font-family: var(--home-font-display); font-weight: 600; font-size: 1rem; color: #fff; margin: 0; }
+/* Cinematic wide card -- deliberately bigger than .nimlyx-card--wide
+   (deals/popular) and badge-first, so an iGPU row visually reads as
+   "showcase" rather than "product grid". */
+.nimlyx-card--cinema{ width:440px; flex-shrink:0; }
+#integrated-gpu .nimlyx-row{ gap:24px; }
+.nimlyx-card--cinema,
+.nimlyx-card--cinema .nimlyx-card-media,
+.nimlyx-card--cinema .nimlyx-card-media img,
+.nimlyx-card--cinema .nimlyx-card-body{
+  position:relative;
+}
+.nimlyx-card--cinema .nimlyx-card-media{ aspect-ratio:16/8; }
+.nimlyx-card--cinema .nimlyx-card-media .nimlyx-card-overlay{
+  background:linear-gradient(to top, rgba(4,4,7,0.95) 0%, rgba(4,4,7,0.55) 40%, rgba(4,4,7,0.05) 75%);
+}
+.nimlyx-card--cinema .nimlyx-card-body{
+  position:absolute; inset:0; z-index:2; display:flex; flex-direction:column;
+  justify-content:flex-end; padding:20px 22px; gap:6px;
+}
+.nimlyx-card--cinema .nimlyx-card-title{ font-size:1.2rem; white-space:normal; }
+.nimlyx-card--cinema .hw-badge{ align-self:flex-start; margin:0; }
+@media (max-width:640px){
+  .nimlyx-card--cinema{ width:300px; }
+  .nimlyx-card--cinema .nimlyx-card-media{ aspect-ratio:16/10; }
+}
 
-@media (max-width: 768px) {
-  .why-grid { grid-template-columns: 1fr; }
-  .discover-masonry { grid-template-columns: 1fr 1fr; }
-  .discover-card.large { grid-column: span 2; grid-row: span 1; }
-  .deals-track { grid-template-rows: 1fr 1fr; grid-auto-columns: 300px; gap: 16px; }
-  .action-card { flex: 0 0 160px; }
+/* Related-hardware-sections spacing: Integrated GPU and Potato Games
+   form one connected "hardware story" beat (per the homepage rhythm
+   plan) -- pull them closer together than the standard section gap
+   so they read as a pair rather than two unrelated sections. */
+#integrated-gpu{ padding-bottom:24px; }
+#potato-games{ padding-top:24px; }
+
+/* ----------------------------------------------------------------
+   POTATO TIER 2 -- "optimization list". Compact stacked rows instead
+   of another card row, so Tweaks reads as a settings/checklist
+   rather than a repeat of Tier 1's carousel.
+   ---------------------------------------------------------------- */
+.potato-list{
+  display:flex; flex-direction:column; gap:2px;
+  border:1px solid var(--home-glass-border); border-radius:var(--home-radius-md);
+  overflow:hidden;
+}
+.potato-list-row{
+  display:flex; align-items:center; gap:14px;
+  padding:10px 14px; background:var(--home-bg-card);
+  text-decoration:none; transition:background .2s var(--home-ease);
+}
+.potato-list-row:hover{ background:var(--home-bg-elevated); }
+.potato-list-thumb{
+  width:44px; height:44px; flex-shrink:0; border-radius:var(--home-radius-sm);
+  overflow:hidden; background:var(--home-bg-elevated);
+}
+.potato-list-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+.potato-list-name{
+  font-family:var(--home-font-display); font-weight:600; color:var(--home-text-primary);
+  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.potato-list-row .hw-badge{ margin:0; flex-shrink:0; }
+.potato-list-arrow{ color:var(--home-text-faint); flex-shrink:0; transition:transform .2s var(--home-ease); }
+.potato-list-row:hover .potato-list-arrow{ transform:translateX(3px); color:var(--home-text-muted); }
+@media (max-width:640px){
+  .potato-list-name{ font-size:.92rem; }
+  .potato-list-row .hw-badge{ display:none; }
+}
+
+/* ----------------------------------------------------------------
+   POTATO TIER 3 -- "challenge" grid. Tight square cards with a
+   warning-accent border and corner ribbon, distinct from both the
+   Tier 1 row and Tier 2 list.
+   ---------------------------------------------------------------- */
+.potato-extreme-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+  gap:14px;
+}
+.potato-extreme-card{
+  display:block; border-radius:var(--home-radius-md); overflow:hidden;
+  background:var(--home-bg-card); border:1px solid rgba(248,113,113,0.28);
+  transition:transform .25s var(--home-ease), border-color .25s var(--home-ease);
+}
+.potato-extreme-card:hover{ transform:translateY(-3px); border-color:rgba(248,113,113,0.55); }
+.potato-extreme-media{ position:relative; aspect-ratio:1/1; background:var(--home-bg-elevated); }
+.potato-extreme-media img{ width:100%; height:100%; object-fit:cover; display:block; }
+.potato-extreme-ribbon{
+  position:absolute; top:8px; right:-26px; transform:rotate(40deg);
+  background:#f87171; color:#0a0a0d; font-family:var(--home-font-mono);
+  font-size:.6rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 30px; box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+.potato-extreme-body{ padding:12px; }
+.potato-extreme-body .nimlyx-card-title{ font-size:.88rem; white-space:normal; margin-bottom:6px; }
+.potato-extreme-body .hw-badge{ margin:0; font-size:.62rem; }
+
+/* ----------------------------------------------------------------
+   BEST MATCHES -- compatibility roster. Two-column list of rows
+   (thumb + name + badge + shield), not another wide-card grid --
+   reads as "your personal shortlist" rather than a showcase.
+   ---------------------------------------------------------------- */
+.match-roster{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:24px;
+}
+.match-row{
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px; border-radius:var(--home-radius-md);
+  background:var(--home-bg-card); border:1px solid var(--home-glass-border);
+  border-left:2px solid var(--home-cta-blue);
+  text-decoration:none; transition:background .2s var(--home-ease), border-color .2s var(--home-ease);
+}
+.match-row:hover{ background:var(--home-bg-elevated); border-color:var(--home-glass-border-strong); border-left-color:var(--home-cta-blue); }
+.match-row-thumb{
+  width:52px; height:52px; flex-shrink:0; border-radius:var(--home-radius-sm);
+  overflow:hidden; background:var(--home-bg-elevated);
+}
+.match-row-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+.match-row-body{ display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+.match-row-name{
+  font-family:var(--home-font-display); font-weight:600; color:var(--home-text-primary);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.match-row-body .hw-badge{ margin:0; align-self:flex-start; }
+.match-row-icon{ color:var(--home-cta-blue); flex-shrink:0; opacity:.7; }
+@media (max-width:768px){
+  .match-roster{ grid-template-columns:1fr; }
+}
+
+/* Genre Tiles */
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.genre-tile {
+  position: relative;
+  height: 140px;
+  border-radius: var(--home-radius-md);
+  overflow: hidden;
+  text-decoration: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 16px;
+  background: var(--home-glass-fill);
+  border: 1px solid var(--home-glass-border);
+  transition: all 0.3s ease;
+}
+.genre-tile:hover {
+  transform: translateY(-4px);
+  border-color: #3b82f6;
+}
+.genre-tile-index{
+  position: absolute; top: 12px; right: 14px;
+  font-family: var(--home-font-mono); font-size: .72rem; font-weight: 700;
+  letter-spacing: .08em; color: rgba(255,255,255,0.55);
+}
+.genre-tile-label {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  z-index: 2;
+}
+
+/* Final CTA */
+.home-cta {
+  text-align: center;
+  padding: 80px 20px;
+  background: linear-gradient(180deg, transparent, rgba(59,130,246,0.1));
+}
+.home-cta h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 48px;
+  margin-bottom: 24px;
 }

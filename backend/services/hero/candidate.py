@@ -78,7 +78,7 @@ class HeroCandidate:
         Never sent to an <img src> directly — the frontend probes
         each one with a real Image() load and only swaps it in on
         success. See static/js/image-upgrade.js."""
-        return build_image_candidates(self.app_id)
+        return build_image_candidates(self.app_id, fallback_image=self.game.get("scraped_image"))
 
     def _build_base_dict(self):
         """Common game fields shared by every frontend-facing
@@ -141,16 +141,65 @@ class HeroCandidate:
         immediately-rendered src); image_candidates stays untouched
         so the client-side upgrade path still has somewhere to fall
         back to if the override URL itself is unset.
+
+        The homepage v3 hero redesign added a few extra fields below
+        (genres, discount_percent, review_desc/review_total,
+        steam_url). None of these cost a new Steam call -- they're
+        already sitting on self.game from enrich_pool() (appdetails'
+        own `genres`/`price_overview`, and the review_summary that
+        builder.py attaches) or are deterministically derivable from
+        app_id (steam_url). Per the "never fabricate" rule, each is
+        emitted as None/empty when the source data isn't there, and
+        the template treats that as "omit this chip" rather than
+        printing a placeholder.
         """
         base = self._build_base_dict()
         base["image"] = resolve_hero_image(self.app_id, base["image"])
         badge = get_badge(self.category)
+
+        genres_data = self.game.get("genres") or []
+        genres = [g.get("description") for g in genres_data if g.get("description")]
+
+        price_overview = self.game.get("price_overview") or {}
+        discount_percent = price_overview.get("discount_percent") or 0
+        # "Was" price for the discount pill (e.g. "$23.99 $59.99"). Only
+        # meaningful when there's an actual discount -- appdetails'
+        # price_overview carries both `initial_formatted` (pre-discount)
+        # and `final_formatted`; never fabricated if the field is absent.
+        price_before = price_overview.get("initial_formatted") or None
+        if not discount_percent:
+            price_before = None
+
+        review_summary = self.game.get("review_summary") or {}
+        review_desc = review_summary.get("review_score_desc") or None
+        review_total = review_summary.get("total_reviews") or 0
+        # Sentiment derived straight from Steam's own review_desc string
+        # (e.g. "Very Positive" / "Mixed" / "Mostly Negative") -- not a
+        # separate judgment call, just picking the matching glyph.
+        if review_desc and "Negative" in review_desc:
+            review_sentiment = "negative"
+        elif review_desc and "Positive" in review_desc:
+            review_sentiment = "positive"
+        else:
+            review_sentiment = "neutral"
+
+        release_info = self.game.get("release_date") or {}
+        release_date_label = release_info.get("date") or None
+
         base.update({
             "badge_label": badge["label"],
             "badge_class": badge["class"],
             "badge_icon": badge["icon"],
             "insight": self.insight,
             "why_it_matters": self.why_it_matters,
+            "genres": genres[:3],
+            "discount_percent": discount_percent,
+            "price_before": price_before,
+            "review_desc": review_desc,
+            "review_sentiment": review_sentiment,
+            "review_total": review_total,
+            "release_date_label": release_date_label,
+            "steam_url": f"https://store.steampowered.com/app/{self.app_id}",
         })
         return base
 

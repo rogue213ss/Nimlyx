@@ -1,4 +1,14 @@
 import requests
+
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+})
+
 from flask import Blueprint, jsonify
 
 from region import get_region_code
@@ -54,7 +64,7 @@ def verdicts():
 def featured_games_api():
     cc = get_region_code()
     url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
-    response = requests.get(url)
+    response = _session.get(url)
     data = response.json()
 
     def clean_items(category):

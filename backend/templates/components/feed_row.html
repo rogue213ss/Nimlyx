@@ -1,3 +1,4 @@
+{% from "components/nimlyx_score.html" import compact as nimlyx_score_compact %}
 {% if games %}
 {% set app_ids = games | map(attribute='app_id') | list | join(',') %}
 <section class="nimlyx-section{% if category == 'specials' %} nimlyx-section--elevated nimlyx-section--glow{% endif %}" id="feed-{{ category }}" data-appids="{{ app_ids }}">
@@ -30,6 +31,7 @@
       <a class="nimlyx-card nimlyx-card--wide" href="/search?q={{ game.name | urlencode }}">
         <div class="nimlyx-card-media">
           <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
+          {{ nimlyx_score_compact(game.nimlyx_score) }}
           <div class="nimlyx-card-overlay"></div>
         </div>
         <div class="nimlyx-card-body">
@@ -40,7 +42,7 @@
             {% if game.original_price %}<span class="price-was">{{ game.original_price }}</span>{% endif %}
           </div>
           {% if game.review_summary %}
-          <div class="nimlyx-card-context" style="color: var(--home-text-muted); font-weight: 500;">{{ game.review_summary }}</div>
+          <div class="nimlyx-card-context nimlyx-card-meta">{{ game.review_summary }}</div>
           {% endif %}
         </div>
       </a>
@@ -48,15 +50,16 @@
       <a class="nimlyx-card nimlyx-card--portrait" href="/search?q={{ game.name | urlencode }}">
         <div class="nimlyx-card-media">
           <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' alt="{{ game.name }}" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-genre-tag">Action</span>
+          {{ nimlyx_score_compact(game.nimlyx_score) }}
           <div class="nimlyx-card-overlay"></div>
         </div>
         <div class="nimlyx-card-body">
-          <div class="nimlyx-card-context">
-            <span class="nimlyx-chip">Action</span>
-            {% if game.review_summary %}<span class="dot">&bull;</span><span style="color: var(--home-text-muted); font-weight: 500;">{{ game.review_summary }}</span>{% endif %}
-          </div>
+          {% if game.review_summary %}
+          <div class="nimlyx-card-context nimlyx-card-meta">{{ game.review_summary }}</div>
+          {% endif %}
           <h3 class="nimlyx-card-title">{{ game.name }}</h3>
-          <span class="nimlyx-card-context" style="color: var(--home-text-muted); font-weight: 500;">{% if game.price == '$0.00' or game.price == 'Free' or game.price == '0' or not game.price %}Free{% else %}{{ game.price }}{% endif %}</span>
+          <span class="nimlyx-card-context nimlyx-card-price">{% if game.price == '$0.00' or game.price == 'Free' or game.price == '0' or not game.price %}Free{% else %}{{ game.price }}{% endif %}</span>
         </div>
       </a>
       {% endif %}
