@@ -32,7 +32,7 @@ with nothing honest to say doesn't end up on the homepage anyway,
 hero row or Picks row.
 """
 
-MAX_PICKS = 12
+MAX_PICKS = 14
 
 
 def select_worth_buying(all_candidates, max_picks=MAX_PICKS):

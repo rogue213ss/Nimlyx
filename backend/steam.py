@@ -360,6 +360,50 @@ def fetch_browse_category(category, count=25, cc="US"):
     return cleaned
 
 
+def fetch_budget_catalog_sweep(max_price_cents, count=100, cc="US"):
+    """Scrapes Steam's catalog filtered to `category1=998` (base games
+    only) + a price ceiling, with NO other filter (no tags/os) --
+    a broad, unbiased sweep of everything Steam sells under that
+    price, not a specific genre or platform slice.
+
+    Built for services/hero/potato_pool.py: the hero engine's
+    candidate pool (build_candidate_pool() in services/hero/pool.py)
+    is deliberately today's top sellers/new releases/specials, which
+    structurally excludes almost every game that would actually land
+    in Nimlyx's Potato ecosystem (🥔/🔧/💀) -- those games are, by the
+    nature of what that ecosystem classifies, old or budget titles,
+    not this week's trending list. A full-price new AAA game
+    essentially never sits permanently under $10-20 (only temporarily
+    via a special, which the hero pool already covers), so filtering
+    by a low, PERMANENT price ceiling reliably surfaces older/smaller
+    titles instead.
+
+    Reuses `_scrape_search_results()` -- the exact same parsing
+    `fetch_discover_games()` already relies on -- so this doesn't
+    duplicate that ~80-line scrape/parse block or risk it drifting out
+    of sync.
+    """
+    cache_key = ("budget_catalog_sweep", max_price_cents, count, cc)
+    cached = _cache_get(cache_key, ttl_seconds=1800)
+    if cached is not None:
+        return cached
+
+    params = {
+        "query": "",
+        "start": 0,
+        "count": count,
+        "category1": 998,
+        "cc": cc,
+        "l": "english",
+    }
+    if max_price_cents is not None:
+        params["maxprice"] = max_price_cents / 100
+
+    games = _scrape_search_results(params, cc)
+    _cache_set(cache_key, games)
+    return games
+
+
 def parse_review_percent(game_anchor):
     """Pulls the review percentage out of a search result row's tooltip,
     e.g. data-tooltip-html="87% of the 2,301 user reviews...". Returns
@@ -1684,4 +1728,4 @@ def fetch_homepage_row(category_id, cc="US", seen_ids=None):
     if len(filtered_games) < 4:
         filtered_games = all_games
         
-    return filtered_games[:10]  # Slice to top 10 for the row
+    return filtered_games[:14]  # Slice to top 14 for the row -- scrollable rows should carry more than 10

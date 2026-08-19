@@ -22,6 +22,7 @@ from formatters import format_price
 from services.hero.builder import build_hero_lineup
 from services.hero.picks import select_worth_buying
 from services.analysis.score_cache import get_cached_score
+from services.hardware.homepage_classifier import classify_homepage_hardware
 from steam_images import default_header_image, build_image_candidates
 
 pages_bp = Blueprint("pages", __name__)
@@ -117,6 +118,74 @@ def _is_hero_build_pending(cc):
 
 
 # ----------------------------------------------------------------
+# Potato-pool cache — same serve-stale-while-revalidating pattern as
+# the hero cache above, deliberately kept as a SEPARATE cache/lock/
+# background thread rather than folded into _HERO_CACHE: this pool
+# answers a different question (which older/budget games exist at
+# all) than the hero pool (which of today's popular games deserve a
+# hero slot), and a slow/failed build of one should never block or
+# invalidate the other. See services/hero/potato_pool.py for why this
+# pool exists and what it scrapes.
+# ----------------------------------------------------------------
+_POTATO_CACHE = {}
+_POTATO_CACHE_LOCK = threading.Lock()
+_POTATO_CACHE_TTL_SECONDS = 1800  # 30 minutes -- this pool changes far
+# less often than the hero pool (Steam's budget-priced catalog doesn't
+# turn over hour to hour the way top sellers/new releases do), so a
+# longer TTL means fewer redundant ~60-120-game enrichment sweeps.
+_POTATO_BUILD_IN_PROGRESS = set()
+
+
+def _rebuild_potato_cache(cc):
+    """Runs in a background thread — never blocks a request. Mirrors
+    _rebuild_hero_cache()'s failure handling: any error here just
+    leaves the existing cache entry (or nothing, on a first build) in
+    place, logged, and the next stale/miss simply tries again later."""
+    try:
+        from services.hero.potato_pool import build_potato_candidate_pool
+        candidates = build_potato_candidate_pool(cc=cc)
+        with _POTATO_CACHE_LOCK:
+            _POTATO_CACHE[cc] = {
+                "candidates": candidates,
+                "fetched_at": time.time(),
+            }
+    except Exception:
+        logger.exception("Background potato pool rebuild failed for region %s.", cc)
+    finally:
+        with _POTATO_CACHE_LOCK:
+            _POTATO_BUILD_IN_PROGRESS.discard(cc)
+
+
+def _get_potato_pool(cc):
+    """Same three-outcome shape as _get_hero_lineup(): fresh hit
+    returns immediately; stale hit returns the stale-but-real list
+    immediately and kicks off a background rebuild; a true cold start
+    (nothing cached yet) returns [] and starts the first build in the
+    background. A cold-start [] here is never worse than today's
+    behavior — the Potato/iGPU sections simply fall back to whatever
+    the hero pool alone can find, exactly as before this pool
+    existed, until the first background build finishes."""
+    with _POTATO_CACHE_LOCK:
+        cached = _POTATO_CACHE.get(cc)
+        building = cc in _POTATO_BUILD_IN_PROGRESS
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= _POTATO_CACHE_TTL_SECONDS
+        if is_stale and not building:
+            with _POTATO_CACHE_LOCK:
+                _POTATO_BUILD_IN_PROGRESS.add(cc)
+            threading.Thread(target=_rebuild_potato_cache, args=(cc,), daemon=True).start()
+        return cached["candidates"]
+
+    if not building:
+        with _POTATO_CACHE_LOCK:
+            _POTATO_BUILD_IN_PROGRESS.add(cc)
+        threading.Thread(target=_rebuild_potato_cache, args=(cc,), daemon=True).start()
+
+    return []
+
+
+# ----------------------------------------------------------------
 # New-releases cache — same serve-stale-while-revalidating pattern
 # as the hero cache above, same reasoning: fetch_verified_new_
 # releases() makes one live appdetails call per candidate purely to
@@ -131,7 +200,7 @@ _NEW_RELEASES_BUILD_IN_PROGRESS = set()
 
 def _rebuild_new_releases_cache(cc):
     try:
-        games = fetch_verified_new_releases(limit=12, cc=cc, candidate_pool=60)
+        games = fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
         with _NEW_RELEASES_CACHE_LOCK:
             _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
     except Exception:
@@ -203,6 +272,7 @@ def home():
                 "header_image": hero_image_url(g.get("id"), g.get("image")),
                 "image_candidates": build_image_candidates(g.get("id"), orientation=orientation, fallback_image=g.get("image")),
                 "analyze_url": f"/search?app_id={g.get('id')}",
+                "steam_url": f"https://store.steampowered.com/app/{g.get('id')}" if g.get("id") else "",
                 "price": format_price(g.get("final_price")),
                 "nimlyx_score": get_cached_score(g.get("id"), cc),
             }
@@ -232,16 +302,21 @@ def home():
             featured_games = []
             for candidate in selected_heroes:
                 hero = candidate.to_hero_dict()
-                featured_games.append({
-                    "id": hero["app_id"],
-                    "name": hero["name"],
-                    "header_image": hero["image"],
-                    "image_candidates": hero["image_candidates"],
-                    "analyze_url": hero["url"],
-                    "insight": hero["insight"],
-                    "why_it_matters": hero["why_it_matters"],
-                    "nimlyx_score": get_cached_score(hero["app_id"], cc),
-                })
+                # Start from the FULL hero dict (steam_url, genres,
+                # discount_percent, price_before, review_desc,
+                # review_sentiment, release_date_label, badge_* ...)
+                # rather than hand-picking a subset -- a previous
+                # version of this loop only copied a few keys across,
+                # which silently dropped `steam_url` and left the
+                # hero's "View on Steam" button pointing at an empty
+                # href (it just reloaded the current page instead of
+                # opening the Steam store page).
+                game = dict(hero)
+                game["id"] = hero["app_id"]
+                game["header_image"] = hero["image"]
+                game["analyze_url"] = hero["url"]
+                game["nimlyx_score"] = get_cached_score(hero["app_id"], cc)
+                featured_games.append(game)
         else:
             featured_games = [format_basic_game(g) for g in top_sellers_raw[:5]]
             for f in featured_games:
@@ -262,35 +337,54 @@ def home():
 
         # ---------------- TRENDING TODAY ----------------
         trending_games = []
-        for i, g in enumerate(available_games[:10]):
+        for i, g in enumerate(available_games[:14]):
             trending_games.append(format_basic_game(g, rank=i+1, orientation="portrait" if i == 0 else "landscape"))
             seen_ids.add(str(g.get("id")))
-        available_games = available_games[10:]
+        available_games = available_games[14:]
 
-        # ---------------- INTEGRATED GPU ----------------
-        # V1 Fallback: No hardware database available yet. Use real games
-        # but attach a neutral badge instead of fabricated FPS data.
-        igpu_games = []
-        for g in available_games[:8]:
-            game_dict = format_basic_game(g)
-            game_dict["hardware_badge"] = "Analysis Pending"
-            igpu_games.append(game_dict)
-            seen_ids.add(str(g.get("id")))
-        available_games = available_games[8:]
+        # ---------------- INTEGRATED GPU + POTATO FRIENDLY ----------------
+        # Real classification, not a placeholder badge. Runs against two
+        # merged candidate sources:
+        #   1. all_candidates -- the hero engine's pool (today's top
+        #      sellers/new releases/specials), reused here at zero extra
+        #      cost.
+        #   2. potato_candidates -- a SEPARATE, dedicated pool of budget-
+        #      priced catalog games (services/hero/potato_pool.py). The
+        #      hero pool alone was nearly empty of anything that could
+        #      classify into 🥔/🔧/💀, since the games those tiers are
+        #      looking for are structurally not this week's top sellers.
+        # Deduped by app_id (hero pool wins on overlap -- it's already
+        # popularity-ranked, so preferring it costs nothing).
+        # A game whose requirements don't resolve is left out entirely --
+        # never defaulted in. See services/hardware/homepage_classifier.py
+        # and services/hardware/potato_classifier.py.
+        try:
+            potato_candidates = _get_potato_pool(cc)
+        except Exception:
+            logger.exception("Potato pool fetch failed for region %s", cc)
+            potato_candidates = []
 
-        # ---------------- POTATO GAMES ----------------
-        # V1 Fallback: We cannot randomly distribute games into "Tweaks" or "Extreme"
-        # without requirement data. We populate only one list to keep the UI visually
-        # functional with neutral badges. The template will hide the empty lists.
-        potato_friendly = []
-        potato_tweaks = []
-        potato_extreme = []
-        for g in available_games[:8]:
-            game_dict = format_basic_game(g, orientation="portrait")
-            game_dict["hardware_badge"] = "Pending Check"
-            potato_friendly.append(game_dict)
-            seen_ids.add(str(g.get("id")))
-        available_games = available_games[8:]
+        _hardware_pool_ids = {str(c.app_id) for c in all_candidates if c.app_id}
+        hardware_pool = list(all_candidates) + [
+            c for c in potato_candidates if c.app_id and str(c.app_id) not in _hardware_pool_ids
+        ]
+
+        try:
+            igpu_games, potato_friendly, potato_tweaks, potato_extreme = classify_homepage_hardware(
+                hardware_pool, seen_ids, limit=14
+            )
+        except Exception:
+            logger.exception("Homepage hardware classification failed for region %s", cc)
+            igpu_games, potato_friendly, potato_tweaks, potato_extreme = [], [], [], []
+        for g in igpu_games:
+            seen_ids.add(str(g["id"]))
+        for g in potato_friendly:
+            seen_ids.add(str(g["id"]))
+        for g in potato_tweaks:
+            seen_ids.add(str(g["id"]))
+        for g in potato_extreme:
+            seen_ids.add(str(g["id"]))
+        available_games = [g for g in available_games if str(g.get("id")) not in seen_ids]
 
         # ---------------- HIDDEN GEMS ----------------
         # V1 Heuristic: Use games further down the top-sellers list (lower mainstream
@@ -305,14 +399,18 @@ def home():
         available_games = [g for g in available_games if str(g.get("id")) not in seen_ids]
 
         # ---------------- BEST MATCHES ----------------
-        # V1 Fallback: No user hardware context or matching logic yet.
+        # Disabled (not fabricated): "Games Your PC Is Built For" requires
+        # actual user hardware to compare against, and nothing in the app
+        # persists a chosen CPU/GPU today (the "Can I Run This?" picker on
+        # Game Detail is per-request/ephemeral -- never saved). Filling
+        # this section from leftover top-sellers, even with a real-sounding
+        # badge, would be an unsubstantiated compatibility claim -- exactly
+        # what the "Great Compatibility" placeholder was already guilty of.
+        # Re-enable once a persisted user hardware profile exists to
+        # actually run through evaluate_compatibility(). Section markup
+        # stays in index.html (guarded by {% if best_matches %}) so it's
+        # a one-line revival, not a rebuild.
         best_matches = []
-        for g in available_games[:6]:
-            game_dict = format_basic_game(g)
-            game_dict["hardware_badge"] = "Great Compatibility"
-            best_matches.append(game_dict)
-            seen_ids.add(str(g.get("id")))
-        available_games = available_games[6:]
 
         # ---------------- NEW RELEASES ----------------
         try:
@@ -323,7 +421,7 @@ def home():
 
         new_releases_filtered = [g for g in verified_new_releases if str(g.get("id")) not in seen_ids]
         new_release_games = []
-        for g in new_releases_filtered[:10]:
+        for g in new_releases_filtered[:14]:
             new_release_games.append({
                 "id": g["id"],
                 "name": g["name"],
@@ -350,7 +448,7 @@ def home():
         # ---------------- BIGGEST DEALS (SPECIALS) ----------------
         deals_raw = fetch_homepage_row("specials", cc=cc, seen_ids=seen_ids) or []
         deals_games = []
-        for g in deals_raw[:8]:
+        for g in deals_raw[:14]:
             deals_games.append({
                 **g,
                 "price": format_price(g.get("price")),
