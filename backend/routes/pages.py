@@ -236,6 +236,85 @@ def _get_verified_new_releases(cc):
     return []
 
 
+# ----------------------------------------------------------------
+# Top-sellers cache -- same serve-stale-while-revalidating pattern as
+# the hero/potato/new-releases caches above.
+#
+# Root cause of the "homepage goes empty on refresh" bug: this was
+# previously a direct, synchronous fetch_browse_category("topsellers",
+# ...) call inside home() with no local fallback. fetch_browse_category
+# has its own short-lived (180s) cache, but that cache is a plain TTL
+# cache -- once an entry ages past 180s it returns None and the next
+# call hits Steam live again. Steam's search/results endpoint
+# occasionally times out or returns 429/5xx (rate limiting, transient
+# outages), which raised inside fetch_browse_category via
+# response.raise_for_status(). That exception propagated all the way
+# up to home()'s outer except requests.exceptions.RequestException,
+# which discarded every already-successfully-built section (hero,
+# potato pool, new releases -- all independently cached and fine) and
+# rendered a fully empty homepage.
+#
+# Fixed the same way every other homepage data source already handles
+# this: fetch on a background thread, serve the last known-good
+# (possibly stale) result instantly, and never let a failed refresh
+# replace good data with [] or None. See _rebuild_top_sellers_cache
+# below -- a failed fetch_func() call there is caught and simply
+# leaves the existing cache entry in place.
+# ----------------------------------------------------------------
+_TOP_SELLERS_CACHE = {}
+_TOP_SELLERS_CACHE_LOCK = threading.Lock()
+_TOP_SELLERS_CACHE_TTL_SECONDS = 180  # matches fetch_browse_category's own TTL
+_TOP_SELLERS_BUILD_IN_PROGRESS = set()
+
+
+def _rebuild_top_sellers_cache(cc):
+    """Runs in a background thread -- never blocks a request. Mirrors
+    _rebuild_hero_cache()'s failure handling: if the Steam fetch fails
+    (timeout, 429, 5xx, anything raised by raise_for_status()), the
+    exception is caught and logged here, and the existing cache entry
+    (or nothing, on a first build) is left untouched -- a failed
+    refresh must never overwrite valid cached data with [] or None."""
+    try:
+        games = fetch_browse_category("topsellers", count=100, cc=cc)
+        with _TOP_SELLERS_CACHE_LOCK:
+            _TOP_SELLERS_CACHE[cc] = {"games": games, "fetched_at": time.time()}
+    except Exception:
+        logger.exception("Background top-sellers rebuild failed for region %s.", cc)
+    finally:
+        with _TOP_SELLERS_CACHE_LOCK:
+            _TOP_SELLERS_BUILD_IN_PROGRESS.discard(cc)
+
+
+def _get_top_sellers(cc):
+    """Same three-outcome shape as _get_hero_lineup()/_get_potato_pool():
+    fresh hit returns immediately; stale hit returns the stale-but-real
+    list immediately and kicks off a background rebuild (Steam being
+    slow/down right now never blocks or empties this request); a true
+    cold start (nothing cached yet, e.g. right after deploy) returns []
+    and starts the first build in the background -- every downstream
+    section that reads top_sellers_raw already tolerates an empty list
+    (they just render fewer/no cards this one time), same honest-
+    degradation approach used elsewhere in this file."""
+    with _TOP_SELLERS_CACHE_LOCK:
+        cached = _TOP_SELLERS_CACHE.get(cc)
+        building = cc in _TOP_SELLERS_BUILD_IN_PROGRESS
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= _TOP_SELLERS_CACHE_TTL_SECONDS
+        if is_stale and not building:
+            with _TOP_SELLERS_CACHE_LOCK:
+                _TOP_SELLERS_BUILD_IN_PROGRESS.add(cc)
+            threading.Thread(target=_rebuild_top_sellers_cache, args=(cc,), daemon=True).start()
+        return cached["games"]
+
+    if not building:
+        with _TOP_SELLERS_CACHE_LOCK:
+            _TOP_SELLERS_BUILD_IN_PROGRESS.add(cc)
+        threading.Thread(target=_rebuild_top_sellers_cache, args=(cc,), daemon=True).start()
+
+    return []
+
+
 def hero_image_url(appid, fallback):
     """
     NIMLYX TRADITION #005 — "Sharp beats cinematic if cinematic
@@ -261,7 +340,7 @@ def hero_image_url(appid, fallback):
 def home():
     try:
         cc = get_region_code()
-        top_sellers_raw = fetch_browse_category("topsellers", count=100, cc=cc)
+        top_sellers_raw = _get_top_sellers(cc)
         seen_ids = set()
 
         # Helper to format a basic game dict
