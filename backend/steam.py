@@ -89,14 +89,61 @@ _response_cache_lock = threading.Lock()
 def _cache_get(key, ttl_seconds):
     with _response_cache_lock:
         entry = _response_cache.get(key)
-        if entry and (time.time() - entry["at"]) < ttl_seconds:
-            return entry["value"]
+        if entry:
+            actual_ttl = entry.get("ttl_override") or ttl_seconds
+            if (time.time() - entry["at"]) < actual_ttl:
+                return entry["value"]
         return None
 
 
-def _cache_set(key, value):
+def _cache_set(key, value, ttl_override=None):
     with _response_cache_lock:
-        _response_cache[key] = {"value": value, "at": time.time()}
+        _response_cache[key] = {"value": value, "at": time.time(), "ttl_override": ttl_override}
+
+
+_inflight_requests = {}
+_inflight_requests_lock = threading.Lock()
+
+def _execute_deduplicated(cache_key, ttl_seconds, fetch_func, failure_ttl=60):
+    """
+    Prevents multiple threads from simultaneously requesting the exact same data from Steam.
+    If Steam fails (e.g. 429), it caches the failure briefly to prevent a retry storm.
+    """
+    cached = _cache_get(cache_key, ttl_seconds)
+    if cached is not None:
+        if cached == "RATE_LIMITED_OR_FAILED":
+            return None
+        return cached
+
+    we_fetch = False
+    with _inflight_requests_lock:
+        if cache_key in _inflight_requests:
+            cond = _inflight_requests[cache_key]
+        else:
+            cond = threading.Condition()
+            _inflight_requests[cache_key] = cond
+            we_fetch = True
+
+    if we_fetch:
+        try:
+            result = fetch_func()
+            if result is None:
+                _cache_set(cache_key, "RATE_LIMITED_OR_FAILED", ttl_override=failure_ttl)
+            else:
+                _cache_set(cache_key, result)
+            return result
+        finally:
+            with cond:
+                cond.notify_all()
+            with _inflight_requests_lock:
+                _inflight_requests.pop(cache_key, None)
+    else:
+        with cond:
+            cond.wait()
+        cached = _cache_get(cache_key, ttl_seconds)
+        if cached == "RATE_LIMITED_OR_FAILED":
+            return None
+        return cached
 
 
 # ==========================================================
@@ -276,88 +323,62 @@ def fetch_browse_category(category, count=25, cc="US"):
     # second caller reuse the first's real, already-fetched result
     # instead of scraping Steam twice for identical data.
     cache_key = ("browse_category", category, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=180)
-    if cached is not None:
-        return cached
 
-    # category1=998 restricts results to base games only — excludes
-    # DLC, soundtracks, and software. Without this, DLC entries (e.g.
-    # remaster/"resync" bundles) slip into Trending, Top Sellers, and
-    # the hero/Picks candidate pool. DLC also often lacks its own
-    # library_hero.jpg asset, which is why one showed up with a
-    # broken/missing image rather than just being a wrong result.
-    # fetch_discover_games() already applies this same filter — this
-    # brings fetch_browse_category in line with it. DLC will get its
-    # own homepage section later; until then it shouldn't appear
-    # anywhere general "games" data is shown.
-    url = (
-        f"https://store.steampowered.com/search/results/"
-        f"?query=&start=0&count={count}&filter={category}&category1=998&cc={cc}&l=english"
-    )
+    def _fetch():
+        url = (
+            f"https://store.steampowered.com/search/results/"
+            f"?query=&start=0&count={count}&filter={category}&category1=998&cc={cc}&l=english"
+        )
+        try:
+            response = _session.get(url, timeout=10)
+            response.raise_for_status()
+        except (requests.exceptions.RequestException, ValueError):
+            return None
 
-    response = _session.get(url, timeout=10)
-    response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        games = soup.find_all("a", class_="search_result_row")
+        cleaned = []
+        for game in games:
+            app_id = game.get("data-ds-appid")
+            title = game.find("span", class_="title")
+            name = title.text.strip() if title else "Unknown"
+            if any(keyword in name.lower() for keyword in HARDWARE_KEYWORDS):
+                continue
+            img = game.find("img")
+            image = img["src"] if img and img.get("src") else None
+            if not _is_genuine_app_row(game, app_id) or not image:
+                continue
+            price_div = game.find("div", class_="search_price_discount_combined")
+            final_price_el = game.find("div", class_="discount_final_price")
+            is_free = final_price_el and "free" in final_price_el.get("class", [])
+            final_price = "0" if is_free else (price_div.get("data-price-final") if price_div else None)
+            original_price_span = game.find("div", class_="discount_original_price")
+            original_price = original_price_span.text.strip() if original_price_span else None
+            discount_span = game.find("div", class_="discount_pct")
+            discount_percent = discount_span.text.strip() if discount_span else None
+            platforms_div = game.find("div", class_="search_platforms")
+            platforms = []
+            if platforms_div:
+                for span in platforms_div.find_all("span", class_="platform_img"):
+                    classes = span.get("class", [])
+                    for cls in classes:
+                        if cls in ("win", "mac", "linux"):
+                            platforms.append(cls)
+            cleaned.append({
+                "id": app_id,
+                "name": name,
+                "image": image,
+                "final_price": final_price,
+                "original_price": original_price,
+                "discount_percent": discount_percent,
+                "review_percent": parse_review_percent(game),
+                "review_summary": parse_review_summary(game),
+                "platforms": platforms
+            })
+        return cleaned
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    games = soup.find_all("a", class_="search_result_row")
-
-    cleaned = []
-
-    for game in games:
-        app_id = game.get("data-ds-appid")
-
-        title = game.find("span", class_="title")
-        name = title.text.strip() if title else "Unknown"
-
-        if any(keyword in name.lower() for keyword in HARDWARE_KEYWORDS):
-            continue
-
-        img = game.find("img")
-        image = img["src"] if img and img.get("src") else None
-
-        # Same fix as fetch_discover_games (see NIMLYX TRADITION #009
-        # above) — a row without a real app_id or image isn't a card
-        # this app can honestly render, so it's skipped here rather
-        # than passed downstream with fields that silently resolve to
-        # a broken image later.
-        if not _is_genuine_app_row(game, app_id) or not image:
-            continue
-
-        price_div = game.find("div", class_="search_price_discount_combined")
-        final_price_el = game.find("div", class_="discount_final_price")
-        is_free = final_price_el and "free" in final_price_el.get("class", [])
-
-        final_price = "0" if is_free else (price_div.get("data-price-final") if price_div else None)
-
-        original_price_span = game.find("div", class_="discount_original_price")
-        original_price = original_price_span.text.strip() if original_price_span else None
-
-        discount_span = game.find("div", class_="discount_pct")
-        discount_percent = discount_span.text.strip() if discount_span else None
-
-        platforms_div = game.find("div", class_="search_platforms")
-        platforms = []
-        if platforms_div:
-            for span in platforms_div.find_all("span", class_="platform_img"):
-                classes = span.get("class", [])
-                for cls in classes:
-                    if cls in ("win", "mac", "linux"):
-                        platforms.append(cls)
-
-        cleaned.append({
-            "id": app_id,
-            "name": name,
-            "image": image,
-            "final_price": final_price,
-            "original_price": original_price,
-            "discount_percent": discount_percent,
-            "review_percent": parse_review_percent(game),
-            "review_summary": parse_review_summary(game),
-            "platforms": platforms
-        })
-
-    _cache_set(cache_key, cleaned)
-    return cleaned
+    result = _execute_deduplicated(cache_key, 180, _fetch, failure_ttl=60)
+    return result if result is not None else []
 
 
 def fetch_budget_catalog_sweep(max_price_cents, count=100, cc="US"):
@@ -384,24 +405,26 @@ def fetch_budget_catalog_sweep(max_price_cents, count=100, cc="US"):
     of sync.
     """
     cache_key = ("budget_catalog_sweep", max_price_cents, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=1800)
-    if cached is not None:
-        return cached
+    
+    def _fetch():
+        params = {
+            "query": "",
+            "start": 0,
+            "count": count,
+            "category1": 998,
+            "cc": cc,
+            "l": "english",
+        }
+        if max_price_cents is not None:
+            params["maxprice"] = max_price_cents / 100
+        
+        try:
+            return _scrape_search_results(params, cc)
+        except (requests.exceptions.RequestException, ValueError):
+            return None
 
-    params = {
-        "query": "",
-        "start": 0,
-        "count": count,
-        "category1": 998,
-        "cc": cc,
-        "l": "english",
-    }
-    if max_price_cents is not None:
-        params["maxprice"] = max_price_cents / 100
-
-    games = _scrape_search_results(params, cc)
-    _cache_set(cache_key, games)
-    return games
+    result = _execute_deduplicated(cache_key, 1800, _fetch, failure_ttl=60)
+    return result if result is not None else []
 
 
 def parse_review_percent(game_anchor):
@@ -591,33 +614,37 @@ def fetch_discover_games(genre=None, play_with=None, budget=None, platform=None,
     # rapid back-and-forth clicking a live filter UI invites is
     # answered from cache instead of Steam.
     cache_key = ("discover_games", genre, play_with, budget, platform, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=180)
-    if cached is not None:
-        return cached
 
-    tag_ids = []
-    if genre in GENRE_TAG_IDS:
-        tag_ids.append(GENRE_TAG_IDS[genre])
-    if play_with in PLAYWITH_TAG_IDS:
-        tag_ids.append(PLAYWITH_TAG_IDS[play_with])
+    def _fetch():
+        tag_ids = []
+        if genre in GENRE_TAG_IDS:
+            tag_ids.append(GENRE_TAG_IDS[genre])
+        if play_with in PLAYWITH_TAG_IDS:
+            tag_ids.append(PLAYWITH_TAG_IDS[play_with])
 
-    params = {
-        "query": "",
-        "start": 0,
-        "count": count,
-        "category1": 998,  # Games only — excludes DLC, soundtracks, software
-        "cc": cc,
-        "l": "english",
-    }
-    if tag_ids:
-        params["tags"] = ",".join(str(t) for t in tag_ids)
-    if platform in PLATFORM_OS_PARAM:
-        params["os"] = PLATFORM_OS_PARAM[platform]
-    if budget in BUDGET_MAX_PRICE_CENTS and BUDGET_MAX_PRICE_CENTS[budget] is not None:
-        params["maxprice"] = BUDGET_MAX_PRICE_CENTS[budget] / 100
+        params = {
+            "query": "",
+            "start": 0,
+            "count": count,
+            "category1": 998,
+            "cc": cc,
+            "l": "english",
+        }
+        if tag_ids:
+            params["tags"] = ",".join(str(t) for t in tag_ids)
+        if platform in PLATFORM_OS_PARAM:
+            params["os"] = PLATFORM_OS_PARAM[platform]
+        if budget in BUDGET_MAX_PRICE_CENTS and BUDGET_MAX_PRICE_CENTS[budget] is not None:
+            params["maxprice"] = BUDGET_MAX_PRICE_CENTS[budget] / 100
 
-    games = _scrape_search_results(params, cc)
-    _cache_set(cache_key, games)
+        try:
+            return _scrape_search_results(params, cc)
+        except (requests.exceptions.RequestException, ValueError):
+            return None
+
+    games = _execute_deduplicated(cache_key, 180, _fetch, failure_ttl=60)
+    if games is None:
+        games = []
     return games
 
 
@@ -664,10 +691,8 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
     # exact same cached Steam response instead of triggering two
     # separate scrapes for the same developer/publisher.
     cache_key = ("credit_games", field, value, cc)
-    cached = _cache_get(cache_key, ttl_seconds=600)
-    if cached is not None:
-        games = cached
-    else:
+
+    def _fetch():
         params = {
             "query": "",
             "start": 0,
@@ -677,8 +702,16 @@ def fetch_games_by_credit(field, value, exclude_app_id=None, count=10, cc="US"):
             "l": "english",
             field: value,
         }
-        games = _scrape_search_results(params, cc)
-        _cache_set(cache_key, games)
+
+        try:
+            return _scrape_search_results(params, cc)
+        except (requests.exceptions.RequestException, ValueError):
+            return None
+
+    games = _execute_deduplicated(cache_key, 86400, _fetch, failure_ttl=60)
+    if games is None:
+        games = []
+
 
     if exclude_app_id:
         games = [g for g in games if g.get("id") != str(exclude_app_id)]
@@ -709,21 +742,23 @@ def fetch_search_by_term(term, start=0, count=30, cc="US"):
     results PAGE uses to page through results, so different start
     values genuinely return different games."""
     cache_key = ("term_search", term, start, count, cc)
-    cached = _cache_get(cache_key, ttl_seconds=86400)
-    if cached is not None:
-        return cached
+    
+    def _fetch():
+        params = {
+            "term": term,
+            "start": start,
+            "count": count,
+            "category1": 998,
+            "cc": cc,
+            "l": "english",
+        }
+        try:
+            return _scrape_search_results(params, cc)
+        except (requests.exceptions.RequestException, ValueError):
+            return None
 
-    params = {
-        "term": term,
-        "start": start,
-        "count": count,
-        "category1": 998,
-        "cc": cc,
-        "l": "english",
-    }
-    games = _scrape_search_results(params, cc)
-    _cache_set(cache_key, games)
-    return games
+    result = _execute_deduplicated(cache_key, 86400, _fetch, failure_ttl=60)
+    return result if result is not None else []
 
 
 def fetch_authoritative_price(app_id, cc="US"):
@@ -770,53 +805,44 @@ def fetch_authoritative_price(app_id, cc="US"):
     # price change still shows up quickly, long enough to absorb
     # normal browsing/pagination within one visit.
     cache_key = ("authoritative_price", app_id, cc)
-    cached = _cache_get(cache_key, ttl_seconds=300)
-    if cached is not None:
-        return cached
 
-    def _try(region):
-        try:
-            # Match the exact request used by /api/find and /api/game.
-            # Even small query parameter differences create a different
-            # Steam CDN cache key and may return stale pricing.
-            url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={region}"
-            response = _session.get(url, timeout=8)
-            response.raise_for_status()
-            data = response.json()
-            entry = data.get(str(app_id))
+    def _fetch():
+        def _try(region):
+            try:
+                url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={region}"
+                response = _session.get(url, timeout=8)
+                response.raise_for_status()
+                data = response.json()
+                entry = data.get(str(app_id))
 
-            if not entry or not entry.get("success"):
+                if not entry or not entry.get("success"):
+                    return None
+
+                game_data = entry.get("data")
+                if not isinstance(game_data, dict):
+                    return None
+
+                price_overview = game_data.get("price_overview")
+                if price_overview:
+                    result = {
+                        "final": price_overview.get("final", 0),
+                        "discount_percent": price_overview.get("discount_percent", 0),
+                    }
+                else:
+                    result = {"final": 0, "discount_percent": 0}
+
+                result["header_image"] = game_data.get("header_image")
+                return result
+
+            except (requests.exceptions.RequestException, ValueError):
                 return None
 
-            game_data = entry.get("data")
-            if not isinstance(game_data, dict):
-                return None
+        result = _try(cc)
+        if result is None:
+            result = _try("US")
+        return result
 
-            price_overview = game_data.get("price_overview")
-            if price_overview:
-                result = {
-                    "final": price_overview.get("final", 0),
-                    "discount_percent": price_overview.get("discount_percent", 0),
-                }
-            else:
-                # No price_overview at all means the game is free (or
-                # has no listed price) — no discount to speak of either.
-                result = {"final": 0, "discount_percent": 0}
-
-            result["header_image"] = game_data.get("header_image")
-            return result
-
-        except (requests.exceptions.RequestException, ValueError):
-            return None
-
-    result = _try(cc)
-    if result is None:
-        # Region-unavailable fallback — same pattern as builder.py/game.py.
-        result = _try("US")
-
-    if result is not None:
-        _cache_set(cache_key, result)
-    return result
+    return _execute_deduplicated(cache_key, 300, _fetch, failure_ttl=60)
 
 
 # ==========================================================
@@ -899,45 +925,41 @@ def release_recency_label(release_date_obj, today=None):
 
 
 def fetch_new_release_candidates(count=40, cc="US"):
-    """Scrapes Steam's own search results sorted by real release date
-    (sort_by=Released_DESC) -- the same ordering Steam's own New
-    Releases page is built from -- restricted to base games
-    (category1=998, matching fetch_browse_category's DLC exclusion).
+    cache_key = ("new_release_candidates", count, cc)
+    def _fetch():
+        url = (
+            f"https://store.steampowered.com/search/results/"
+            f"?query=&start=0&count={count}&sort_by=Released_DESC"
+            f"&category1=998&cc={cc}&l=english"
+        )
+        try:
+            response = _session.get(url, timeout=10)
+            response.raise_for_status()
+        except (requests.exceptions.RequestException, ValueError):
+            return None
 
-    This is a CANDIDATE pool only. The scraped search HTML has no
-    actual date field, just an ordering, so every candidate still
-    needs a live appdetails call (see fetch_verified_new_releases)
-    before its release date can be trusted or shown.
-    """
-    url = (
-        f"https://store.steampowered.com/search/results/"
-        f"?query=&start=0&count={count}&sort_by=Released_DESC"
-        f"&category1=998&cc={cc}&l=english"
-    )
+        soup = BeautifulSoup(response.text, "html.parser")
+        games = soup.find_all("a", class_="search_result_row")
+        cleaned = []
+        for game in games:
+            app_id = game.get("data-ds-appid")
+            title = game.find("span", class_="title")
+            name = title.text.strip() if title else "Unknown"
+            if any(keyword in name.lower() for keyword in HARDWARE_KEYWORDS):
+                continue
+            img = game.find("img")
+            image = img["src"] if img and img.get("src") else None
+            if not _is_genuine_app_row(game, app_id) or not image:
+                continue
+            cleaned.append({
+                "id": app_id,
+                "name": name,
+                "image": image
+            })
+        return cleaned
 
-    response = _session.get(url, timeout=10)
-    response.raise_for_status()
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    rows = soup.find_all("a", class_="search_result_row")
-
-    candidates = []
-    for row in rows:
-        app_id = row.get("data-ds-appid")
-        if not _is_genuine_app_row(row, app_id):
-            continue
-
-        title = row.find("span", class_="title")
-        name = title.text.strip() if title else "Unknown"
-        if any(keyword in name.lower() for keyword in HARDWARE_KEYWORDS):
-            continue
-
-        img = row.find("img")
-        image = img["src"] if img and img.get("src") else None
-
-        candidates.append({"id": app_id, "name": name, "image": image})
-
-    return candidates
+    result = _execute_deduplicated(cache_key, 1800, _fetch, failure_ttl=60)
+    return result if result is not None else []
 
 
 def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
@@ -1069,45 +1091,44 @@ def get_review_summary(app_id, cc="US", day_range=None):
     # day_range is part of the cache key since it's a genuinely
     # different query, not just a different filter on the same data.
     cache_key = ("review_summary", app_id, cc, day_range)
-    cached = _cache_get(cache_key, ttl_seconds=600)
-    if cached is not None:
-        return cached
 
-    try:
-        review_filter = "all" if day_range else "summary"
-        url = (
-            f"https://store.steampowered.com/appreviews/{app_id}"
-            f"?json=1&filter={review_filter}&language=english&cc={cc}"
-        )
-        if day_range:
-            url += f"&day_range={day_range}"
+    def _fetch():
+        try:
+            review_filter = "all" if day_range else "summary"
+            url = (
+                f"https://store.steampowered.com/appreviews/{app_id}"
+                f"?json=1&filter={review_filter}&language=english&cc={cc}"
+            )
+            if day_range:
+                url += f"&day_range={day_range}"
 
-        response = _session.get(url, timeout=8)
-        response.raise_for_status()
-        data = response.json()
+            response = _session.get(url, timeout=8)
+            response.raise_for_status()
+            data = response.json()
 
-        if not data.get("success"):
+            if not data.get("success"):
+                return None
+
+            summary = data.get("query_summary")
+            if not summary:
+                return None
+
+            total_reviews = summary.get("total_reviews", 0)
+            if total_reviews == 0:
+                return None
+
+            result = {
+                "review_score_desc": summary.get("review_score_desc"),
+                "total_positive": summary.get("total_positive", 0),
+                "total_negative": summary.get("total_negative", 0),
+                "total_reviews": total_reviews,
+            }
+            return result
+
+        except (requests.exceptions.RequestException, ValueError):
             return None
 
-        summary = data.get("query_summary")
-        if not summary:
-            return None
-
-        total_reviews = summary.get("total_reviews", 0)
-        if total_reviews == 0:
-            return None
-
-        result = {
-            "review_score_desc": summary.get("review_score_desc"),
-            "total_positive": summary.get("total_positive", 0),
-            "total_negative": summary.get("total_negative", 0),
-            "total_reviews": total_reviews,
-        }
-        _cache_set(cache_key, result)
-        return result
-
-    except (requests.exceptions.RequestException, ValueError):
-        return None
+    return _execute_deduplicated(cache_key, 600, _fetch, failure_ttl=60)
 
 
 def get_review_texts(app_id, cc="US", num_reviews=100):
@@ -1308,49 +1329,25 @@ def get_helpful_reviews(app_id, cc="US", voted_up=True, limit=5, num_reviews=20)
 
 
 def _fetch_packagedetails_payload(package_id, cc="US"):
-    """Raw, cached fetch of Steam's packagedetails endpoint for one
-    package ("sub") id. Shared by resolve_package_primary_app() (which
-    only needs the included app ids) and get_package_display_info()
-    (which needs the package's own name/price/discount for the
-    package-aware game page card) so both stay off a single cached
-    call instead of hitting packagedetails twice for the same id.
-
-    Returns the raw `data.<package_id>` dict from Steam, or None if
-    the request/parse failed or Steam reported no success. Cached
-    (including negative results, via the "" sentinel -- same
-    convention as the rest of this module) for 1 hour, matching
-    resolve_package_primary_app's existing TTL for this endpoint.
-    """
     package_id = str(package_id)
     cache_key = ("packagedetails_payload", package_id, cc)
-    cached = _cache_get(cache_key, ttl_seconds=3600)
-    if cached is not None:
-        return cached if cached != "" else None
-
-    try:
-        url = "https://store.steampowered.com/api/packagedetails/"
-        response = _session.get(url, params={"packageids": package_id, "cc": cc, "l": "english"}, timeout=10)
-        response.raise_for_status()
-        payload = response.json().get(package_id, {})
-    except (requests.exceptions.RequestException, ValueError):
-        print(f"[package-resolve] sub {package_id} -> packagedetails request failed")
+    
+    def _fetch():
+        try:
+            url = f"https://store.steampowered.com/api/packagedetails?packageids={package_id}&l=english&cc={cc}"
+            response = _session.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.exceptions.RequestException, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        entry = data.get(package_id)
+        if isinstance(entry, dict) and entry.get("success"):
+            return entry.get("data")
         return None
 
-    if not isinstance(payload, dict) or not payload.get("success"):
-        print(f"[package-resolve] sub {package_id} -> packagedetails returned no success")
-        _cache_set(cache_key, "")
-        return None
-
-    data = payload.get("data", {}) or {}
-    _cache_set(cache_key, data)
-    return data
-
-
-_CURRENCY_SYMBOLS = {
-    "USD": "$", "CAD": "CA$", "AUD": "A$", "NZD": "NZ$", "SGD": "S$",
-    "GBP": "£", "EUR": "€", "JPY": "¥", "CNY": "¥", "KRW": "₩",
-    "INR": "₹", "RUB": "₽", "BRL": "R$", "MXN": "MX$", "PKR": "Rs ",
-}
+    return _execute_deduplicated(cache_key, 3600, _fetch, failure_ttl=60)
 
 
 def _format_price_cents(cents, currency="USD"):
@@ -1584,31 +1581,28 @@ def get_appdetails(app_id, cc):
     game for the entire TTL window instead of just this one request.
     """
     cache_key = ("appdetails", app_id, cc)
-    cached = _cache_get(cache_key, ttl_seconds=600)
-    if cached is not None:
-        return cached
 
-    url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
-    try:
-        response = _session.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-    except (requests.exceptions.RequestException, ValueError):
+    def _fetch():
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
+        try:
+            response = _session.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.exceptions.RequestException, ValueError):
+            return None
+
+        if not isinstance(data, dict):
+            # Steam returned `null` or some other non-dict body — most
+            # often a rate-limit signal, not a real "this app has no
+            # data" response, but it's handled identically either way.
+            return None
+
+        entry = data.get(str(app_id))
+        if isinstance(entry, dict) and entry.get("success"):
+            return entry.get("data")
         return None
 
-    if not isinstance(data, dict):
-        # Steam returned `null` or some other non-dict body — most
-        # often a rate-limit signal, not a real "this app has no
-        # data" response, but it's handled identically either way.
-        return None
-
-    entry = data.get(str(app_id))
-    if isinstance(entry, dict) and entry.get("success"):
-        result = entry.get("data")
-        if result is not None:
-            _cache_set(cache_key, result)
-        return result
-    return None
+    return _execute_deduplicated(cache_key, 600, _fetch, failure_ttl=60)
 
 
 def clean_search_term(name):
