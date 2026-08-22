@@ -390,6 +390,76 @@ def hero_image_url(appid, fallback):
     return default_header_image(appid)
 
 
+# ----------------------------------------------------------------
+# Startup cache warm-up — fixes the "homepage loads with almost
+# every section missing" bug on Render's free tier.
+#
+# Every cache above used a purely lazy, request-triggered warm-up:
+# the FIRST request after a cold start (fresh deploy, or Render's
+# free-tier dyno spinning back up after idling) hit a true cache
+# miss for every single one of them, got back [] / None instantly,
+# and rendered a homepage where only the two unconditional sections
+# (Browse by Category, Why Nimlyx) show — hero, picks, trending,
+# deals, new releases, iGPU, and all three Potato tiers are each
+# individually gated by `{% if ... %}` on data that simply hadn't
+# been built yet. The background thread those helpers kicked off
+# was real and would have finished a few seconds later, but that
+# request had already been rendered and sent.
+#
+# Fix: start the same background builds the moment this module is
+# imported (process boot), instead of waiting for the first visitor
+# to trigger them. This can't know a visitor's real region yet, so
+# it warms "US" — the same fallback region get_region_code() already
+# uses when IP geolocation fails — which covers the large majority
+# of cold-boot traffic. Any other region still falls back to the
+# existing lazy-build path on its own first request, same as today.
+# ----------------------------------------------------------------
+def _warm_caches_on_boot(cc="US"):
+    for cache_dict, lock, in_progress, rebuild_fn in (
+        (_HERO_CACHE, _HERO_CACHE_LOCK, _HERO_BUILD_IN_PROGRESS, _rebuild_hero_cache),
+        (_TOP_SELLERS_CACHE, _TOP_SELLERS_CACHE_LOCK, _TOP_SELLERS_BUILD_IN_PROGRESS, _rebuild_top_sellers_cache),
+        (_NEW_RELEASES_CACHE, _NEW_RELEASES_CACHE_LOCK, _NEW_RELEASES_BUILD_IN_PROGRESS, _rebuild_new_releases_cache),
+        (_POTATO_CACHE, _POTATO_CACHE_LOCK, _POTATO_BUILD_IN_PROGRESS, _rebuild_potato_cache),
+        (_CURATED_SEED_CACHE, _CURATED_SEED_CACHE_LOCK, _CURATED_SEED_BUILD_IN_PROGRESS, _rebuild_curated_seed_cache),
+    ):
+        with lock:
+            if cc in cache_dict or cc in in_progress:
+                continue
+            in_progress.add(cc)
+        threading.Thread(target=rebuild_fn, args=(cc,), daemon=True).start()
+
+
+# NOTE: deliberately NOT called here at module-import time. Gunicorn
+# (Render's default) commonly runs with `--preload`, which imports the
+# app ONCE in a master process and then fork()s worker processes from
+# it. Starting background threads here would race with that fork --
+# if fork() lands while one of these threads holds any of the *_LOCK
+# locks above, the forked child inherits that lock already acquired
+# forever (the thread that would release it doesn't exist in the
+# child). Every later request that touches that lock then hangs
+# indefinitely, which is exactly the "every request times out" bug
+# this comment is here to prevent reintroducing. Instead, the warm-up
+# is triggered from inside a real request via _ensure_caches_warmed()
+# below, which only ever runs post-fork, in whichever worker process
+# actually received the request.
+_CACHES_WARMED = False
+_CACHES_WARMED_LOCK = threading.Lock()
+
+
+def _ensure_caches_warmed():
+    global _CACHES_WARMED
+    with _CACHES_WARMED_LOCK:
+        if _CACHES_WARMED:
+            return
+        _CACHES_WARMED = True
+    _warm_caches_on_boot()
+
+
+@pages_bp.before_app_request
+def _warm_caches_before_request():
+    _ensure_caches_warmed()
+
+
 @pages_bp.route("/")
 def home():
     try:
