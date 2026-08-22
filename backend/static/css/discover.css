@@ -11,24 +11,10 @@
 
 /* ================================================================
    PAGE INTRO
-   ================================================================ */
-.discover-intro{
-  padding:72px 0 44px;
-}
-.discover-hero-eyebrow{
-  display:block;
-  font-family:var(--home-font-mono); font-size:.74rem; letter-spacing:.14em;
-  text-transform:uppercase; color:var(--home-accent); margin-bottom:14px;
-}
-.discover-page-title{
-  font-family:var(--home-font-display); font-weight:700;
-  font-size:clamp(1.9rem, 3.2vw, 2.6rem);
-  letter-spacing:-0.02em; line-height:1.1;
-  margin:0 0 14px;
-}
-.discover-page-subtitle{
-  font-size:1rem; color:var(--home-text-muted); max-width:560px; line-height:1.65; margin:0;
-}
+   ================================================================
+   Moved to the shared .nimlyx-page-hero component in style.css (used
+   by every secondary page now) -- this page's markup was updated to
+   use those classes instead of the ones that used to live here. */
 
 /* ================================================================
    TWO-COLUMN SHELL

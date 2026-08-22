@@ -9,57 +9,11 @@
 
 /* ================================================================
    HERO SECTION
-   ================================================================ */
-.about-hero {
-  padding: 64px 0 48px;
-  text-align: center;
-  border-bottom: 1px solid var(--home-glass-border);
-  background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
-}
-
-.about-hero-inner {
-  max-width: 840px;
-  margin: 0 auto;
-}
-
-.about-eyebrow {
-  display: inline-block;
-  font-family: var(--home-font-mono);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--home-cta-blue);
-  margin-bottom: 16px;
-  padding: 4px 12px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 999px;
-}
-
-.about-title {
-  font-family: var(--home-font-display);
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--home-text-primary);
-  margin: 0 0 20px;
-}
-
-.about-title-accent {
-  color: var(--home-accent);
-  background: linear-gradient(135deg, var(--home-text-primary) 30%, var(--home-accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.about-lead {
-  font-size: 1.1875rem;
-  line-height: 1.6;
-  color: var(--home-text-muted);
-  margin: 0 auto;
-  max-width: 720px;
-}
+   ================================================================
+   Moved to the shared .nimlyx-page-hero component in style.css (used
+   by every secondary page now, not just this one) -- this page's
+   markup was updated to use those classes instead of the ones that
+   used to live here. */
 
 /* ================================================================
    GRID & CARDS
@@ -282,10 +236,6 @@
     gap: 24px;
   }
 
-  .about-hero {
-    padding: 48px 0 36px;
-  }
-
   .about-box,
   .about-callout {
     padding: 28px;
@@ -293,14 +243,6 @@
 }
 
 @media (max-width: 480px) {
-  .about-hero {
-    padding: 36px 0 24px;
-  }
-
-  .about-eyebrow {
-    font-size: 0.75rem;
-  }
-
   .about-box,
   .about-callout {
     padding: 20px;

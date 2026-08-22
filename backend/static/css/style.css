@@ -938,6 +938,55 @@ main{ counter-reset: nimlyx-section; }
 .nimlyx-section-sub{
   display:block; font-size:.87rem; color:var(--home-text-muted); margin-top:4px;
 }
+
+/* ================================================================
+   NIMLYX PAGE HERO -- one shared "page intro" component for every
+   secondary page (Discover, Potato, About, Privacy, Terms), so the
+   site reads as one connected app instead of three different takes
+   on "what does a page header look like here." Previously About/
+   Privacy/Terms, Discover, and Potato each had their own separate,
+   visually-different intro treatment (different eyebrow styles,
+   different title treatments, different spacing) despite doing the
+   exact same job. The Home page's own hero carousel and the Search
+   page's results header are different, purpose-built things and
+   intentionally don't use this.
+   ================================================================ */
+.nimlyx-page-hero{
+  padding:64px 0 48px;
+  border-bottom:1px solid var(--home-glass-border);
+  background:radial-gradient(circle at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 70%);
+}
+.nimlyx-page-hero--center{ text-align:center; }
+.nimlyx-page-hero--center .nimlyx-page-hero-inner{ max-width:840px; margin:0 auto; }
+
+.nimlyx-page-eyebrow{
+  display:inline-block;
+  font-family:var(--home-font-mono); font-size:.8125rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.12em; color:var(--home-cta-blue);
+  margin-bottom:16px; padding:4px 12px;
+  background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.25);
+  border-radius:999px;
+}
+.nimlyx-page-title{
+  font-family:var(--home-font-display); font-weight:700;
+  font-size:clamp(2.1rem, 4.4vw, 3.25rem); line-height:1.15;
+  color:var(--home-text-primary); margin:0 0 18px;
+}
+.nimlyx-page-title-accent{
+  color:var(--home-accent);
+  background:linear-gradient(135deg, var(--home-text-primary) 30%, var(--home-accent) 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.nimlyx-page-lead{
+  font-size:1.1rem; line-height:1.6; color:var(--home-text-muted); margin:0; max-width:680px;
+}
+.nimlyx-page-hero--center .nimlyx-page-lead{ margin:0 auto; }
+
+@media (max-width:640px){
+  .nimlyx-page-hero{ padding:44px 0 32px; }
+  .nimlyx-page-eyebrow{ font-size:.72rem; }
+  .nimlyx-page-title{ font-size:clamp(1.7rem, 7vw, 2.4rem); }
+}
 /* Header variation -- not every section needs the small mono
    eyebrow + heading pattern. "Standalone" drops the eyebrow entirely
    for a section whose visuals (editorial photo, tile grid) already

@@ -19,7 +19,6 @@
 @media (max-width:900px){
   .discover-columns{ grid-template-columns:1fr; }
   .discover-sidebar-panel{ position:static; top:auto; }
-  .discover-intro{ padding:56px 0 32px; }
 }
 
 @media (max-width:700px){
