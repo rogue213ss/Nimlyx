@@ -190,8 +190,9 @@ def _rebuild_async_feed(cache_key, fetch_func):
         # Acquire semaphore to protect Steam from simultaneous overwhelming requests
         with _steam_scrape_semaphore:
             data = fetch_func()
-        with _async_feed_lock:
-            _async_feed_cache[cache_key] = {"data": data, "fetched_at": time.time()}
+        if data:
+            with _async_feed_lock:
+                _async_feed_cache[cache_key] = {"data": data, "fetched_at": time.time()}
     except Exception:
         # If scrape fails, silently leave the stale cache so we don't break the UI
         pass

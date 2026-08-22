@@ -39,19 +39,11 @@ def get_client_ip():
     return request.remote_addr
 
 
-def geo_lookup_cc(ip):
-    """Best-effort IP -> ISO country code lookup via ip-api.com's free
-    tier (no key required). Returns None on any failure — callers fall
-    back to 'US' rather than blocking the page on a flaky lookup."""
-    if not ip or ip in ("127.0.0.1", "localhost", "::1"):
-        return None
-    if ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("172."):
-        return None
+import threading
+_geoip_lock = threading.Lock()
+_geoip_in_progress = set()
 
-    if ip in _geoip_cache:
-        return _geoip_cache[ip]
-
-    cc = None
+def _fetch_geo_ip(ip):
     try:
         resp = requests.get(
             f"http://ip-api.com/json/{ip}?fields=status,countryCode",
@@ -59,12 +51,37 @@ def geo_lookup_cc(ip):
         )
         data = resp.json()
         if data.get("status") == "success":
-            cc = data.get("countryCode")
+            with _geoip_lock:
+                _geoip_cache[ip] = data.get("countryCode")
     except (requests.exceptions.RequestException, ValueError):
-        cc = None
+        with _geoip_lock:
+            # Cache None briefly or permanently? Let's cache 'US' to prevent retrying constantly
+            _geoip_cache[ip] = "US"
+    finally:
+        with _geoip_lock:
+            _geoip_in_progress.discard(ip)
 
-    _geoip_cache[ip] = cc
-    return cc
+def geo_lookup_cc(ip):
+    """Best-effort IP -> ISO country code lookup via ip-api.com's free
+    tier. Returns None on cold start (caller falls back to US), kicks
+    off a background fetch so the NEXT request from this IP gets the
+    real region. Never blocks the page load."""
+    if not ip or ip in ("127.0.0.1", "localhost", "::1"):
+        return None
+    if ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("172."):
+        return None
+
+    with _geoip_lock:
+        if ip in _geoip_cache:
+            return _geoip_cache[ip]
+        building = ip in _geoip_in_progress
+
+    if not building:
+        with _geoip_lock:
+            _geoip_in_progress.add(ip)
+        threading.Thread(target=_fetch_geo_ip, args=(ip,), daemon=True).start()
+
+    return None
 
 
 def get_region_code():

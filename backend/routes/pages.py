@@ -23,7 +23,6 @@ from services.hero.builder import build_hero_lineup
 from services.hero.picks import select_worth_buying
 from services.analysis.score_cache import get_cached_score
 from services.hardware.homepage_classifier import classify_igpu_only, to_homepage_card
-import services.hardware.verified_potato_pool as verified_potato_pool
 from services.hardware.verified_potato_pool import get_verified_potato_tiers
 from steam_images import default_header_image, build_image_candidates
 
@@ -72,12 +71,13 @@ def _rebuild_hero_cache(cc):
     simply tries again later."""
     try:
         selected, all_candidates = build_hero_lineup(cc=cc)
-        with _HERO_CACHE_LOCK:
-            _HERO_CACHE[cc] = {
-                "selected": selected,
-                "all_candidates": all_candidates,
-                "fetched_at": time.time(),
-            }
+        if selected and all_candidates:
+            with _HERO_CACHE_LOCK:
+                _HERO_CACHE[cc] = {
+                    "selected": selected,
+                    "all_candidates": all_candidates,
+                    "fetched_at": time.time(),
+                }
     except Exception:
         logger.exception("Background hero rebuild failed for region %s.", cc)
     finally:
@@ -146,11 +146,12 @@ def _rebuild_potato_cache(cc):
     try:
         from services.hero.potato_pool import build_potato_candidate_pool
         candidates = build_potato_candidate_pool(cc=cc)
-        with _POTATO_CACHE_LOCK:
-            _POTATO_CACHE[cc] = {
-                "candidates": candidates,
-                "fetched_at": time.time(),
-            }
+        if candidates:
+            with _POTATO_CACHE_LOCK:
+                _POTATO_CACHE[cc] = {
+                    "candidates": candidates,
+                    "fetched_at": time.time(),
+                }
     except Exception:
         logger.exception("Background potato pool rebuild failed for region %s.", cc)
     finally:
@@ -210,8 +211,9 @@ def _rebuild_curated_seed_cache(cc):
     try:
         from services.hero.potato_curated_seed import build_curated_seed_pool
         pool = build_curated_seed_pool(cc=cc)
-        with _CURATED_SEED_CACHE_LOCK:
-            _CURATED_SEED_CACHE[cc] = {"pool": pool, "fetched_at": time.time()}
+        if pool:
+            with _CURATED_SEED_CACHE_LOCK:
+                _CURATED_SEED_CACHE[cc] = {"pool": pool, "fetched_at": time.time()}
     except Exception:
         logger.exception("Curated seed pool rebuild failed for region %s.", cc)
     finally:
@@ -256,8 +258,9 @@ _NEW_RELEASES_BUILD_IN_PROGRESS = set()
 def _rebuild_new_releases_cache(cc):
     try:
         games = fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
-        with _NEW_RELEASES_CACHE_LOCK:
-            _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
+        if games:
+            with _NEW_RELEASES_CACHE_LOCK:
+                _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
     except Exception:
         logger.exception("Background new-releases rebuild failed for region %s.", cc)
     finally:
@@ -331,8 +334,9 @@ def _rebuild_top_sellers_cache(cc):
     refresh must never overwrite valid cached data with [] or None."""
     try:
         games = fetch_browse_category("topsellers", count=100, cc=cc)
-        with _TOP_SELLERS_CACHE_LOCK:
-            _TOP_SELLERS_CACHE[cc] = {"games": games, "fetched_at": time.time()}
+        if games:
+            with _TOP_SELLERS_CACHE_LOCK:
+                _TOP_SELLERS_CACHE[cc] = {"games": games, "fetched_at": time.time()}
     except Exception:
         logger.exception("Background top-sellers rebuild failed for region %s.", cc)
     finally:
@@ -435,58 +439,33 @@ def home():
         if selected_heroes:
             featured_games = []
             for candidate in selected_heroes:
-                # Per-candidate try/except -- one malformed hero
-                # candidate (a genuinely unexpected Steam response
-                # shape for that one game, e.g. missing/None field)
-                # must not take out the entire Featured row, let alone
-                # the rest of the homepage. Before this, an exception
-                # anywhere in this loop propagated uncaught all the
-                # way past render_template -- this is very likely
-                # what's been causing the intermittent "homepage
-                # sometimes doesn't load at all" reports, since a
-                # single bad game crashed the whole request instead of
-                # just that one card.
-                try:
-                    hero = candidate.to_hero_dict()
-                    # Start from the FULL hero dict (steam_url, genres,
-                    # discount_percent, price_before, review_desc,
-                    # review_sentiment, release_date_label, badge_* ...)
-                    # rather than hand-picking a subset -- a previous
-                    # version of this loop only copied a few keys across,
-                    # which silently dropped `steam_url` and left the
-                    # hero's "View on Steam" button pointing at an empty
-                    # href (it just reloaded the current page instead of
-                    # opening the Steam store page).
-                    game = dict(hero)
-                    game["id"] = hero["app_id"]
-                    game["header_image"] = hero["image"]
-                    game["analyze_url"] = hero["url"]
-                    game["nimlyx_score"] = get_cached_score(hero["app_id"], cc)
-                except Exception:
-                    logger.exception("Failed to build featured/hero card for candidate %r", getattr(candidate, "name", None))
-                    continue
+                hero = candidate.to_hero_dict()
+                # Start from the FULL hero dict (steam_url, genres,
+                # discount_percent, price_before, review_desc,
+                # review_sentiment, release_date_label, badge_* ...)
+                # rather than hand-picking a subset -- a previous
+                # version of this loop only copied a few keys across,
+                # which silently dropped `steam_url` and left the
+                # hero's "View on Steam" button pointing at an empty
+                # href (it just reloaded the current page instead of
+                # opening the Steam store page).
+                game = dict(hero)
+                game["id"] = hero["app_id"]
+                game["header_image"] = hero["image"]
+                game["analyze_url"] = hero["url"]
+                game["nimlyx_score"] = get_cached_score(hero["app_id"], cc)
                 featured_games.append(game)
         else:
-            featured_games = []
-            for g in top_sellers_raw[:5]:
-                try:
-                    card = format_basic_game(g)
-                except Exception:
-                    logger.exception("Failed to build fallback featured card for app_id=%s", g.get("id"))
-                    continue
-                card["insight"] = ""
-                card["why_it_matters"] = ""
-                featured_games.append(card)
-
+            featured_games = [format_basic_game(g) for g in top_sellers_raw[:5]]
+            for f in featured_games:
+                f["insight"] = ""
+                f["why_it_matters"] = ""
+        
         for g in featured_games:
             if g.get("id"):
                 seen_ids.add(str(g["id"]))
 
-        try:
-            nimlyx_picks = [c.to_pick_dict() for c in select_worth_buying(all_candidates)]
-        except Exception:
-            logger.exception("Nimlyx Picks build failed for region %s", cc)
-            nimlyx_picks = []
+        nimlyx_picks = [c.to_pick_dict() for c in select_worth_buying(all_candidates)]
         for p in nimlyx_picks:
             if p.get("app_id"):
                 seen_ids.add(str(p["app_id"]))
@@ -497,12 +476,7 @@ def home():
         # ---------------- TRENDING TODAY ----------------
         trending_games = []
         for i, g in enumerate(available_games[:14]):
-            try:
-                card = format_basic_game(g, rank=i + 1, orientation="portrait" if i == 0 else "landscape")
-            except Exception:
-                logger.exception("Failed to build trending card for app_id=%s", g.get("id"))
-                continue
-            trending_games.append(card)
+            trending_games.append(format_basic_game(g, rank=i+1, orientation="portrait" if i == 0 else "landscape"))
             seen_ids.add(str(g.get("id")))
         available_games = available_games[14:]
 
@@ -607,12 +581,7 @@ def home():
         # Skip down the list a bit to avoid the absolute biggest mainstream games
         gems_pool = available_games[20:] if len(available_games) > 25 else available_games
         for i, g in enumerate(gems_pool[:5]):
-            try:
-                card = format_basic_game(g, orientation="portrait" if i == 0 else "landscape")
-            except Exception:
-                logger.exception("Failed to build hidden gem card for app_id=%s", g.get("id"))
-                continue
-            hidden_gems.append(card)
+            hidden_gems.append(format_basic_game(g, orientation="portrait" if i == 0 else "landscape"))
             seen_ids.add(str(g.get("id")))
         # Remove the ones we used from the main pool
         available_games = [g for g in available_games if str(g.get("id")) not in seen_ids]
@@ -641,61 +610,38 @@ def home():
         new_releases_filtered = [g for g in verified_new_releases if str(g.get("id")) not in seen_ids]
         new_release_games = []
         for g in new_releases_filtered[:14]:
-            try:
-                card = {
-                    "id": g["id"],
-                    "name": g["name"],
-                    "header_image": hero_image_url(g["id"], g.get("image")),
-                    "image_candidates": build_image_candidates(g["id"], fallback_image=g.get("image")),
-                    "analyze_url": f"/search?app_id={g['id']}",
-                    "recency_label": g["recency_label"],
-                    "price": g["price"] or "—",
-                    "primary_genre": g.get("primary_genre"),
-                }
-            except Exception:
-                logger.exception("Failed to build new release card for app_id=%s", g.get("id"))
-                continue
-            new_release_games.append(card)
+            new_release_games.append({
+                "id": g["id"],
+                "name": g["name"],
+                "header_image": hero_image_url(g["id"], g.get("image")),
+                "image_candidates": build_image_candidates(g["id"], fallback_image=g.get("image")),
+                "analyze_url": f"/search?app_id={g['id']}",
+                "recency_label": g["recency_label"],
+                "price": g["price"] or "—",
+                "primary_genre": g.get("primary_genre"),
+            })
             seen_ids.add(str(g["id"]))
 
         # ---------------- POPULAR RIGHT NOW (ACTION) ----------------
-        try:
-            action_raw = fetch_homepage_row("action", cc=cc, seen_ids=seen_ids) or []
-        except Exception:
-            logger.exception("Popular Right Now fetch failed for region %s", cc)
-            action_raw = []
+        action_raw = fetch_homepage_row("action", cc=cc, seen_ids=seen_ids) or []
         popular_games = []
         for g in action_raw[:10]:
-            try:
-                card = {
-                    **g,
-                    "price": format_price(g.get("price")),
-                    "nimlyx_score": get_cached_score(g.get("app_id"), cc),
-                }
-            except Exception:
-                logger.exception("Failed to build popular card for app_id=%s", g.get("app_id"))
-                continue
-            popular_games.append(card)
+            popular_games.append({
+                **g,
+                "price": format_price(g.get("price")),
+                "nimlyx_score": get_cached_score(g.get("app_id"), cc),
+            })
             seen_ids.add(str(g.get("app_id")))
 
         # ---------------- BIGGEST DEALS (SPECIALS) ----------------
-        try:
-            deals_raw = fetch_homepage_row("specials", cc=cc, seen_ids=seen_ids) or []
-        except Exception:
-            logger.exception("Biggest Deals fetch failed for region %s", cc)
-            deals_raw = []
+        deals_raw = fetch_homepage_row("specials", cc=cc, seen_ids=seen_ids) or []
         deals_games = []
         for g in deals_raw[:14]:
-            try:
-                card = {
-                    **g,
-                    "price": format_price(g.get("price")),
-                    "nimlyx_score": get_cached_score(g.get("app_id"), cc),
-                }
-            except Exception:
-                logger.exception("Failed to build deals card for app_id=%s", g.get("app_id"))
-                continue
-            deals_games.append(card)
+            deals_games.append({
+                **g,
+                "price": format_price(g.get("price")),
+                "nimlyx_score": get_cached_score(g.get("app_id"), cc),
+            })
             seen_ids.add(str(g.get("app_id")))
 
         return render_template(
@@ -717,31 +663,8 @@ def home():
             seen_ids=list(seen_ids),
         )
 
-    except Exception:
-        # Was `except requests.exceptions.RequestException:` -- this
-        # is the actual root cause behind "homepage sometimes doesn't
-        # load at all." With every individual section above now
-        # separately hardened (see the per-loop try/excepts added
-        # throughout this function), this outer catch is the last
-        # line of defense for anything still unforeseen -- and it
-        # needs to actually BE a last line of defense. The old,
-        # narrower `except requests.exceptions.RequestException:`
-        # only caught network-level failures (timeouts, connection
-        # errors, HTTP error status codes); it did NOT catch the far
-        # more common failure mode of a single malformed Steam
-        # response shape somewhere in the pipeline -- a missing key, a
-        # None where a string was expected -- which is a plain
-        # KeyError/AttributeError/TypeError, not a RequestException.
-        # Before this fix, that kind of error was NOT caught here at
-        # all: it propagated straight past this whole function as an
-        # unhandled 500, taking down the entire homepage over one
-        # bad game, even when every other section had already
-        # computed successfully. This is now a genuine last resort --
-        # every section it would even matter for has its own local
-        # handler already, so reaching this point means something
-        # truly unexpected happened outside all of them (e.g. in
-        # get_region_code() or _get_top_sellers() themselves).
-        logger.exception("Homepage request failed entirely for region attempt.")
+    except requests.exceptions.RequestException:
+        logger.exception("Homepage request failed entirely — Steam unreachable or timed out.")
         return render_template(
             "index.html",
             featured_games=[],
@@ -773,46 +696,6 @@ def hero_status():
     """
     cc = get_region_code()
     return jsonify({"pending": _is_hero_build_pending(cc)})
-
-
-@pages_bp.route("/api/potato-status")
-def potato_status():
-    """Debug/diagnostic endpoint for the VERIFIED Potato pool
-    (services/hardware/verified_potato_pool.py) -- the authoritative
-    source for the Potato Friendly/Tweaks/Extreme homepage rows and
-    the /potato page since the verified-database migration. NOT
-    polled by any frontend JS; exists so cold-start / cache state can
-    be checked directly (e.g. `curl /api/potato-status`) without
-    needing server log access.
-
-    A prior version of this endpoint pointed at the OLD dynamic
-    budget-price potato pool (routes/pages.py's own _POTATO_CACHE,
-    still present but now only feeds the Integrated GPU section) --
-    that became misleading once the verified database took over as
-    the actual source for Potato tiers, so this was rebuilt against
-    services.hardware.verified_potato_pool's cache instead.
-    """
-    cc = get_region_code()
-    with verified_potato_pool._CACHE_LOCK:
-        cached = verified_potato_pool._CACHE.get(cc)
-        building = cc in verified_potato_pool._BUILD_IN_PROGRESS
-
-    if cached is None:
-        return jsonify({
-            "region": cc,
-            "status": "never_built",
-            "building": building,
-            "tier_counts": {tier: 0 for tier in verified_potato_pool.TIERS},
-        })
-
-    age_seconds = time.time() - cached["fetched_at"]
-    return jsonify({
-        "region": cc,
-        "status": "stale" if age_seconds >= verified_potato_pool._CACHE_TTL_SECONDS else "fresh",
-        "building": building,
-        "age_seconds": round(age_seconds),
-        "tier_counts": {tier: len(cached["tiers"].get(tier, [])) for tier in verified_potato_pool.TIERS},
-    })
 
 
 @pages_bp.route("/discover")

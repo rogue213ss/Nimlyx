@@ -237,8 +237,10 @@ def _rebuild_cache(cc):
                         previous_by_app_id[candidate.app_id] = candidate
 
         tier_candidates = _build_tier_candidates(cc, previous_by_app_id)
-        with _CACHE_LOCK:
-            _CACHE[cc] = {"tiers": tier_candidates, "fetched_at": time.time()}
+        has_data = any(bool(games) for games in tier_candidates.values())
+        if has_data:
+            with _CACHE_LOCK:
+                _CACHE[cc] = {"tiers": tier_candidates, "fetched_at": time.time()}
     except Exception:
         logger.exception("Verified Potato pool rebuild failed for region %s.", cc)
     finally:
