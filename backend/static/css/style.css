@@ -173,6 +173,8 @@
 }
 .home-nav a:hover{ color:var(--home-text-primary); }
 .home-nav a:hover::after{ transform:scaleX(1); }
+.home-nav a[aria-current="page"]{ color:var(--home-text-primary); }
+.home-nav a[aria-current="page"]::after{ transform:scaleX(1); }
 
 .home-search{
   display:flex; align-items:center; gap:9px;
@@ -962,6 +964,34 @@ main{ counter-reset: nimlyx-section; }
 }
 .nimlyx-section-cta:hover{ color:var(--home-cta-blue); gap:10px; }
 
+/* Potato section's bottom banner CTA -- deliberately NOT the same
+   quiet text-link treatment as .nimlyx-section-cta above. The
+   homepage rows are a short preview capped well below the verified
+   database's real size (see POTATO_HOMEPAGE_PREVIEW_LIMIT in
+   routes/pages.py); this is the "go see the rest" moment, so it gets
+   real button chrome and a hover lift instead of staying quiet. */
+.potato-cta-banner{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  margin-top:28px; padding:20px 24px; border-radius:var(--home-radius-md);
+  background:linear-gradient(135deg, rgba(59,130,246,0.10), rgba(139,124,246,0.08));
+  border:1px solid rgba(59,130,246,0.28);
+  text-decoration:none; transition:transform .2s var(--home-ease), border-color .2s var(--home-ease);
+}
+.potato-cta-banner:hover{ transform:translateY(-2px); border-color:rgba(59,130,246,0.55); }
+.potato-cta-banner-text{ display:flex; flex-direction:column; gap:3px; }
+.potato-cta-banner-title{
+  font-family:var(--home-font-display); font-weight:700; font-size:1.08rem; color:var(--home-text-primary);
+}
+.potato-cta-banner-sub{ font-size:.85rem; color:var(--home-text-muted); }
+.potato-cta-banner-arrow{
+  flex-shrink:0; font-size:1.3rem; color:var(--home-cta-blue);
+  transition:transform .2s var(--home-ease);
+}
+.potato-cta-banner:hover .potato-cta-banner-arrow{ transform:translateX(4px); }
+@media (max-width:640px){
+  .potato-cta-banner{ flex-direction:column; align-items:flex-start; gap:12px; }
+}
+
 /* ================================================================
    DISCOVER SHOWCASE -- one dominant editorial pick plus the rest of
    the row beneath it, instead of every pick competing at the same
@@ -1177,6 +1207,11 @@ main{ counter-reset: nimlyx-section; }
   border-top:1px solid var(--home-glass-border);
 }
 .nimlyx-card--portrait .nimlyx-card-title{ font-size:.98rem; }
+
+.potato-evidence-line{
+  font-size:.78rem; color:var(--home-text-faint); margin-top:2px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
 
 /* ---- Wide (Deals) -- discount + price are the dominant elements.
    Artwork stays clear across the top ~70%; only the bottom ~32% is
@@ -1638,9 +1673,16 @@ main{ counter-reset: nimlyx-section; }
   overflow:hidden; background:var(--home-bg-elevated);
 }
 .potato-list-thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+.potato-list-text{
+  flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;
+}
 .potato-list-name{
   font-family:var(--home-font-display); font-weight:600; color:var(--home-text-primary);
-  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.potato-list-evidence{
+  font-size:.78rem; color:var(--home-text-faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .potato-list-row .hw-badge{ margin:0; flex-shrink:0; }
 .potato-list-arrow{ color:var(--home-text-faint); flex-shrink:0; transition:transform .2s var(--home-ease); }
@@ -1676,6 +1718,23 @@ main{ counter-reset: nimlyx-section; }
 .potato-extreme-body{ padding:12px; }
 .potato-extreme-body .nimlyx-card-title{ font-size:.88rem; white-space:normal; margin-bottom:6px; }
 .potato-extreme-body .hw-badge{ margin:0; font-size:.62rem; }
+.potato-extreme-evidence{
+  font-size:.72rem; color:var(--home-text-faint); margin-top:6px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.potato-extreme-tweak{
+  font-size:.72rem; color:rgba(248,113,113,0.85); margin-top:3px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+
+/* ----------------------------------------------------------------
+   POTATO "VIEW MORE" PAGE (/potato) -- Load More button wrap, shared
+   by all three tiers. Reuses .home-btn / .home-btn-secondary as-is;
+   this only adds the spacing/centering the button needs sitting
+   below a grid/list rather than inline in a header.
+   ---------------------------------------------------------------- */
+.potato-load-more-wrap{ display:flex; justify-content:center; margin-top:24px; }
+.potato-load-more-btn.is-loading{ opacity:.6; pointer-events:none; }
 
 /* ----------------------------------------------------------------
    BEST MATCHES -- compatibility roster. Two-column list of rows

@@ -106,8 +106,31 @@ _inflight_requests_lock = threading.Lock()
 
 def _execute_deduplicated(cache_key, ttl_seconds, fetch_func, failure_ttl=60):
     """
-    Prevents multiple threads from simultaneously requesting the exact same data from Steam.
-    If Steam fails (e.g. 429), it caches the failure briefly to prevent a retry storm.
+    Prevents multiple threads from simultaneously requesting the exact
+    same data from Steam. If Steam fails (e.g. 429), it caches the
+    failure briefly to prevent a retry storm.
+
+    NOTE on the synchronization primitive: this uses threading.Event,
+    not threading.Condition + wait()/notify_all(). A Condition-based
+    version of this exact pattern was tried first and had a real,
+    reproducible deadlock: Condition.wait() only wakes a thread that
+    is ALREADY blocked at the moment notify_all() runs. If the
+    "fetcher" thread finishes and calls notify_all() before a
+    "waiter" thread has reached its own wait() call (entirely
+    possible under normal OS thread-scheduling jitter -- confirmed
+    with a deliberately delayed waiter thread, no artificial fault
+    injection needed), that waiter never gets woken and hangs
+    forever, since the real code calls wait() with no timeout. Under
+    Flask's ThreadPoolExecutor(max_workers=8), one lost wakeup
+    permanently strands a pool worker -- the exact class of failure
+    this cache was built to prevent, just moved from "rate limit
+    spiral" to "silent thread starvation."
+
+    threading.Event doesn't have this failure mode: Event.set() marks
+    a persistent flag, and Event.wait() checks that flag before
+    blocking -- so a waiter that arrives AFTER set() was already
+    called still returns immediately instead of waiting on a signal
+    that already happened and will never repeat.
     """
     cached = _cache_get(cache_key, ttl_seconds)
     if cached is not None:
@@ -117,11 +140,10 @@ def _execute_deduplicated(cache_key, ttl_seconds, fetch_func, failure_ttl=60):
 
     we_fetch = False
     with _inflight_requests_lock:
-        if cache_key in _inflight_requests:
-            cond = _inflight_requests[cache_key]
-        else:
-            cond = threading.Condition()
-            _inflight_requests[cache_key] = cond
+        entry = _inflight_requests.get(cache_key)
+        if entry is None:
+            entry = {"event": threading.Event(), "result": None}
+            _inflight_requests[cache_key] = entry
             we_fetch = True
 
     if we_fetch:
@@ -131,19 +153,21 @@ def _execute_deduplicated(cache_key, ttl_seconds, fetch_func, failure_ttl=60):
                 _cache_set(cache_key, "RATE_LIMITED_OR_FAILED", ttl_override=failure_ttl)
             else:
                 _cache_set(cache_key, result)
+            entry["result"] = result
             return result
         finally:
-            with cond:
-                cond.notify_all()
+            entry["event"].set()
             with _inflight_requests_lock:
                 _inflight_requests.pop(cache_key, None)
     else:
-        with cond:
-            cond.wait()
-        cached = _cache_get(cache_key, ttl_seconds)
-        if cached == "RATE_LIMITED_OR_FAILED":
-            return None
-        return cached
+        entry["event"].wait()
+        # entry["result"] holds the RAW fetch_func() return value (not
+        # the "RATE_LIMITED_OR_FAILED" cache sentinel, which only ever
+        # lives in _response_cache) -- None here already means exactly
+        # what it means for the fetcher's own return value: the fetch
+        # failed and this caller gets no result, same as the fetcher
+        # got.
+        return entry["result"]
 
 
 # ==========================================================

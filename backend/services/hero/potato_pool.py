@@ -63,13 +63,31 @@ from services.hero.builder import enrich_pool
 from services.hero.candidate import HeroCandidate
 from steam import fetch_budget_catalog_sweep
 
-# Matches steam.py's BUDGET_MAX_PRICE_CENTS "under-10" / "under-20"
-# bands (Discover's own verified budget filter) rather than inventing
-# new price cutoffs -- two sweeps, not one, because a single low
-# ceiling would skew toward tiny/free indie titles and under-represent
-# the "modest AAA" games (GTA V-era titles are often $15-20 even years
-# later) the Potato ecosystem also wants to be able to surface.
-BUDGET_BANDS_CENTS = (1000, 2000)  # $10, $20
+# Matches steam.py's BUDGET_MAX_PRICE_CENTS "under-10" / "under-20" /
+# "under-40" bands (Discover's own verified budget filter) rather than
+# inventing new price cutoffs -- three sweeps, not one, because a
+# single low ceiling would skew toward tiny/free indie titles and
+# under-represent the "modest AAA" games (GTA V-era titles are often
+# $15-20 even years later) the Potato ecosystem also wants to surface.
+#
+# The $40 band was added after a research/validation pass
+# (docs/potato_research_matrix.md) confirmed that the Potato
+# ecosystem's most interesting 💀 Extreme candidates -- older AAA
+# titles whose official minimum spec exceeds the potato reference on
+# paper (Dark Souls III, Dragon Age: Inquisition, The Witcher 3,
+# Skyrim Special Edition, Dying Light) -- permanently retail well
+# above the previous $10/$20 ceiling (commonly $30-60, even years
+# after release; only temporary sales bring them under $20, which the
+# hero pool already covers separately). Without this band, the scrape
+# structurally excluded almost every real 💀 Extreme candidate,
+# independent of how well-calibrated the classifier itself is -- the
+# same class of gap that motivated this file's original $10/$20
+# sweeps over reusing the hero pool. $40 was chosen over "any-price"
+# to keep this a genuinely *budget-leaning* net (matching Discover's
+# own existing "under-40" verified band) rather than pulling in
+# current full-price new releases, which the hero pool already
+# covers.
+BUDGET_BANDS_CENTS = (1000, 2000, 4000)  # $10, $20, $40
 SWEEP_COUNT_PER_BAND = 100
 
 

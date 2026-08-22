@@ -58,9 +58,10 @@
 
     <div class="home-nav-panel">
       <nav class="home-nav" aria-label="Primary">
-        <a href="/">Home</a>
+        <a href="/" aria-current="page">Home</a>
         <a href="/discover">Discover</a>
         <a href="/search">Search</a>
+        <a href="/potato">Potato</a>
         <a href="/about">About</a>
       </nav>
 
@@ -431,6 +432,7 @@
         <span class="home-eyebrow">Low End Optimization</span>
         <h2>Running on a Potato? We Got You.</h2>
       </div>
+      <a href="/potato" class="nimlyx-section-cta">View more potato picks <span aria-hidden="true">→</span></a>
     </div>
     
     <div class="potato-tiers">
@@ -495,6 +497,21 @@
       </div>
       {% endif %}
     </div>
+
+    <!-- Prominent bottom CTA -- the homepage rows above are
+         deliberately a short preview (see POTATO_HOMEPAGE_PREVIEW_LIMIT
+         in routes/pages.py); this is where the emphasis to go see the
+         full researched ecosystem lives, with a real count pulled
+         from the verified database, not a fabricated "hundreds" gesture. -->
+    <a href="/potato" class="potato-cta-banner">
+      <div class="potato-cta-banner-text">
+        <span class="potato-cta-banner-title">Explore the Full Potato Ecosystem</span>
+        <span class="potato-cta-banner-sub">
+          {% if potato_total_count %}{{ potato_total_count }} games researched and verified against real low-end hardware{% else %}Every game researched and verified against real low-end hardware{% endif %}
+        </span>
+      </div>
+      <span class="potato-cta-banner-arrow" aria-hidden="true">→</span>
+    </a>
   </div>
 </section>
 {% endif %}

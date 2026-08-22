@@ -6,6 +6,7 @@ from routes.pages import pages_bp
 from routes.browse import browse_bp
 from routes.discover import discover_bp
 from routes.game import game_bp
+from routes.potato import potato_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +16,7 @@ app.register_blueprint(pages_bp)
 app.register_blueprint(browse_bp)
 app.register_blueprint(discover_bp)
 app.register_blueprint(game_bp)
+app.register_blueprint(potato_bp)
 
 
 if __name__ == "__main__":

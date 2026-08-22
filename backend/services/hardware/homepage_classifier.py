@@ -76,7 +76,7 @@ def _passes(game_requirements, profile):
 # its own once tested against real Nvidia/AMD-minimum-spec games.
 
 
-def _to_homepage_card(candidate, hardware_badge, orientation="landscape"):
+def to_homepage_card(candidate, hardware_badge, orientation="landscape"):
     """to_pick_dict() already builds the {app_id, name, image,
     image_candidates, price, url, ...} shape from the candidate's raw
     appdetails -- reused here rather than re-deriving image/URL logic.
@@ -84,9 +84,15 @@ def _to_homepage_card(candidate, hardware_badge, orientation="landscape"):
     everywhere else (header_image/analyze_url), matching
     format_basic_game()'s output shape. image_candidates is rebuilt
     with the requested orientation (to_pick_dict() always builds
-    landscape) since Potato Friendly renders as a portrait card."""
+    landscape) since Potato Friendly renders as a portrait card.
+
+    Public (not `_to_homepage_card`) since this is now called from
+    both this module and services/hardware/verified_potato_pool.py's
+    consumers (routes/pages.py, routes/potato.py) -- it's pure display
+    formatting with no opinion on WHERE a candidate's tier came from,
+    so there's no reason to keep it module-private."""
     base = candidate.to_pick_dict()
-    return {
+    card = {
         "id": base["app_id"],
         "name": base["name"],
         "header_image": base["image"],
@@ -97,10 +103,85 @@ def _to_homepage_card(candidate, hardware_badge, orientation="landscape"):
         "price": base["price"],
         "hardware_badge": hardware_badge,
     }
+    # Only present for verified-database candidates (see
+    # services/hardware/verified_potato_pool.py) -- the dynamic
+    # classifier's candidates never set this, so it's simply absent
+    # (never a fabricated/empty placeholder) for iGPU cards and any
+    # future research-mode use of this same card builder.
+    verified_evidence = candidate.game.get("verified_evidence")
+    if verified_evidence:
+        card["evidence"] = verified_evidence
+    return card
+
+
+# Old name kept as an alias -- this module's own two functions below
+# still use it internally, and it avoids a churny rename of every call
+# site in this file for no behavioral reason.
+_to_homepage_card = to_homepage_card
+
+
+def classify_igpu_only(candidates, seen_ids, limit=14):
+    """Just the Integrated GPU section of what classify_homepage_hardware()
+    used to compute in one combined pass. Split out because the Potato
+    ecosystem (Friendly/Tweaks/Extreme) no longer sources from this
+    dynamic classifier at all -- see
+    services/hardware/verified_potato_pool.py and
+    services/hardware/verified_potato_db.py, now the homepage's
+    authoritative source for those three tiers. Computing and then
+    discarding 3/4 of classify_homepage_hardware()'s return value on
+    every homepage request would be wasteful and confusing to read;
+    this is the honest subset that's actually still used live.
+
+    classify_homepage_hardware() and classify_potato_tier_all() below
+    are UNCHANGED and still fully correct -- they're kept for their
+    now-secondary role (research / validating candidate games before
+    they're added to the verified database), not deleted, per
+    explicit instruction not to remove code that's still useful for
+    that purpose. Nothing on the live homepage or /potato page calls
+    them for Potato tiers any more.
+    """
+    igpu_games = []
+    igpu_used_ids = set()
+
+    for candidate in candidates:
+        if len(igpu_games) >= limit:
+            break
+
+        app_id = str(candidate.app_id) if candidate.app_id else None
+        if not app_id or app_id in seen_ids or app_id in igpu_used_ids:
+            continue
+
+        pc_requirements = candidate.game.get("pc_requirements")
+        if not pc_requirements:
+            continue
+
+        try:
+            reqs = parse_requirements(pc_requirements)
+        except Exception:
+            continue
+
+        if not any(reqs.get("minimum", {}).values()):
+            continue
+
+        if _passes(reqs, INTEGRATED_GPU_PROFILE):
+            card = to_homepage_card(candidate, "Meets iGPU Minimum", orientation="landscape")
+            igpu_games.append(card)
+            igpu_used_ids.add(app_id)
+
+    return igpu_games
 
 
 def classify_homepage_hardware(candidates, seen_ids, limit=14):
-    """Given the hero pool's HeroCandidate objects (the same
+    """RESEARCH / CANDIDATE-VALIDATION USE ONLY as of the verified-
+    database migration -- the live homepage no longer calls this for
+    its Potato Friendly/Tweaks/Extreme rows (see
+    services/hardware/verified_potato_pool.py). Kept fully working and
+    unmodified so it can still validate a candidate game's dynamic
+    classification before it's added to
+    data/potato/verified_potato_games.json, and so classify_igpu_only()
+    above (the live iGPU section) can be checked against it.
+
+    Given the hero pool's HeroCandidate objects (the same
     `all_candidates` already sitting in _HERO_CACHE[cc]["all_candidates"]
     -- no new Steam calls), return
     (igpu_games, potato_friendly, potato_tweaks, potato_extreme):
@@ -198,3 +279,95 @@ def classify_homepage_hardware(candidates, seen_ids, limit=14):
             potato_used_ids.add(app_id)
 
     return igpu_games, potato_friendly, potato_tweaks, potato_extreme
+
+
+_POTATO_TIER_BADGES = {
+    "friendly": "Meets Low-End Minimum",
+    "tweaks": "Playable With Tweaks",
+    "extreme": "Extreme Settings Only",
+}
+_POTATO_TIER_ORIENTATIONS = {
+    "friendly": "portrait",
+    "tweaks": "landscape",
+    "extreme": "landscape",
+}
+
+
+def classify_potato_tier_all(candidates, tier):
+    """RESEARCH / CANDIDATE-VALIDATION USE ONLY as of the verified-
+    database migration -- routes/potato.py's "view more" page no
+    longer calls this (it pages through
+    services.hardware.verified_potato_pool.get_verified_potato_tiers()
+    instead). Kept unmodified as a way to dynamically re-check a
+    candidate game's classification -- e.g. before adding it to
+    data/potato/verified_potato_games.json, or to see how the
+    ratio-based model alone would have classified something already in
+    the verified database.
+
+    The /potato "view more" page's variant of this module's Potato
+    classification. Same parse -> classify_potato_tier() pipeline as
+    classify_homepage_hardware() above (same "never fabricate a tier"
+    behavior -- a game whose requirements don't resolve is left out,
+    never defaulted in), but deliberately different in two ways that
+    only make sense for a standalone, dedicated tier page rather than
+    a homepage row:
+
+      - No `limit` and no homepage `seen_ids` exclusion. The homepage
+        rows cap at 14 and skip anything already shown elsewhere on
+        the page; this returns EVERY matching game in `candidates` for
+        the one requested tier, so the /api/potato/<tier> route can
+        paginate over the full match list itself.
+      - Only computes the ONE requested tier, not all three tiers plus
+        the unrelated Integrated GPU section -- there's no reason to
+        pay for that extra work on a page that only ever renders one
+        tier's list at a time.
+
+    `tier` must be one of "friendly" / "tweaks" / "extreme" -- raises
+    ValueError otherwise, same fail-loud contract the API route relies
+    on to turn a bad tier into a 400 rather than silently returning an
+    empty list.
+
+    Still dedupes by app_id within its own output, matching the same
+    hero-pool + potato-pool merge routes/pages.py already does before
+    calling classify_homepage_hardware() -- a game appearing in both
+    source pools should only ever produce one card here too.
+    """
+    if tier not in _POTATO_TIER_BADGES:
+        raise ValueError(f"Unknown potato tier: {tier!r}")
+
+    from services.hardware.potato_classifier import classify_potato_tier
+
+    badge = _POTATO_TIER_BADGES[tier]
+    orientation = _POTATO_TIER_ORIENTATIONS[tier]
+
+    games = []
+    seen_ids = set()
+    for candidate in candidates:
+        app_id = str(candidate.app_id) if candidate.app_id else None
+        if not app_id or app_id in seen_ids:
+            continue
+
+        pc_requirements = candidate.game.get("pc_requirements")
+        if not pc_requirements:
+            continue
+
+        try:
+            reqs = parse_requirements(pc_requirements)
+        except Exception:
+            continue
+
+        if not any(reqs.get("minimum", {}).values()):
+            continue
+
+        try:
+            candidate_tier = classify_potato_tier(reqs)
+        except Exception:
+            candidate_tier = None
+
+        if candidate_tier != tier:
+            continue
+
+        games.append(_to_homepage_card(candidate, badge, orientation=orientation))
+        seen_ids.add(app_id)
+
+    return games

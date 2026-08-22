@@ -22,7 +22,8 @@ from formatters import format_price
 from services.hero.builder import build_hero_lineup
 from services.hero.picks import select_worth_buying
 from services.analysis.score_cache import get_cached_score
-from services.hardware.homepage_classifier import classify_homepage_hardware
+from services.hardware.homepage_classifier import classify_igpu_only, to_homepage_card
+from services.hardware.verified_potato_pool import get_verified_potato_tiers
 from steam_images import default_header_image, build_image_candidates
 
 pages_bp = Blueprint("pages", __name__)
@@ -181,6 +182,59 @@ def _get_potato_pool(cc):
         with _POTATO_CACHE_LOCK:
             _POTATO_BUILD_IN_PROGRESS.add(cc)
         threading.Thread(target=_rebuild_potato_cache, args=(cc,), daemon=True).start()
+
+    return []
+
+
+# ----------------------------------------------------------------
+# Curated seed cache -- same serve-stale-while-revalidating pattern as
+# the caches above. Moved here from routes/potato.py (which used to
+# own it) now that the /potato "view more" page sources exclusively
+# from the verified database and no longer needs this pool -- the
+# Integrated GPU section below (still dynamically classified) is this
+# cache's only remaining consumer. build_curated_seed_pool() does ~80
+# individual Steam search lookups plus appdetails enrichment per call
+# -- far too slow to run inline on every homepage request, and a
+# failed refresh must never replace a working cached pool with an
+# empty one (same "never let a failed Steam call empty out working
+# data" rule as the rest of the site).
+# ----------------------------------------------------------------
+_CURATED_SEED_CACHE = {}
+_CURATED_SEED_CACHE_LOCK = threading.Lock()
+_CURATED_SEED_CACHE_TTL_SECONDS = 3600  # names rarely change; requirements do, hourly is plenty
+_CURATED_SEED_BUILD_IN_PROGRESS = set()
+
+
+def _rebuild_curated_seed_cache(cc):
+    try:
+        from services.hero.potato_curated_seed import build_curated_seed_pool
+        pool = build_curated_seed_pool(cc=cc)
+        with _CURATED_SEED_CACHE_LOCK:
+            _CURATED_SEED_CACHE[cc] = {"pool": pool, "fetched_at": time.time()}
+    except Exception:
+        logger.exception("Curated seed pool rebuild failed for region %s.", cc)
+    finally:
+        with _CURATED_SEED_CACHE_LOCK:
+            _CURATED_SEED_BUILD_IN_PROGRESS.discard(cc)
+
+
+def _get_curated_seed_pool(cc):
+    with _CURATED_SEED_CACHE_LOCK:
+        cached = _CURATED_SEED_CACHE.get(cc)
+        building = cc in _CURATED_SEED_BUILD_IN_PROGRESS
+
+    if cached is not None:
+        is_stale = (time.time() - cached["fetched_at"]) >= _CURATED_SEED_CACHE_TTL_SECONDS
+        if is_stale and not building:
+            with _CURATED_SEED_CACHE_LOCK:
+                _CURATED_SEED_BUILD_IN_PROGRESS.add(cc)
+            threading.Thread(target=_rebuild_curated_seed_cache, args=(cc,), daemon=True).start()
+        return cached["pool"]
+
+    if not building:
+        with _CURATED_SEED_CACHE_LOCK:
+            _CURATED_SEED_BUILD_IN_PROGRESS.add(cc)
+        threading.Thread(target=_rebuild_curated_seed_cache, args=(cc,), daemon=True).start()
 
     return []
 
@@ -421,48 +475,98 @@ def home():
             seen_ids.add(str(g.get("id")))
         available_games = available_games[14:]
 
-        # ---------------- INTEGRATED GPU + POTATO FRIENDLY ----------------
-        # Real classification, not a placeholder badge. Runs against two
-        # merged candidate sources:
-        #   1. all_candidates -- the hero engine's pool (today's top
-        #      sellers/new releases/specials), reused here at zero extra
-        #      cost.
-        #   2. potato_candidates -- a SEPARATE, dedicated pool of budget-
-        #      priced catalog games (services/hero/potato_pool.py). The
-        #      hero pool alone was nearly empty of anything that could
-        #      classify into 🥔/🔧/💀, since the games those tiers are
-        #      looking for are structurally not this week's top sellers.
-        # Deduped by app_id (hero pool wins on overlap -- it's already
-        # popularity-ranked, so preferring it costs nothing).
-        # A game whose requirements don't resolve is left out entirely --
-        # never defaulted in. See services/hardware/homepage_classifier.py
-        # and services/hardware/potato_classifier.py.
+        # ---------------- INTEGRATED GPU ----------------
+        # Still the dynamic classifier -- unaffected by the verified-
+        # database migration below. Runs against three merged
+        # candidate sources (hero pool, budget-price potato pool,
+        # curated seed pool) exactly as before.
         try:
             potato_candidates = _get_potato_pool(cc)
         except Exception:
             logger.exception("Potato pool fetch failed for region %s", cc)
             potato_candidates = []
 
+        # 3. curated_seed_candidates -- guaranteed-considered pool of
+        #    user-researched titles (services/hero/potato_curated_seed.py).
+        #    Neither of the two sources above is guaranteed to surface
+        #    any SPECIFIC title on a given day (Steam's search ranking
+        #    and a 100-per-band fetch cap both affect what comes back);
+        #    this closes that gap for iGPU classification purposes.
+        try:
+            curated_seed_candidates = _get_curated_seed_pool(cc)
+        except Exception:
+            logger.exception("Curated seed pool fetch failed for region %s", cc)
+            curated_seed_candidates = []
+
         _hardware_pool_ids = {str(c.app_id) for c in all_candidates if c.app_id}
         hardware_pool = list(all_candidates) + [
             c for c in potato_candidates if c.app_id and str(c.app_id) not in _hardware_pool_ids
         ]
+        _hardware_pool_ids.update(str(c.app_id) for c in potato_candidates if c.app_id)
+        hardware_pool += [
+            c for c in curated_seed_candidates if c.app_id and str(c.app_id) not in _hardware_pool_ids
+        ]
 
         try:
-            igpu_games, potato_friendly, potato_tweaks, potato_extreme = classify_homepage_hardware(
-                hardware_pool, seen_ids, limit=14
-            )
+            igpu_games = classify_igpu_only(hardware_pool, seen_ids, limit=14)
         except Exception:
-            logger.exception("Homepage hardware classification failed for region %s", cc)
-            igpu_games, potato_friendly, potato_tweaks, potato_extreme = [], [], [], []
+            logger.exception("iGPU classification failed for region %s", cc)
+            igpu_games = []
         for g in igpu_games:
             seen_ids.add(str(g["id"]))
-        for g in potato_friendly:
-            seen_ids.add(str(g["id"]))
-        for g in potato_tweaks:
-            seen_ids.add(str(g["id"]))
-        for g in potato_extreme:
-            seen_ids.add(str(g["id"]))
+
+        # ---------------- POTATO FRIENDLY / TWEAKS / EXTREME ----------------
+        # Sourced from the researched, verified database
+        # (data/potato/verified_potato_games.json), NOT from Steam's
+        # published requirements -- see
+        # services/hardware/verified_potato_db.py and
+        # services/hardware/verified_potato_pool.py for why. A game's
+        # tier here was decided by real-world low-end testing evidence,
+        # not by re-running the dynamic classifier against whatever
+        # Steam currently lists as the minimum spec.
+        try:
+            verified_tiers = get_verified_potato_tiers(cc)
+        except Exception:
+            logger.exception("Verified Potato pool fetch failed for region %s", cc)
+            verified_tiers = {"friendly": [], "tweaks": [], "extreme": []}
+
+        potato_friendly, potato_tweaks, potato_extreme = [], [], []
+        # Homepage rows are a PREVIEW, not the full list -- capped
+        # noticeably lower than the verified pool's real size (see
+        # POTATO_HOMEPAGE_PREVIEW_LIMIT below) specifically so the
+        # homepage stays scannable and the /potato page (which has no
+        # such cap, just "Load More") is where the full ecosystem
+        # actually lives. Tweaks and Extreme in particular render as a
+        # vertical list/wrapping grid rather than a horizontal-scroll
+        # row, so an uncapped-feeling count there made the homepage
+        # very tall.
+        POTATO_HOMEPAGE_PREVIEW_LIMIT = 6
+        potato_tier_totals = {tier: len(verified_tiers.get(tier, [])) for tier in ("friendly", "tweaks", "extreme")}
+        for tier, bucket, badge, orientation in (
+            ("friendly", potato_friendly, "Meets Low-End Minimum", "portrait"),
+            ("tweaks", potato_tweaks, "Playable With Tweaks", "landscape"),
+            ("extreme", potato_extreme, "Extreme Settings Only", "landscape"),
+        ):
+            for candidate in verified_tiers.get(tier, []):
+                app_id = str(candidate.app_id) if candidate.app_id else None
+                if not app_id or app_id in seen_ids:
+                    continue
+                if len(bucket) >= POTATO_HOMEPAGE_PREVIEW_LIMIT:
+                    continue
+                try:
+                    card = to_homepage_card(candidate, badge, orientation=orientation)
+                except Exception:
+                    logger.exception("Failed to build verified Potato card for app_id=%s", app_id)
+                    continue
+                bucket.append(card)
+                seen_ids.add(app_id)
+
+        # Real count from the verified database, not a fabricated
+        # "hundreds of games" gesture -- used by the CTA banner at the
+        # bottom of the Potato section to entice the click-through
+        # with an accurate number.
+        potato_total_count = sum(potato_tier_totals.values())
+
         available_games = [g for g in available_games if str(g.get("id")) not in seen_ids]
 
         # ---------------- HIDDEN GEMS ----------------
@@ -547,6 +651,7 @@ def home():
             potato_friendly=potato_friendly,
             potato_tweaks=potato_tweaks,
             potato_extreme=potato_extreme,
+            potato_total_count=potato_total_count,
             hidden_gems=hidden_gems,
             best_matches=best_matches,
             hero_pending=hero_pending,
@@ -567,6 +672,7 @@ def home():
             potato_friendly=[],
             potato_tweaks=[],
             potato_extreme=[],
+            potato_total_count=0,
             hidden_gems=[],
             best_matches=[],
             hero_pending=False,
