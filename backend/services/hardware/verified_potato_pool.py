@@ -275,4 +275,18 @@ def get_verified_potato_tiers(cc="US"):
             _BUILD_IN_PROGRESS.add(cc)
         threading.Thread(target=_rebuild_cache, args=(cc,), daemon=True).start()
 
-    return {tier: [] for tier in TIERS}
+    # Serve unenriched (namelist only) cards instantly on cold start instead of
+    # blocking the /potato page for 30 seconds while the initial fetch runs.
+    unenriched = {tier: [] for tier in TIERS}
+    for tier in TIERS:
+        for entry in get_games_by_tier(_ALL_ENTRIES, tier):
+            game = {"id": entry.app_id, "name": entry.name}
+            game["verified_evidence"] = format_evidence_for_card(entry.evidence)
+            unenriched[tier].append(HeroCandidate(
+                game=game,
+                category="verified_potato",
+                confidence=1.0,
+                insight="",
+                why_it_matters=""
+            ))
+    return unenriched
