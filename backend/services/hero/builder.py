@@ -81,7 +81,7 @@ def enrich_pool(pool, cc="US"):
     return [r for r in results if r is not None]
 
 
-def build_hero_lineup(cc="US", per_category_count=25):
+def build_hero_lineup(cc="US", per_category_count=60):
     """Runs the full pipeline and returns (selected, all_candidates).
 
     `selected` is the ordered hero lineup ready for the frontend.

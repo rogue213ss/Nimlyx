@@ -37,7 +37,7 @@ def _is_valid_candidate(game):
     return True
 
 
-def build_candidate_pool(cc="US", per_category_count=25):
+def build_candidate_pool(cc="US", per_category_count=60):
     """Fetches top sellers, new releases, and specials, dedupes by
     app id, and returns one flat list of candidate games.
 
