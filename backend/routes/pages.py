@@ -9,6 +9,23 @@ dropped from the homepage in this revision — not deleted from the
 codebase, just no longer rendered here. Their data (specials_raw)
 is no longer fetched on this route at all, which also trims one
 Steam round-trip off every homepage load.
+
+DATA LAYER — services/store/memory_store.py
+---------------------------------------------
+Every dataset below (hero, top sellers, new releases, the two Potato
+pools) is registered with the shared NimlyxMemoryStore instead of
+each having its own hand-rolled dict/lock/TTL/background-thread, the
+way this file used to. The actual fetch/enrich logic (build_hero_
+lineup, fetch_browse_category, etc.) is completely unchanged — the
+store just owns the "when does this refresh, and what do I serve
+while that's happening" plumbing centrally. See that module's
+docstring for the full guarantee list (stale-but-available, atomic
+swap, at most one rebuild in flight, plus a genuine time-triggered
+~hours-scale refresh independent of traffic).
+
+TTLs are set per the "different data, different freshness" plan:
+Potato/iGPU pools barely change without a code deploy, so they get a
+long TTL; top sellers/new releases move faster and get a shorter one.
 """
 import logging
 import threading
@@ -25,86 +42,56 @@ from services.analysis.score_cache import get_cached_score
 from services.hardware.homepage_classifier import classify_igpu_only, to_homepage_card
 from services.hardware.verified_potato_pool import get_verified_potato_tiers
 from steam_images import default_header_image, build_image_candidates
+from services.store.memory_store import store
 
 pages_bp = Blueprint("pages", __name__)
 logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------
-# Hero-lineup cache — serve-stale-while-revalidating.
-#
-# build_hero_lineup() makes ~2 live Steam calls per surviving
-# candidate (100+ round-trips on a full pool). Blocking a request on
-# that — the previous TTL-cache version — is what made the homepage
-# feel heavy after the revamp, and made it outright fail on Render's
-# free tier (cold container start + cold hero build stacking into a
-# request timeout).
-#
-# New behavior:
-#   - Cache hit, fresh:  return immediately, zero Steam calls.
-#   - Cache hit, stale:  return the stale-but-REAL data immediately
-#     (never fake — just not the newest build), and kick off a
-#     background rebuild for the NEXT visitor. This request never
-#     waits on it.
-#   - Cache miss entirely (first request since process start): return
-#     (None, None). home()'s existing fallback branch already handles
-#     this honestly — real top-sellers data, insight bar correctly
-#     hidden — this just reuses that tested path instead of ever
-#     blocking a request on a full build.
-#
-# Only one background rebuild per region runs at a time; repeated
-# requests during a rebuild don't pile up duplicate builds. This is
-# still an in-memory, per-process stopgap — a redeploy or a second
-# worker process starts cold again — but it's the actual bottleneck
-# fix; a persistent/shared cache (Phase 4) is a separate step if
-# deploys turn out to be frequent enough to matter.
+# Dataset registration -- each builder_fn below is the exact same
+# call every bespoke cache in this file used to make; only the
+# caching/refresh mechanics moved into the shared store.
 # ----------------------------------------------------------------
-_HERO_CACHE = {}
-_HERO_CACHE_LOCK = threading.Lock()
-_HERO_CACHE_TTL_SECONDS = 900  # 15 minutes
-_HERO_BUILD_IN_PROGRESS = set()
+_HERO_TTL_SECONDS = 5 * 3600      # "Featured" tier -- ~5h per the plan
+_TOP_SELLERS_TTL_SECONDS = 3 * 3600   # feeds Trending/Popular/Deals -- 1-3h tier, use the tighter end since it also drives pricing
+_NEW_RELEASES_TTL_SECONDS = 8 * 3600  # 5-12h tier
+_POTATO_POOL_TTL_SECONDS = 24 * 3600  # dynamic budget-catalog scan -- Potato/iGPU tier, 24h+
+_CURATED_SEED_TTL_SECONDS = 24 * 3600  # iGPU tier, 24h+
 
 
-def _rebuild_hero_cache(cc):
-    """Runs in a background thread — never blocks a request. Any
-    failure here just leaves the existing cache entry (or nothing, on
-    a first build) in place; it's logged, and the next stale/miss
-    simply tries again later."""
-    try:
-        selected, all_candidates = build_hero_lineup(cc=cc)
-        if selected and all_candidates:
-            with _HERO_CACHE_LOCK:
-                _HERO_CACHE[cc] = {
-                    "selected": selected,
-                    "all_candidates": all_candidates,
-                    "fetched_at": time.time(),
-                }
-    except Exception:
-        logger.exception("Background hero rebuild failed for region %s.", cc)
-    finally:
-        with _HERO_CACHE_LOCK:
-            _HERO_BUILD_IN_PROGRESS.discard(cc)
+def _build_hero(cc):
+    """Returns (selected, all_candidates) -- same shape home() always
+    unpacked from the old _HERO_CACHE entry."""
+    return build_hero_lineup(cc=cc)
+
+
+def _build_top_sellers(cc):
+    return fetch_browse_category("topsellers", count=100, cc=cc)
+
+
+def _build_new_releases(cc):
+    return fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
+
+
+def _build_potato_pool(cc):
+    from services.hero.potato_pool import build_potato_candidate_pool
+    return build_potato_candidate_pool(cc=cc)
+
+
+def _build_curated_seed(cc):
+    from services.hero.potato_curated_seed import build_curated_seed_pool
+    return build_curated_seed_pool(cc=cc)
+
+
+store.register("hero", _build_hero, _HERO_TTL_SECONDS, empty_value=(None, None))
+store.register("top_sellers", _build_top_sellers, _TOP_SELLERS_TTL_SECONDS, empty_value=[])
+store.register("new_releases", _build_new_releases, _NEW_RELEASES_TTL_SECONDS, empty_value=[])
+store.register("potato_pool", _build_potato_pool, _POTATO_POOL_TTL_SECONDS, empty_value=[])
+store.register("curated_seed", _build_curated_seed, _CURATED_SEED_TTL_SECONDS, empty_value=[])
 
 
 def _get_hero_lineup(cc):
-    with _HERO_CACHE_LOCK:
-        cached = _HERO_CACHE.get(cc)
-        building = cc in _HERO_BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _HERO_CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _HERO_CACHE_LOCK:
-                _HERO_BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_hero_cache, args=(cc,), daemon=True).start()
-        return cached["selected"], cached["all_candidates"]
-
-    # True cold start — nothing cached yet for this region at all.
-    if not building:
-        with _HERO_CACHE_LOCK:
-            _HERO_BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_hero_cache, args=(cc,), daemon=True).start()
-
-    return None, None
+    return store.get("hero", cc)
 
 
 def _is_hero_build_pending(cc):
@@ -115,263 +102,23 @@ def _is_hero_build_pending(cc):
     reload), while a completed build that legitimately had nothing to
     publish this cycle never will (show nothing, don't poll forever).
     """
-    with _HERO_CACHE_LOCK:
-        return cc in _HERO_BUILD_IN_PROGRESS
-
-
-# ----------------------------------------------------------------
-# Potato-pool cache — same serve-stale-while-revalidating pattern as
-# the hero cache above, deliberately kept as a SEPARATE cache/lock/
-# background thread rather than folded into _HERO_CACHE: this pool
-# answers a different question (which older/budget games exist at
-# all) than the hero pool (which of today's popular games deserve a
-# hero slot), and a slow/failed build of one should never block or
-# invalidate the other. See services/hero/potato_pool.py for why this
-# pool exists and what it scrapes.
-# ----------------------------------------------------------------
-_POTATO_CACHE = {}
-_POTATO_CACHE_LOCK = threading.Lock()
-_POTATO_CACHE_TTL_SECONDS = 1800  # 30 minutes -- this pool changes far
-# less often than the hero pool (Steam's budget-priced catalog doesn't
-# turn over hour to hour the way top sellers/new releases do), so a
-# longer TTL means fewer redundant ~60-120-game enrichment sweeps.
-_POTATO_BUILD_IN_PROGRESS = set()
-
-
-def _rebuild_potato_cache(cc):
-    """Runs in a background thread — never blocks a request. Mirrors
-    _rebuild_hero_cache()'s failure handling: any error here just
-    leaves the existing cache entry (or nothing, on a first build) in
-    place, logged, and the next stale/miss simply tries again later."""
-    try:
-        from services.hero.potato_pool import build_potato_candidate_pool
-        candidates = build_potato_candidate_pool(cc=cc)
-        if candidates:
-            with _POTATO_CACHE_LOCK:
-                _POTATO_CACHE[cc] = {
-                    "candidates": candidates,
-                    "fetched_at": time.time(),
-                }
-    except Exception:
-        logger.exception("Background potato pool rebuild failed for region %s.", cc)
-    finally:
-        with _POTATO_CACHE_LOCK:
-            _POTATO_BUILD_IN_PROGRESS.discard(cc)
+    return store.is_refreshing("hero", cc)
 
 
 def _get_potato_pool(cc):
-    """Same three-outcome shape as _get_hero_lineup(): fresh hit
-    returns immediately; stale hit returns the stale-but-real list
-    immediately and kicks off a background rebuild; a true cold start
-    (nothing cached yet) returns [] and starts the first build in the
-    background. A cold-start [] here is never worse than today's
-    behavior — the Potato/iGPU sections simply fall back to whatever
-    the hero pool alone can find, exactly as before this pool
-    existed, until the first background build finishes."""
-    with _POTATO_CACHE_LOCK:
-        cached = _POTATO_CACHE.get(cc)
-        building = cc in _POTATO_BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _POTATO_CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _POTATO_CACHE_LOCK:
-                _POTATO_BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_potato_cache, args=(cc,), daemon=True).start()
-        return cached["candidates"]
-
-    if not building:
-        with _POTATO_CACHE_LOCK:
-            _POTATO_BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_potato_cache, args=(cc,), daemon=True).start()
-
-    return []
-
-
-# ----------------------------------------------------------------
-# Curated seed cache -- same serve-stale-while-revalidating pattern as
-# the caches above. Moved here from routes/potato.py (which used to
-# own it) now that the /potato "view more" page sources exclusively
-# from the verified database and no longer needs this pool -- the
-# Integrated GPU section below (still dynamically classified) is this
-# cache's only remaining consumer. build_curated_seed_pool() does ~80
-# individual Steam search lookups plus appdetails enrichment per call
-# -- far too slow to run inline on every homepage request, and a
-# failed refresh must never replace a working cached pool with an
-# empty one (same "never let a failed Steam call empty out working
-# data" rule as the rest of the site).
-# ----------------------------------------------------------------
-_CURATED_SEED_CACHE = {}
-_CURATED_SEED_CACHE_LOCK = threading.Lock()
-_CURATED_SEED_CACHE_TTL_SECONDS = 3600  # names rarely change; requirements do, hourly is plenty
-_CURATED_SEED_BUILD_IN_PROGRESS = set()
-
-
-def _rebuild_curated_seed_cache(cc):
-    try:
-        from services.hero.potato_curated_seed import build_curated_seed_pool
-        pool = build_curated_seed_pool(cc=cc)
-        if pool:
-            with _CURATED_SEED_CACHE_LOCK:
-                _CURATED_SEED_CACHE[cc] = {"pool": pool, "fetched_at": time.time()}
-    except Exception:
-        logger.exception("Curated seed pool rebuild failed for region %s.", cc)
-    finally:
-        with _CURATED_SEED_CACHE_LOCK:
-            _CURATED_SEED_BUILD_IN_PROGRESS.discard(cc)
+    return store.get("potato_pool", cc)
 
 
 def _get_curated_seed_pool(cc):
-    with _CURATED_SEED_CACHE_LOCK:
-        cached = _CURATED_SEED_CACHE.get(cc)
-        building = cc in _CURATED_SEED_BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _CURATED_SEED_CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _CURATED_SEED_CACHE_LOCK:
-                _CURATED_SEED_BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_curated_seed_cache, args=(cc,), daemon=True).start()
-        return cached["pool"]
-
-    if not building:
-        with _CURATED_SEED_CACHE_LOCK:
-            _CURATED_SEED_BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_curated_seed_cache, args=(cc,), daemon=True).start()
-
-    return []
-
-
-# ----------------------------------------------------------------
-# New-releases cache — same serve-stale-while-revalidating pattern
-# as the hero cache above, same reasoning: fetch_verified_new_
-# releases() makes one live appdetails call per candidate purely to
-# check each one's real release date, which is real API cost worth
-# paying in the background, not inside a request.
-# ----------------------------------------------------------------
-_NEW_RELEASES_CACHE = {}
-_NEW_RELEASES_CACHE_LOCK = threading.Lock()
-_NEW_RELEASES_CACHE_TTL_SECONDS = 1800  # 30 minutes
-_NEW_RELEASES_BUILD_IN_PROGRESS = set()
-
-
-def _rebuild_new_releases_cache(cc):
-    try:
-        games = fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
-        if games:
-            with _NEW_RELEASES_CACHE_LOCK:
-                _NEW_RELEASES_CACHE[cc] = {"games": games, "fetched_at": time.time()}
-    except Exception:
-        logger.exception("Background new-releases rebuild failed for region %s.", cc)
-    finally:
-        with _NEW_RELEASES_CACHE_LOCK:
-            _NEW_RELEASES_BUILD_IN_PROGRESS.discard(cc)
+    return store.get("curated_seed", cc)
 
 
 def _get_verified_new_releases(cc):
-    with _NEW_RELEASES_CACHE_LOCK:
-        cached = _NEW_RELEASES_CACHE.get(cc)
-        building = cc in _NEW_RELEASES_BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _NEW_RELEASES_CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _NEW_RELEASES_CACHE_LOCK:
-                _NEW_RELEASES_BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_new_releases_cache, args=(cc,), daemon=True).start()
-        return cached["games"]
-
-    # True cold start — nothing cached yet. Kick off a background
-    # build and return an empty list for THIS request; the New
-    # Releases section already guards on `{% if new_release_games %}`
-    # and simply doesn't render when empty, same honest-degradation
-    # approach as the hero fallback.
-    if not building:
-        with _NEW_RELEASES_CACHE_LOCK:
-            _NEW_RELEASES_BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_new_releases_cache, args=(cc,), daemon=True).start()
-
-    return []
-
-
-# ----------------------------------------------------------------
-# Top-sellers cache -- same serve-stale-while-revalidating pattern as
-# the hero/potato/new-releases caches above.
-#
-# Root cause of the "homepage goes empty on refresh" bug: this was
-# previously a direct, synchronous fetch_browse_category("topsellers",
-# ...) call inside home() with no local fallback. fetch_browse_category
-# has its own short-lived (180s) cache, but that cache is a plain TTL
-# cache -- once an entry ages past 180s it returns None and the next
-# call hits Steam live again. Steam's search/results endpoint
-# occasionally times out or returns 429/5xx (rate limiting, transient
-# outages), which raised inside fetch_browse_category via
-# response.raise_for_status(). That exception propagated all the way
-# up to home()'s outer except requests.exceptions.RequestException,
-# which discarded every already-successfully-built section (hero,
-# potato pool, new releases -- all independently cached and fine) and
-# rendered a fully empty homepage.
-#
-# Fixed the same way every other homepage data source already handles
-# this: fetch on a background thread, serve the last known-good
-# (possibly stale) result instantly, and never let a failed refresh
-# replace good data with [] or None. See _rebuild_top_sellers_cache
-# below -- a failed fetch_func() call there is caught and simply
-# leaves the existing cache entry in place.
-# ----------------------------------------------------------------
-_TOP_SELLERS_CACHE = {}
-_TOP_SELLERS_CACHE_LOCK = threading.Lock()
-_TOP_SELLERS_CACHE_TTL_SECONDS = 180  # matches fetch_browse_category's own TTL
-_TOP_SELLERS_BUILD_IN_PROGRESS = set()
-
-
-def _rebuild_top_sellers_cache(cc):
-    """Runs in a background thread -- never blocks a request. Mirrors
-    _rebuild_hero_cache()'s failure handling: if the Steam fetch fails
-    (timeout, 429, 5xx, anything raised by raise_for_status()), the
-    exception is caught and logged here, and the existing cache entry
-    (or nothing, on a first build) is left untouched -- a failed
-    refresh must never overwrite valid cached data with [] or None."""
-    try:
-        games = fetch_browse_category("topsellers", count=100, cc=cc)
-        if games:
-            with _TOP_SELLERS_CACHE_LOCK:
-                _TOP_SELLERS_CACHE[cc] = {"games": games, "fetched_at": time.time()}
-    except Exception:
-        logger.exception("Background top-sellers rebuild failed for region %s.", cc)
-    finally:
-        with _TOP_SELLERS_CACHE_LOCK:
-            _TOP_SELLERS_BUILD_IN_PROGRESS.discard(cc)
+    return store.get("new_releases", cc)
 
 
 def _get_top_sellers(cc):
-    """Same three-outcome shape as _get_hero_lineup()/_get_potato_pool():
-    fresh hit returns immediately; stale hit returns the stale-but-real
-    list immediately and kicks off a background rebuild (Steam being
-    slow/down right now never blocks or empties this request); a true
-    cold start (nothing cached yet, e.g. right after deploy) returns []
-    and starts the first build in the background -- every downstream
-    section that reads top_sellers_raw already tolerates an empty list
-    (they just render fewer/no cards this one time), same honest-
-    degradation approach used elsewhere in this file."""
-    with _TOP_SELLERS_CACHE_LOCK:
-        cached = _TOP_SELLERS_CACHE.get(cc)
-        building = cc in _TOP_SELLERS_BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _TOP_SELLERS_CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _TOP_SELLERS_CACHE_LOCK:
-                _TOP_SELLERS_BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_top_sellers_cache, args=(cc,), daemon=True).start()
-        return cached["games"]
-
-    if not building:
-        with _TOP_SELLERS_CACHE_LOCK:
-            _TOP_SELLERS_BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_top_sellers_cache, args=(cc,), daemon=True).start()
-
-    return []
+    return store.get("top_sellers", cc)
 
 
 def hero_image_url(appid, fallback):
@@ -393,6 +140,49 @@ def hero_image_url(appid, fallback):
     side.
     """
     return default_header_image(appid)
+
+
+# ----------------------------------------------------------------
+# Store warm-up + periodic refresh — fixes the "homepage loads with
+# almost every section missing" bug on Render's free tier, and (new)
+# makes the ~5h-scale refresh happen independent of traffic.
+#
+# Deliberately NOT called at module-import time. Gunicorn (Render's
+# default) commonly runs with `--preload`, which imports the app ONCE
+# in a master process and then fork()s worker processes from it.
+# Starting background threads here would race with that fork — if
+# fork() lands while one of these threads holds a store lock, the
+# forked child inherits that lock already acquired forever (the
+# thread that would release it doesn't exist in the child). Every
+# later request touching that lock then hangs indefinitely — exactly
+# the "every request times out" bug this comment exists to prevent
+# reintroducing. Instead, warm-up (and starting the periodic-refresh
+# loop) is triggered from inside a real request via
+# _ensure_store_warmed() below, which only ever runs post-fork, in
+# whichever worker process actually received the request.
+#
+# Warms "US" — the same fallback region get_region_code() already
+# uses when IP geolocation fails — since a cold process can't know a
+# real visitor's region yet. Any other region still lazily builds on
+# its own first request, same as before.
+# ----------------------------------------------------------------
+_STORE_WARMED = False
+_STORE_WARMED_LOCK = threading.Lock()
+
+
+def _ensure_store_warmed():
+    global _STORE_WARMED
+    with _STORE_WARMED_LOCK:
+        if _STORE_WARMED:
+            return
+        _STORE_WARMED = True
+    store.warm("US")
+    store.start_periodic_refresh(interval_seconds=3600)  # heartbeat; each dataset only actually rebuilds once ITS OWN ttl elapses
+
+
+@pages_bp.before_app_request
+def _warm_store_before_request():
+    _ensure_store_warmed()
 
 
 @pages_bp.route("/")

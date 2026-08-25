@@ -67,25 +67,21 @@ which tier a game belongs to.
 """
 
 import logging
-import threading
-import time
 
 from services.hardware.verified_potato_db import get_games_by_tier, load_verified_potato_games
 from services.hero.builder import enrich_pool
 from services.hero.candidate import HeroCandidate
+from services.store.memory_store import store
 
 logger = logging.getLogger(__name__)
 
 TIERS = ("friendly", "tweaks", "extreme")
 
-_CACHE = {}
-_CACHE_LOCK = threading.Lock()
-_CACHE_TTL_SECONDS = 1800  # 30 minutes -- the verified tier never
-# changes without a code deploy (it's static, versioned research
-# data); this TTL only governs how often Steam's price/discount/art
-# metadata gets refreshed for display, so it doesn't need to be
-# aggressive.
-_BUILD_IN_PROGRESS = set()
+_CACHE_TTL_SECONDS = 24 * 3600  # the verified tier never changes
+# without a code deploy (it's static, versioned research data); this
+# TTL only governs how often Steam's price/discount/art metadata gets
+# refreshed for display, so it doesn't need to be aggressive -- Potato
+# /iGPU tier per the store's TTL plan.
 
 # Loaded once at import time -- static local JSON, no need to re-read
 # the file on every request. A future admin workflow that needs to
@@ -151,12 +147,23 @@ def format_evidence_for_card(evidence):
     }
 
 
-def _build_tier_candidates(cc, previous_by_app_id):
+def _build_tier_candidates(cc):
     """Enriches every renderable verified entry, grouped by tier.
-    `previous_by_app_id`: {app_id: HeroCandidate} from the last
-    successful cache entry (or {} on a cold start) -- used to fall
-    back to stale-but-real Steam metadata for any entry that fails to
-    enrich this round, per the module docstring above."""
+    Reads the store's CURRENT (possibly stale) cached value for this
+    key as `previous_by_app_id` -- safe to call from inside this
+    builder: the store already marked this (key, cc) as `refreshing`
+    before invoking us, so this get() cannot recurse into a second
+    rebuild, it just hands back whatever's currently cached (or the
+    empty dict on a true cold start) -- used to fall back to
+    stale-but-real Steam metadata for any entry that fails to enrich
+    this round, per the module docstring above."""
+    cached_tiers = store.get("verified_potato_tiers", cc)
+    previous_by_app_id = {}
+    for tier in TIERS:
+        for candidate in cached_tiers.get(tier, []):
+            if candidate.app_id:
+                previous_by_app_id[candidate.app_id] = candidate
+
     rows_by_app_id = {}
     entry_by_app_id = {}
     for tier in TIERS:
@@ -225,68 +232,17 @@ def _build_tier_candidates(cc, previous_by_app_id):
     return tier_candidates
 
 
-def _rebuild_cache(cc):
-    try:
-        with _CACHE_LOCK:
-            cached = _CACHE.get(cc)
-        previous_by_app_id = {}
-        if cached is not None:
-            for tier in TIERS:
-                for candidate in cached["tiers"][tier]:
-                    if candidate.app_id:
-                        previous_by_app_id[candidate.app_id] = candidate
-
-        tier_candidates = _build_tier_candidates(cc, previous_by_app_id)
-        has_data = any(bool(games) for games in tier_candidates.values())
-        if has_data:
-            with _CACHE_LOCK:
-                _CACHE[cc] = {"tiers": tier_candidates, "fetched_at": time.time()}
-    except Exception:
-        logger.exception("Verified Potato pool rebuild failed for region %s.", cc)
-    finally:
-        with _CACHE_LOCK:
-            _BUILD_IN_PROGRESS.discard(cc)
+store.register("verified_potato_tiers", _build_tier_candidates, _CACHE_TTL_SECONDS, empty_value={tier: [] for tier in TIERS})
 
 
 def get_verified_potato_tiers(cc="US"):
     """Returns {"friendly": [HeroCandidate, ...], "tweaks": [...],
-    "extreme": [...]} for the requested region. Same three-outcome
-    serve-stale-while-revalidating shape as every other pool cache in
-    this codebase: fresh hit returns immediately; stale hit returns
-    the stale-but-real data immediately and kicks off a background
-    rebuild; true cold start returns empty lists and starts the first
-    build in the background (never worse than before this pool
-    existed -- callers should treat empty lists the same way they'd
-    treat "hero pool still building")."""
-    with _CACHE_LOCK:
-        cached = _CACHE.get(cc)
-        building = cc in _BUILD_IN_PROGRESS
-
-    if cached is not None:
-        is_stale = (time.time() - cached["fetched_at"]) >= _CACHE_TTL_SECONDS
-        if is_stale and not building:
-            with _CACHE_LOCK:
-                _BUILD_IN_PROGRESS.add(cc)
-            threading.Thread(target=_rebuild_cache, args=(cc,), daemon=True).start()
-        return cached["tiers"]
-
-    if not building:
-        with _CACHE_LOCK:
-            _BUILD_IN_PROGRESS.add(cc)
-        threading.Thread(target=_rebuild_cache, args=(cc,), daemon=True).start()
-
-    # Serve unenriched (namelist only) cards instantly on cold start instead of
-    # blocking the /potato page for 30 seconds while the initial fetch runs.
-    unenriched = {tier: [] for tier in TIERS}
-    for tier in TIERS:
-        for entry in get_games_by_tier(_ALL_ENTRIES, tier):
-            game = {"id": entry.app_id, "name": entry.name}
-            game["verified_evidence"] = format_evidence_for_card(entry.evidence)
-            unenriched[tier].append(HeroCandidate(
-                game=game,
-                category="verified_potato",
-                confidence=1.0,
-                insight="",
-                why_it_matters=""
-            ))
-    return unenriched
+    "extreme": [...]} for the requested region. Backed by the shared
+    NimlyxMemoryStore -- same three-outcome serve-stale-while-
+    revalidating shape as every other dataset there: fresh hit returns
+    immediately; stale hit returns the stale-but-real data immediately
+    and kicks off a background rebuild; true cold start returns empty
+    lists and starts the first build in the background (never worse
+    than before this pool existed -- callers should treat empty lists
+    the same way they'd treat "hero pool still building")."""
+    return store.get("verified_potato_tiers", cc)
