@@ -1,21 +1,13 @@
 import re
 import requests
 
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-})
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from flask import Blueprint, jsonify, request
 
 from region import get_region_code
-from steam import get_appdetails, get_review_summary, clean_search_term, build_purchase_options, fetch_search_by_term
+from steam import get_appdetails, get_review_summary, clean_search_term, build_purchase_options, fetch_search_by_term, fetch_storesearch_api
 from formatters import format_price
 from services.analysis.wilson_score import compute_nimlyx_score
 from services.analysis.reputation_trajectory import compute_trajectory
@@ -55,10 +47,10 @@ def search_game(game_name):
     try:
         cc = get_region_code()
         term = clean_search_term(game_name)
-        url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
-        response = _session.get(url, timeout=10)
-        response.raise_for_status()
-        return jsonify(response.json())
+        data = fetch_storesearch_api(term, cc)
+        if data is None:
+            return jsonify({"error": "Failed to fetch from Steam"}), 500
+        return jsonify(data)
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
@@ -387,8 +379,7 @@ def find_game(game_name):
     cc = get_region_code()
     term = clean_search_term(game_name)
 
-    search_url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
-    search_data = _session.get(search_url).json()
+    search_data = fetch_storesearch_api(term, cc) or {}
 
     for item in search_data.get("items", []):
         if item.get("type") != "app":

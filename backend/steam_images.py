@@ -33,15 +33,8 @@ for anything rendering more than one card.
 
 import time
 import requests
+from steam import get_appdetails, fetch_storesearch_api, _safe_steam_get
 
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-})
 
 
 STEAM_APPDETAILS_URL = "https://store.steampowered.com/api/appdetails"
@@ -84,7 +77,7 @@ def _asset_exists(url, timeout=3):
     for a low-volume path (e.g. a single analyze-page lookup) where
     an extra round trip doesn't matter."""
     try:
-        resp = requests.head(url, timeout=timeout, allow_redirects=True)
+        resp = _safe_steam_get(url, method="HEAD", timeout=timeout, allow_redirects=True)
         return resp.status_code == 200
     except requests.exceptions.RequestException:
         return False

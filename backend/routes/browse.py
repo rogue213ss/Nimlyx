@@ -1,13 +1,5 @@
 import requests
 
-_session = requests.Session()
-_session.headers.update({
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-})
 
 from flask import Blueprint, jsonify, render_template
 from region import get_region_code
@@ -65,18 +57,10 @@ def featured_games_api():
     cc = get_region_code()
     cache_key = ("featured_categories", cc)
     
-    from steam import _cache_get, _cache_set
-    cached = _cache_get(cache_key, ttl_seconds=180)
-    if cached is not None:
-        return jsonify(cached)
-
-    url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
-    try:
-        response = _session.get(url, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+    from steam import fetch_featured_categories
+    data = fetch_featured_categories(cc)
+    if data is None:
+        return jsonify({"error": "Failed to fetch featured categories"}), 500
 
     def clean_items(category):
         items = data.get(category, {}).get("items", [])
@@ -118,7 +102,7 @@ def featured_games_api():
         "specials": clean_items("specials")
     }
     
-    _cache_set(cache_key, result)
+    
     return jsonify(result)
 
 

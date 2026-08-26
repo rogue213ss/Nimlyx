@@ -7,9 +7,10 @@ Used by the /api/browse, /api/verdicts, /api/discover, /api/game,
 import re
 import time
 import threading
+import logging
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-
+import os
 import requests
 from bs4 import BeautifulSoup
 
@@ -17,13 +18,21 @@ from services.analysis.wilson_score import compute_nimlyx_score
 
 HARDWARE_KEYWORDS = ["steam deck", "steam controller", "steam machine", "steam link"]
 
-# Steam's store endpoints frequently 403 requests with no browser-like
-# User-Agent (especially from cloud/datacenter IPs, e.g. Render).  A
-# bare `_session.get(url)` with no headers was silently turning into a
-# RequestException on every homepage load, which routes/pages.py's
-# top-level except catches and renders as an all-sections-empty
-# homepage. Route every Steam call through this shared session so
-# they all send a normal browser UA instead of Python's default.
+logger = logging.getLogger(__name__)
+
+STEAM_REQUESTS_PER_SECOND = float(os.environ.get("STEAM_REQUESTS_PER_SECOND", "2"))
+STEAM_MAX_CONCURRENCY = int(os.environ.get("STEAM_MAX_CONCURRENCY", "2"))
+STEAM_REQUEST_TIMEOUT = float(os.environ.get("STEAM_REQUEST_TIMEOUT", "3"))
+STEAM_429_COOLDOWN = float(os.environ.get("STEAM_429_COOLDOWN", "120"))
+
+_steam_global_lock = threading.Lock()
+_steam_concurrency_sem = threading.Semaphore(STEAM_MAX_CONCURRENCY)
+_last_request_time = 0.0
+_cooldown_until = 0.0
+
+class SteamCircuitBreakerException(Exception):
+    pass
+
 _session = requests.Session()
 _session.headers.update({
     "User-Agent": (
@@ -32,6 +41,42 @@ _session.headers.update({
     ),
     "Accept-Language": "en-US,en;q=0.9",
 })
+
+def _safe_steam_get(url, method="GET", **kwargs):
+    """Centralized Steam HTTP request gateway with global rate limiting, concurrency limiting, and 429 circuit breaker."""
+    global _last_request_time, _cooldown_until
+    
+    with _steam_global_lock:
+        if time.time() < _cooldown_until:
+            logger.warning(f"Steam request blocked by global 429 cooldown: {url}")
+            raise SteamCircuitBreakerException("Steam 429 cooldown active")
+            
+    kwargs.setdefault('timeout', STEAM_REQUEST_TIMEOUT)
+    
+    with _steam_concurrency_sem:
+        # Rate limit
+        with _steam_global_lock:
+            now = time.time()
+            gap = 1.0 / STEAM_REQUESTS_PER_SECOND if STEAM_REQUESTS_PER_SECOND > 0 else 0
+            elapsed = now - _last_request_time
+            if elapsed < gap:
+                time.sleep(gap - elapsed)
+            _last_request_time = time.time()
+            
+        try:
+            resp = _session.request(method, url, **kwargs)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Steam request failed: {e}")
+            raise
+            
+        if resp.status_code == 429:
+            with _steam_global_lock:
+                _cooldown_until = time.time() + STEAM_429_COOLDOWN
+            logger.warning(f"Steam 429 Too Many Requests! Global cooldown activated for {STEAM_429_COOLDOWN}s.")
+            raise SteamCircuitBreakerException("429 Too Many Requests")
+            
+        return resp
+
 
 
 def _is_single_app_id(app_id):
@@ -148,7 +193,12 @@ def _execute_deduplicated(cache_key, ttl_seconds, fetch_func, failure_ttl=60):
 
     if we_fetch:
         try:
-            result = fetch_func()
+            try:
+                result = fetch_func()
+            except SteamCircuitBreakerException:
+                result = None
+            except requests.exceptions.RequestException:
+                result = None
             if result is None:
                 _cache_set(cache_key, "RATE_LIMITED_OR_FAILED", ttl_override=failure_ttl)
             else:
@@ -355,7 +405,7 @@ def fetch_browse_category(category, count=25, cc="US"):
             f"?query=&start=0&count={count}&filter={category}&category1=998&cc={cc}&l=english"
         )
         try:
-            response = _session.get(url, timeout=10)
+            response = _safe_steam_get(url, timeout=10)
             response.raise_for_status()
         except (requests.exceptions.RequestException, ValueError):
             return None
@@ -494,7 +544,7 @@ def _scrape_search_results(params, cc):
     searched for."""
     url = "https://store.steampowered.com/search/results/"
 
-    response = _session.get(url, params=params, timeout=10)
+    response = _safe_steam_get(url, params=params, timeout=10)
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -835,7 +885,7 @@ def fetch_authoritative_price(app_id, cc="US"):
         def _try(region):
             try:
                 url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={region}"
-                response = _session.get(url, timeout=8)
+                response = _safe_steam_get(url, timeout=8)
                 response.raise_for_status()
                 data = response.json()
                 entry = data.get(str(app_id))
@@ -958,7 +1008,7 @@ def fetch_new_release_candidates(count=40, cc="US"):
             f"&category1=998&cc={cc}&l=english"
         )
         try:
-            response = _session.get(url, timeout=10)
+            response = _safe_steam_get(url, timeout=10)
             response.raise_for_status()
         except (requests.exceptions.RequestException, ValueError):
             return None
@@ -1127,7 +1177,7 @@ def get_review_summary(app_id, cc="US", day_range=None):
             if day_range:
                 url += f"&day_range={day_range}"
 
-            response = _session.get(url, timeout=8)
+            response = _safe_steam_get(url, timeout=8)
             response.raise_for_status()
             data = response.json()
 
@@ -1192,7 +1242,7 @@ def get_review_texts(app_id, cc="US", num_reviews=100):
             f"?json=1&filter=recent&language=english&cc={cc}"
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
         )
-        response = _session.get(url, timeout=10)
+        response = _safe_steam_get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1249,7 +1299,7 @@ def get_top_helpful_review(app_id, cc="US", voted_up=True, num_reviews=20):
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
             f"&review_type={review_type}"
         )
-        response = _session.get(url, timeout=10)
+        response = _safe_steam_get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1321,7 +1371,7 @@ def get_helpful_reviews(app_id, cc="US", voted_up=True, limit=5, num_reviews=20)
             f"&num_per_page={min(num_reviews, 100)}&purchase_type=all"
             f"&review_type={review_type}"
         )
-        response = _session.get(url, timeout=10)
+        response = _safe_steam_get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -1360,7 +1410,7 @@ def _fetch_packagedetails_payload(package_id, cc="US"):
     def _fetch():
         try:
             url = f"https://store.steampowered.com/api/packagedetails?packageids={package_id}&l=english&cc={cc}"
-            response = _session.get(url, timeout=10)
+            response = _safe_steam_get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
         except (requests.exceptions.RequestException, ValueError):
@@ -1610,7 +1660,7 @@ def get_appdetails(app_id, cc):
     def _fetch():
         url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english&cc={cc}"
         try:
-            response = _session.get(url, timeout=10)
+            response = _safe_steam_get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
         except (requests.exceptions.RequestException, ValueError):
@@ -1748,3 +1798,28 @@ def fetch_homepage_row(category_id, cc="US", seen_ids=None):
         filtered_games = all_games
         
     return filtered_games[:14]  # Slice to top 14 for the row -- scrollable rows should carry more than 10
+def fetch_storesearch_api(term, cc="US"):
+    """JSON storesearch API. Small, non-paginating autocomplete-style endpoint."""
+    def _fetch():
+        url = f"https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc={cc}"
+        try:
+            response = _safe_steam_get(url)
+            response.raise_for_status()
+            return response.json()
+        except Exception:
+            return None
+    cache_key = f"storesearch_api:{term}:{cc}"
+    return _execute_deduplicated(cache_key, 600, _fetch, failure_ttl=60)
+
+def fetch_featured_categories(cc="US"):
+    """JSON featuredcategories API."""
+    def _fetch():
+        url = f"https://store.steampowered.com/api/featuredcategories?l=english&cc={cc}"
+        try:
+            response = _safe_steam_get(url)
+            response.raise_for_status()
+            return response.json()
+        except Exception:
+            return None
+    cache_key = f"featured_categories:{cc}"
+    return _execute_deduplicated(cache_key, 180, _fetch, failure_ttl=60)
