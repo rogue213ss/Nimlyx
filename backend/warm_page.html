@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nimlyx — Discover. Analyze. Decide.</title>
+<meta name="description" content="Nimlyx analyzes Steam games using ratings, reviews, screenshots and trailers so you know what you're getting before you buy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/style_mobile.css">
+</head>
+<body class="home-page">
+
+<!--
+  NIMLYX — HOMEPAGE TEMPLATE
+  ================================================================
+  Expected context variables from routes/pages.py:
+
+    featured_games    → list[dict], hero-engine winners (id, name,
+                         header_image, analyze_url, insight,
+                         why_it_matters)
+    nimlyx_picks      → list[dict], leftover HeroCandidates from the
+                         same build (HeroCandidate.to_pick_dict())
+    trending_games    → list[dict], real top-seller ordering
+    new_release_games → list[dict], verified against real Steam
+                         appdetails release dates — see
+                         steam.fetch_verified_new_releases(). Can be
+                         shorter than 5 (or empty) when fewer games
+                         have a trustworthy release date; never
+                         padded with guessed entries.
+  ================================================================
+-->
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeSearchToggle" class="home-search-checkbox">
+    <label for="homeSearchToggle" class="home-mobile-search-btn" aria-label="Search">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </label>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/" aria-current="page">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/potato">Potato</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+    <label for="homeSearchToggle" class="home-search-close-btn" aria-label="Close search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </label>
+    <div id="suggestions" class="suggestions-dropdown"></div>
+</form>
+    </div>
+  </div>
+</header>
+
+<main>
+
+
+<section class="home-hero" id="homeHero" aria-label="Featured game spotlight">
+  <div class="home-hero-track">
+    
+    <div class="home-hero-slide is-active"
+         style="background-image:url('https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3211430/f31f9d5047355f830df9dfb1031847fc83cd0e52/header.jpg?t=1787756960');"
+         data-bg-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3211430/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3211430/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3211430/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3211430/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3211430/e4b6bac1c89095f23c514147be534223c6fb19ac/capsule_231x87.jpg?t=1787756960", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3211430/f31f9d5047355f830df9dfb1031847fc83cd0e52/header.jpg?t=1787756960"]'
+         data-name="BRIGANDINE ABYSS"
+         data-analyze-url="/search?app_id=3211430"
+         data-steam-url="https://store.steampowered.com/app/3211430"
+         data-genres='["Simulation", "Strategy"]'
+         data-discount="0"
+         data-price="$49.99"
+         data-price-before=""
+         data-review-desc="1 user reviews"
+         data-review-sentiment="neutral"
+         data-insight="BRIGANDINE ABYSS just dropped today.">
+    </div>
+    
+    <div class="home-hero-slide"
+         
+         data-bg-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1174180/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1174180/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/capsule_231x87.jpg?t=1759502961", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/header.jpg?t=1759502961"]'
+         data-name="Red Dead Redemption 2"
+         data-analyze-url="/search?app_id=1174180"
+         data-steam-url="https://store.steampowered.com/app/1174180"
+         data-genres='["Action", "Adventure"]'
+         data-discount="75"
+         data-price="$14.99"
+         data-price-before="$59.99"
+         data-review-desc="Very Positive"
+         data-review-sentiment="positive"
+         data-insight="Red Dead Redemption 2 just dropped to $14.99 (75% off) and it&#39;s actually good (Very Positive).">
+    </div>
+    
+    <div class="home-hero-slide"
+         
+         data-bg-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2357570/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2357570/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2357570/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2357570/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2357570/1d0e99bc9ed84abe67862f3176be3ce56018e9b1/capsule_231x87_alt_assets_22.jpg?t=1786471282", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2357570/7baa151c768868f1fe1d3aeea2467fa1a35fb531/header_alt_assets_22.jpg?t=1786471282"]'
+         data-name="Overwatch®"
+         data-analyze-url="/search?app_id=2357570"
+         data-steam-url="https://store.steampowered.com/app/2357570"
+         data-genres='["Action", "Free To Play"]'
+         data-discount="0"
+         data-price="Free"
+         data-price-before=""
+         data-review-desc="Mixed"
+         data-review-sentiment="neutral"
+         data-insight="Overwatch® is sitting at 49% positive Mixed. Players can&#39;t agree on this one.">
+    </div>
+    
+    <div class="home-hero-slide"
+         
+         data-bg-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3722330/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3722330/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3722330/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3722330/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3722330/19c9e6ec567f975b0b4462b8c84c1a38c74adf0d/capsule_231x87.jpg?t=1787088182", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3722330/759ecea2ffe1ad3819aefdda79e265b8b332bf8f/header.jpg?t=1787088182"]'
+         data-name="Shift At Midnight"
+         data-analyze-url="/search?app_id=3722330"
+         data-steam-url="https://store.steampowered.com/app/3722330"
+         data-genres='["Indie", "Simulation"]'
+         data-discount="0"
+         data-price="$9.99"
+         data-price-before=""
+         data-review-desc="Very Positive"
+         data-review-sentiment="positive"
+         data-insight="Shift At Midnight is just $9.99 and sitting at Very Positive barely anyone&#39;s talking about it.">
+    </div>
+    
+    <div class="home-hero-slide"
+         
+         data-bg-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3448650/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3448650/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3448650/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3448650/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3448650/ca75b2be4cfcfbbb74518f8bf963f09bbc111bf5/capsule_231x87.jpg?t=1787672724", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3448650/9b3d808b5a39c572dc13ced8024e8085bd306805/header.jpg?t=1787672724"]'
+         data-name="Aliens: Fireteam Elite 2"
+         data-analyze-url="/search?app_id=3448650"
+         data-steam-url="https://store.steampowered.com/app/3448650"
+         data-genres='["Action"]'
+         data-discount="0"
+         data-price="$49.99"
+         data-price-before=""
+         data-review-desc="Mixed"
+         data-review-sentiment="neutral"
+         data-insight="Aliens: Fireteam Elite 2 just dropped yesterday.">
+    </div>
+    
+  </div>
+  <div class="home-hero-overlay"></div>
+
+  <div class="home-container home-hero-content">
+    <span class="home-hero-kicker">
+      <span aria-hidden="true">★</span> Handpicked by Nimlyx
+    </span>
+
+    <h1 class="home-hero-title" id="homeHeroTitle">BRIGANDINE ABYSS</h1>
+
+    
+    <p class="home-hero-desc" id="homeHeroDesc">BRIGANDINE ABYSS just dropped today.</p>
+    
+
+    <div class="home-hero-meta" id="homeHeroMeta">
+      
+      <span class="home-hero-pill home-hero-pill--review is-neutral">
+        <span aria-hidden="true">◐</span>
+        1 user reviews
+      </span>
+      
+      
+      <span class="home-hero-pill hero-meta-genre">Simulation</span><span class="home-hero-pill hero-meta-genre">Strategy</span>
+      
+      
+    </div>
+
+    <div class="home-hero-actions">
+      <a class="home-btn home-btn-primary home-hero-cta" id="homeHeroCta" href="/search?app_id=3211430">
+        Explore this pick <span class="home-hero-cta-arrow" aria-hidden="true">→</span>
+      </a>
+      <a class="home-btn home-btn-secondary home-hero-cta-secondary" id="homeHeroSteamCta" href="https://store.steampowered.com/app/3211430" target="_blank" rel="noopener">
+        View on Steam <span aria-hidden="true">↗</span>
+      </a>
+    </div>
+  </div>
+
+  
+  <div class="home-hero-controls">
+    <button type="button" class="home-hero-arrow home-hero-arrow--prev" id="homeHeroPrev" aria-label="Previous pick">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <button type="button" class="home-hero-arrow home-hero-arrow--next" id="homeHeroNext" aria-label="Next pick">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+  </div>
+  <div class="home-hero-indicators" id="homeHeroIndicators">
+    
+    <button type="button" class="home-hero-dot is-active" data-slide="0" aria-label="Show BRIGANDINE ABYSS"></button>
+    
+    <button type="button" class="home-hero-dot" data-slide="1" aria-label="Show Red Dead Redemption 2"></button>
+    
+    <button type="button" class="home-hero-dot" data-slide="2" aria-label="Show Overwatch®"></button>
+    
+    <button type="button" class="home-hero-dot" data-slide="3" aria-label="Show Shift At Midnight"></button>
+    
+    <button type="button" class="home-hero-dot" data-slide="4" aria-label="Show Aliens: Fireteam Elite 2"></button>
+    
+  </div>
+  
+</section>
+
+
+
+
+<!-- 2. DISCOVER -->
+
+<section class="nimlyx-section reveal" id="discover">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Curated Selections</span>
+        <h2>Discover your next favorite.</h2>
+        <span class="nimlyx-section-sub">Handpicked by Nimlyx — not just what's popular.</span>
+      </div>
+      <a href="/discover" class="nimlyx-section-cta">Browse discoveries <span aria-hidden="true">→</span></a>
+    </div>
+
+    <div class="discover-showcase">
+      
+      <a href="/search?app_id=3949550" class="nimlyx-card nimlyx-card--feature">
+        <div class="nimlyx-card-media">
+          <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3949550/0d198ca7648797d7ab2765f362100aa0f7f3eeb9/header.jpg?t=1787686479" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3949550/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3949550/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3949550/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3949550/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3949550/7a4619bcd473bc51b4cad9d18b3624ccac70e96d/capsule_231x87.jpg?t=1787686479"]' alt="1666: Amsterdam" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <span class="nimlyx-chip badge-fresh">🔥 Fresh Pick</span>
+          <h3 class="nimlyx-card-title">1666: Amsterdam</h3>
+          <p class="discover-feature-insight">1666: Amsterdam just dropped yesterday.</p>
+          <span class="discover-feature-link">Explore this pick <span aria-hidden="true">→</span></span>
+        </div>
+      </a>
+
+      
+      <div class="nimlyx-row-wrap">
+      <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <div class="nimlyx-row">
+        
+        <a href="/search?app_id=1142710" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1142710/header.jpg?t=1786634522" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1142710/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1142710/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1142710/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1142710/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1142710/capsule_231x87.jpg?t=1786634522"]' alt="Total War: WARHAMMER III" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-worth">⭐ Worth Buying</span>
+            </div>
+            <h3 class="nimlyx-card-title">Total War: WARHAMMER III</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$8.99</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=2537590" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2537590/header.jpg?t=1787591449" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2537590/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2537590/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2537590/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2537590/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2537590/c992a0851b2714fdeaa65469ba5e7b8e60c06a96/capsule_231x87.jpg?t=1787591449"]' alt="Microsoft Flight Simulator 2024" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-split">🌓 Mixed Opinions</span>
+            </div>
+            <h3 class="nimlyx-card-title">Microsoft Flight Simulator 2024</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$48.99</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=230410" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/230410/a000b4bf98dde5d51cd44206f1ac21d04841017e/header.jpg?t=1786540562" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/230410/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/230410/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/230410/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/230410/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/230410/e0b104aeb9dc8c563cacc84b114bc48ba416f28e/capsule_231x87.jpg?t=1786540562"]' alt="Warframe" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-hidden">💎 Hidden Value</span>
+            </div>
+            <h3 class="nimlyx-card-title">Warframe</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=4001890" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/45c4ddff4901e32c4b8b643e1b97d0d01898d299/header.jpg?t=1787234618" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4001890/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4001890/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4001890/8f65bb2b78d37a9147aa79c970a51610e6955bf1/capsule_231x87.jpg?t=1787234618"]' alt="How to Fish" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-fresh">🔥 Fresh Pick</span>
+            </div>
+            <h3 class="nimlyx-card-title">How to Fish</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$4.95</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=2584270" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2584270/0a4c23b70ced29fac344186ea564dae67c80cfd6/header.jpg?t=1787749756" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2584270/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2584270/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2584270/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2584270/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2584270/be45d87c9974a36f690480bceb01f03987a0c23a/capsule_231x87.jpg?t=1787749756"]' alt="Mortal Shell II" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-fresh">🔥 Fresh Pick</span>
+            </div>
+            <h3 class="nimlyx-card-title">Mortal Shell II</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$49.99</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=632360" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632360/header.jpg?t=1783621122" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632360/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/632360/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/632360/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/632360/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/632360/capsule_231x87.jpg?t=1783621122"]' alt="Risk of Rain 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-worth">⭐ Worth Buying</span>
+            </div>
+            <h3 class="nimlyx-card-title">Risk of Rain 2</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$8.24</span>
+          </div>
+        </a>
+        
+        <a href="/search?app_id=1361210" class="nimlyx-card nimlyx-card--portrait">
+          <div class="nimlyx-card-media">
+            <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/f07ebcb73a34112ac61c54608b1f1ded7e45eb8a/header.jpg?t=1782226781" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1361210/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1361210/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1361210/611c940039ef84ed8f18410b3fba99171ea0ce66/capsule_231x87.jpg?t=1782226781"]' alt="Warhammer 40,000: Darktide" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <div class="nimlyx-card-context">
+              <span class="nimlyx-chip badge-worth">⭐ Worth Buying</span>
+            </div>
+            <h3 class="nimlyx-card-title">Warhammer 40,000: Darktide</h3>
+            <span class="nimlyx-card-context nimlyx-card-price">$9.99</span>
+          </div>
+        </a>
+        
+      </div>
+      <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+      </div>
+      
+    </div>
+  </div>
+</section>
+
+
+<!-- 2. TRENDING TODAY (Horizontal Carousel) -->
+
+<section class="nimlyx-section nimlyx-section--glow reveal" id="trending">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Real-time Popularity</span>
+        <h2>Trending right now.</h2>
+        <span class="nimlyx-section-sub">Games people are playing right now, ranked by Steam's own ordering.</span>
+      </div>
+    </div>
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row">
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=2075800">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/2075800/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2075800/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2075800/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2075800/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2075800/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2075800/56484e8832119b4b37b3fa3a6a5ec23209cd835c/capsule_231x87.jpg?t=1787045473"]' alt="STAR WARS Zero Company™" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#1</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">STAR WARS Zero Company™</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$49.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=730">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/730/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/730/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/730/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/730/942c04efaa5bc87afb6f2a97dbf17ac614c8a84d/capsule_231x87.jpg?t=1784564069"]' alt="Counter-Strike 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#2</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Counter-Strike 2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=4356430">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/4356430/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4356430/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4356430/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4356430/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4356430/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4356430/92d7aa92bafdd80d200ef25467a3680cf525836a/capsule_231x87.jpg?t=1787760092"]' alt="NBA 2K27" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#3</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">NBA 2K27</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$69.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=3321460">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/3321460/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3321460/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3321460/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3321460/9fef3b5648defc30432d4b3221296350354b8742/capsule_231x87.jpg?t=1787682679"]' alt="Crimson Desert Enhanced" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#4</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Crimson Desert Enhanced</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$55.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1867240">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/1867240/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1867240/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1867240/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1867240/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1867240/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1867240/11d3bb7607c5568c61108fe70e7c670b4940269e/capsule_231x87.jpg?t=1787571659"]' alt="WARDOGS" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#5</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">WARDOGS</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$39.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=553850">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/553850/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/553850/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/553850/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/553850/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/553850/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/553850/6de866c6fb786949a92a28d12f3e1c02d91bce60/capsule_231x87.jpg?t=1786525389"]' alt="HELLDIVERS™ 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#6</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">HELLDIVERS™ 2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$39.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1476970">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/1476970/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1476970/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1476970/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1476970/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1476970/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1476970/6c5ebda02c5a3ee53ed0ce584e9b4db2a8f3909a/capsule_231x87.jpg?t=1783034427"]' alt="IdleOn - The Incremental MMO" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#7</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">IdleOn - The Incremental MMO</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1623730">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/1623730/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1623730/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1623730/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/0703d5a0658c7aedaa3be4391d6f5cccc1bb6d7a/capsule_231x87.jpg?t=1784714419"]' alt="Palworld" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#8</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Palworld</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$20.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1172470">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/1172470/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1172470/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1172470/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1172470/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1172470/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1172470/9d25b2de9ae52a1ec06797daeaf700feba1459cc/capsule_231x87.jpg?t=1786031871"]' alt="Apex Legends™" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#9</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Apex Legends™</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=2767030">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/2767030/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2767030/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2767030/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2767030/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2767030/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2767030/f77a7018444fbf8bd96dd79de42b4f5d6603d236/capsule_231x87.jpg?t=1786093208"]' alt="Marvel Rivals" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#10</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Marvel Rivals</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=3859630">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/3859630/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3859630/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3859630/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3859630/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3859630/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3859630/a535e2d0ad9f9483ca1c01b68d4df708e4e673f8/capsule_231x87.jpg?t=1787741511"]' alt="METAL GEAR SOLID: MASTER COLLECTION Vol.2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#11</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">METAL GEAR SOLID: MASTER COLLECTION Vol.2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$49.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=292000">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/292000/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/292000/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/292000/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/292000/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/292000/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/292000/71eb52c1b86ce7982dce3a340ac84654bb31558f/capsule_231x87_alt_assets_10.jpg?t=1787680288"]' alt="No More Room in Hell 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#12</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">No More Room in Hell 2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$29.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1478500">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/1478500/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1478500/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1478500/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1478500/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1478500/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1478500/44da9fb07ebe477387355d7fce29560b55125cce/capsule_231x87.jpg?t=1785911674"]' alt="Big Walk" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#13</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Big Walk</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$19.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=2406770">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/2406770/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2406770/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2406770/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2406770/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2406770/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2406770/2bc46dcf375a61a0a5626bc96aaf09e32436e8cd/capsule_231x87.jpg?t=1787522517"]' alt="Bodycam" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag">#14</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Bodycam</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$33.32</span>
+        </div>
+      </a>
+      
+    </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    </div>
+  </div>
+</section>
+
+
+<!-- 3. POPULAR RIGHT NOW (Alternate Grid Treatment) -->
+
+<section class="nimlyx-section reveal" id="popular">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Crowd Favorites</span>
+        <h2>Popular right now.</h2>
+      </div>
+    </div>
+    <div class="nimlyx-grid">
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3513350/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3513350/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3513350/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3513350/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3513350/a545d2be527e3848918cc4fe17d237f70ced5f90/capsule_231x87.jpg?t=1787182292"]' alt="Wuthering Waves" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Wuthering Waves</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/570/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/570/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/570/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/570/capsule_231x87.jpg?t=1769535998"]' alt="Dota 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Dota 2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/359550/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/359550/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/359550/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/359550/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/359550/a33d39cc3220cfa508af6211b37a3a641bd68c24/capsule_231x87.jpg?t=1786117431"]' alt="Tom Clancy&#39;s Rainbow Six Siege" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Tom Clancy&#39;s Rainbow Six Siege</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">Free</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1643320/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1643320/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1643320/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1643320/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1643320/b35bb511b9e89fbec26b7fa0a83e6fcf840cca4d/capsule_231x87_alt_assets_7.jpg?t=1787314871"]' alt="S.T.A.L.K.E.R. 2: Heart of Chornobyl" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">S.T.A.L.K.E.R. 2: Heart of Chornobyl</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$41.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2651280/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2651280/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2651280/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2651280/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2651280/379bd114fe5c23850555d1eb67fa8ac996bf702b/capsule_231x87.jpg?t=1763569811"]' alt="Marvel&#39;s Spider-Man 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Marvel&#39;s Spider-Man 2</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$59.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/39210/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/39210/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/39210/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/39210/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/39210/2e45b2f419d0beed57ba1ff1d80a13d31f947d54/capsule_231x87.jpg?t=1782870674"]' alt="FINAL FANTASY XIV Online" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">FINAL FANTASY XIV Online</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$19.99</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/582660/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/582660/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/582660/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/582660/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/582660/ee187dc9383b5c278a40e5888aa2f6ab7212d527/capsule_231x87_alt_assets_27.jpg?t=1786645008"]' alt="Black Desert" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Black Desert</h3>
+          <span class="nimlyx-card-context nimlyx-card-price">$9.99</span>
+        </div>
+      </a>
+      
+    </div>
+  </div>
+</section>
+
+
+<!-- 4. BIGGEST DEALS -->
+
+<section class="nimlyx-section nimlyx-section--glow reveal" id="biggest-deals">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Top Offers</span>
+        <h2>Biggest deals.</h2>
+      </div>
+    </div>
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row">
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1142710/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1142710/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1142710/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1142710/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1142710/capsule_231x87.jpg?t=1786634522"]' alt="Total War: WARHAMMER III" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Total War: WARHAMMER III</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-85%</span>
+            
+            
+            <span class="price-now">$8.99</span>
+            
+            
+            <span class="price-was">$59.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1174180/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1174180/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1174180/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1174180/capsule_231x87.jpg?t=1759502961"]' alt="Red Dead Redemption 2" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Red Dead Redemption 2</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-75%</span>
+            
+            
+            <span class="price-now">$14.99</span>
+            
+            
+            <span class="price-was">$59.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1361210/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1361210/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1361210/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1361210/611c940039ef84ed8f18410b3fba99171ea0ce66/capsule_231x87.jpg?t=1782226781"]' alt="Warhammer 40,000: Darktide" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Warhammer 40,000: Darktide</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-75%</span>
+            
+            
+            <span class="price-now">$9.99</span>
+            
+            
+            <span class="price-was">$39.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2399830/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2399830/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2399830/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2399830/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2399830/dce348bb9faef2c1973d04aa8a87bff18e29699b/capsule_231x87.jpg?t=1779293241"]' alt="ARK: Survival Ascended" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">ARK: Survival Ascended</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-75%</span>
+            
+            
+            <span class="price-now">$11.24</span>
+            
+            
+            <span class="price-was">$44.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/381210/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/381210/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/381210/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/381210/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/381210/b25ea79fe1451a4ca76b2a7592c72ff694019fa9/capsule_231x87_alt_assets_9.jpg?t=1787757466"]' alt="Dead by Daylight" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Dead by Daylight</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-60%</span>
+            
+            
+            <span class="price-now">$7.99</span>
+            
+            
+            <span class="price-was">$19.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3240220/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3240220/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3240220/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3240220/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3240220/a318bd9affe8eee32984b18794b273c256e9b2d6/capsule_231x87.jpg?t=1781187782"]' alt="Grand Theft Auto V Enhanced" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Grand Theft Auto V Enhanced</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-56%</span>
+            
+            
+            <span class="price-now">$19.79</span>
+            
+            
+            <span class="price-was">$44.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4001890/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4001890/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4001890/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4001890/8f65bb2b78d37a9147aa79c970a51610e6955bf1/capsule_231x87.jpg?t=1787234618"]' alt="How to Fish" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">How to Fish</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-38%</span>
+            
+            
+            <span class="price-now">$4.95</span>
+            
+            
+            <span class="price-was">$7.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1623730/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1623730/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1623730/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1623730/0703d5a0658c7aedaa3be4391d6f5cccc1bb6d7a/capsule_231x87.jpg?t=1784714419"]' alt="Palworld" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Palworld</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-30%</span>
+            
+            
+            <span class="price-now">$20.99</span>
+            
+            
+            <span class="price-was">$29.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1643320/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1643320/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1643320/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1643320/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1643320/b35bb511b9e89fbec26b7fa0a83e6fcf840cca4d/capsule_231x87_alt_assets_7.jpg?t=1787314871"]' alt="S.T.A.L.K.E.R. 2: Heart of Chornobyl" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">S.T.A.L.K.E.R. 2: Heart of Chornobyl</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-30%</span>
+            
+            
+            <span class="price-now">$41.99</span>
+            
+            
+            <span class="price-was">$59.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2537590/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2537590/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2537590/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2537590/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2537590/c992a0851b2714fdeaa65469ba5e7b8e60c06a96/capsule_231x87.jpg?t=1787591449"]' alt="Microsoft Flight Simulator 2024" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Microsoft Flight Simulator 2024</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-30%</span>
+            
+            
+            <span class="price-now">$48.99</span>
+            
+            
+            <span class="price-was">$69.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3321460/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3321460/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3321460/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3321460/9fef3b5648defc30432d4b3221296350354b8742/capsule_231x87.jpg?t=1787682679"]' alt="Crimson Desert Enhanced" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Crimson Desert Enhanced</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-20%</span>
+            
+            
+            <span class="price-now">$55.99</span>
+            
+            
+            <span class="price-was">$69.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--wide" href="">
+        <div class="nimlyx-card-media">
+          <img src="" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2483190/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2483190/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2483190/efa5dfac82e658e18e16e508639dfae2284d88ab/capsule_231x87_alt_assets_3.jpg?t=1787677842"]' alt="Forza Horizon 6" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h3 class="nimlyx-card-title">Forza Horizon 6</h3>
+          <div class="nimlyx-card-prices">
+            
+            <span class="nimlyx-card-discount">-15%</span>
+            
+            
+            <span class="price-now">$59.49</span>
+            
+            
+            <span class="price-was">$69.99</span>
+            
+          </div>
+        </div>
+      </a>
+      
+    </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    </div>
+  </div>
+</section>
+
+
+<!-- 5. NEW RELEASES -->
+
+<section class="nimlyx-section nimlyx-section--elevated reveal" id="new-releases">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Just Landed</span>
+        <h2>New releases.</h2>
+        <span class="nimlyx-section-sub">Fresh games landing on Steam, verified against their real release date.</span>
+      </div>
+    </div>
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row">
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=3751950">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/3751950/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3751950/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3751950/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3751950/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3751950/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3751950/9b046115b1663a4be2b252712328e4f6c162da68/header.jpg?t=1787238812"]' alt="Assassin&#39;s Creed Black Flag Resynced" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">48 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">Assassin&#39;s Creed Black Flag Resynced</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Action</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=4508340">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/4508340/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4508340/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4508340/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4508340/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4508340/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4508340/1368f8fd127b1ddcbc771d0f8b5d46864d9647fe/header.jpg?t=1787092926"]' alt="NTE: Neverness to Everness" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">50 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">NTE: Neverness to Everness</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Action</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=4162040">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/4162040/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4162040/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4162040/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4162040/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4162040/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4162040/e60db1b53e9e0161b0b827f32f902ced884d38c0/header_alt_assets_0.jpg?t=1785276247"]' alt="Zenless Zone Zero" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">71 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">Zenless Zone Zero</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Action</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=4704690">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/4704690/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4704690/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4704690/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4704690/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/4704690/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4704690/163e2a742e5fb8e1f5d1e3a890da98f04ab809d4/header.jpg?t=1785908480"]' alt="MECCHA CHAMELEON" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">78 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">MECCHA CHAMELEON</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Casual</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=2483190">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/2483190/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2483190/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2483190/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2483190/aec13616ef2adf9908ab2bf185f6e0557d6603ef/header_alt_assets_3.jpg?t=1787677842"]' alt="Forza Horizon 6" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">100 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">Forza Horizon 6</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Racing</span>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=3892270">
+        <div class="nimlyx-card-media">
+          <img src="https://cdn.akamai.steamstatic.com/steam/apps/3892270/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3892270/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3892270/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3892270/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/3892270/header.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3892270/395e6d7972474333a698b26f8aa5597bf38109a1/header.jpg?t=1787564331"]' alt="Gamble With Your Friends" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <span class="nimlyx-card-tag nimlyx-card-tag--fresh">117 Days Ago</span>
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <h4 class="nimlyx-card-title">Gamble With Your Friends</h4>
+          <span class="nimlyx-card-context nimlyx-card-meta">Adventure</span>
+        </div>
+      </a>
+      
+    </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    </div>
+  </div>
+</section>
+
+
+<!-- 6. INTEGRATED GPU — hardware discovery showcase: wide cinematic
+     row, technical/mono header treatment. Deliberately NOT a grid of
+     .nimlyx-card--wide (that's Popular's composition) -- see
+     .nimlyx-card--cinema below. -->
+
+<section class="nimlyx-section nimlyx-section--elevated hw-showcase reveal" id="integrated-gpu">
+  <div class="home-container">
+    <div class="hw-showcase-head">
+      <span class="hw-showcase-tag">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="15" x2="4" y2="15"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="15" x2="23" y2="15"></line></svg>
+        iGPU Capable
+      </span>
+      <h2>Got an Integrated GPU? We Got You.</h2>
+      <span class="nimlyx-section-sub">No dedicated graphics card, no problem — real games that run on what you've already got.</span>
+    </div>
+    <div class="nimlyx-row-wrap">
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div class="nimlyx-row hw-row">
+      
+      <a class="nimlyx-card nimlyx-card--cinema" href="/search?app_id=1284210">
+        <div class="nimlyx-card-media">
+          <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1284210/header.jpg?t=1782483330" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1284210/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1284210/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1284210/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1284210/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1284210/d926406bac23005d2d4a2bbe2d6faee3494f0544/capsule_231x87.jpg?t=1782483330"]' alt="Guild Wars 2®" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <div class="hw-badge hw-badge--igpu">Meets iGPU Minimum</div>
+          <h3 class="nimlyx-card-title">Guild Wars 2®</h3>
+        </div>
+      </a>
+      
+      <a class="nimlyx-card nimlyx-card--cinema" href="/search?app_id=236390">
+        <div class="nimlyx-card-media">
+          <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/236390/65885881b96806d55fea45e130233fdafd78b129/header.jpg?t=1784211516" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/236390/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/236390/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/236390/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/236390/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/236390/104c3c519fdb3ba92fbe2348ebfadcebf2a7ee8f/capsule_231x87.jpg?t=1784211516"]' alt="War Thunder" loading="lazy" onerror="NimlyxImgFallback(this)">
+          <div class="nimlyx-card-overlay"></div>
+        </div>
+        <div class="nimlyx-card-body">
+          <div class="hw-badge hw-badge--igpu">Meets iGPU Minimum</div>
+          <h3 class="nimlyx-card-title">War Thunder</h3>
+        </div>
+      </a>
+      
+    </div>
+    <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+    </div>
+  </div>
+</section>
+
+
+<!-- 7. POTATO GAMES -->
+
+<section class="nimlyx-section nimlyx-section--elevated reveal" id="potato-games">
+  <div class="home-container">
+    <div class="nimlyx-section-head">
+      <div>
+        <span class="home-eyebrow">Low End Optimization</span>
+        <h2>Running on a Potato? We Got You.</h2>
+      </div>
+      <a href="/potato" class="nimlyx-section-cta">View more potato picks <span aria-hidden="true">→</span></a>
+    </div>
+    
+    <div class="potato-tiers">
+      <div class="potato-tier">
+        <h3 class="potato-tier-header">🥔 Potato Friendly</h3>
+        <div class="nimlyx-row-wrap">
+        <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--prev" aria-label="Scroll left"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+        <div class="nimlyx-row">
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=220">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/220/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/220/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/220/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/220/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/220/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Half-Life 2</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=620">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/620/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/620/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/620/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/620/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/620/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Portal 2</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=550">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/550/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/550/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/550/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/550/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/550/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Left 4 Dead 2</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=413150">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/413150/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/413150/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/413150/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/413150/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/413150/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Stardew Valley</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=105600">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/105600/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/105600/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/105600/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/105600/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/105600/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Terraria</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+          <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=391540">
+            <div class="nimlyx-card-media"><img src="https://cdn.akamai.steamstatic.com/steam/apps/391540/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/391540/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/391540/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/391540/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/391540/header.jpg"]' loading="lazy" onerror="NimlyxImgFallback(this)"></div>
+            <div class="nimlyx-card-body">
+              <h3 class="nimlyx-card-title">Undertale</h3>
+              <div class="hw-badge hw-badge--potato-friendly">Meets Low-End Minimum</div>
+            </div>
+          </a>
+          
+        </div>
+        <button type="button" class="nimlyx-row-arrow nimlyx-row-arrow--next" aria-label="Scroll right"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+        </div>
+      </div>
+      
+      
+      <!-- Tier 2: "optimization list" -- compact stacked rows, not
+           another card row. Badge text pulled from game.hardware_badge
+           (never a fabricated FPS number) with a neutral fallback. -->
+      <div class="potato-tier potato-tier--list">
+        <h3 class="potato-tier-header">🔧 Potato + Tweaks</h3>
+        <div class="potato-list">
+          
+          <a class="potato-list-row" href="/search?app_id=203160">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/203160/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/203160/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/203160/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/203160/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/203160/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">Tomb Raider 2013</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+          <a class="potato-list-row" href="/search?app_id=220240">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/220240/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/220240/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/220240/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/220240/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/220240/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">Far Cry 3</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+          <a class="potato-list-row" href="/search?app_id=72850">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/72850/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/72850/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/72850/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/72850/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/72850/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">The Elder Scrolls V: Skyrim</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+          <a class="potato-list-row" href="/search?app_id=236430">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/236430/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/236430/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/236430/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/236430/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/236430/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">DARK SOULS II</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+          <a class="potato-list-row" href="/search?app_id=271590">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/271590/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/271590/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/271590/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/271590/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">Grand Theft Auto V</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+          <a class="potato-list-row" href="/search?app_id=287700">
+            <span class="potato-list-thumb"><img src="https://cdn.akamai.steamstatic.com/steam/apps/287700/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/287700/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/287700/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/287700/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/287700/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
+            <span class="potato-list-name">METAL GEAR SOLID V: THE PHANTOM PAIN</span>
+            <span class="hw-badge hw-badge--potato-tweaks">Playable With Tweaks</span>
+            <span class="potato-list-arrow" aria-hidden="true">→</span>
+          </a>
+          
+        </div>
+      </div>
+      
+      
+      
+      <!-- Tier 3: "challenge" grid -- tight square cards with a
+           warning-accent border and a corner ribbon, distinct from
+           both the Tier 1 row and the Tier 2 list. -->
+      <div class="potato-tier potato-tier--extreme">
+        <h3 class="potato-tier-header">💀 Extreme Tweaks</h3>
+        <div class="potato-extreme-grid">
+          
+          <a class="potato-extreme-card" href="/search?app_id=239140">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/239140/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/239140/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/239140/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/239140/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/239140/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">Dying Light</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+          <a class="potato-extreme-card" href="/search?app_id=298110">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/298110/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/298110/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/298110/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/298110/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/298110/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">Far Cry 4</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+          <a class="potato-extreme-card" href="/search?app_id=264710">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/264710/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/264710/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/264710/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/264710/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/264710/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">Subnautica</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+          <a class="potato-extreme-card" href="/search?app_id=552520">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/552520/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/552520/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/552520/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/552520/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/552520/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">Far Cry 5</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+          <a class="potato-extreme-card" href="/search?app_id=242050">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/242050/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/242050/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/242050/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/242050/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/242050/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">Assassin&#39;s Creed IV Black Flag</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+          <a class="potato-extreme-card" href="/search?app_id=20920">
+            <div class="potato-extreme-media">
+              <img src="https://cdn.akamai.steamstatic.com/steam/apps/20920/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/20920/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/20920/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/20920/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/20920/header.jpg"]' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
+              <span class="potato-extreme-ribbon">Challenge</span>
+            </div>
+            <div class="potato-extreme-body">
+              <h4 class="nimlyx-card-title">The Witcher 2: Assassins of Kings</h4>
+              <div class="hw-badge hw-badge--potato-extreme">Extreme Settings Only</div>
+            </div>
+          </a>
+          
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Prominent bottom CTA -- the homepage rows above are
+         deliberately a short preview (see POTATO_HOMEPAGE_PREVIEW_LIMIT
+         in routes/pages.py); this is where the emphasis to go see the
+         full researched ecosystem lives, with a real count pulled
+         from the verified database, not a fabricated "hundreds" gesture. -->
+    <a href="/potato" class="potato-cta-banner">
+      <div class="potato-cta-banner-text">
+        <span class="potato-cta-banner-title">Explore the Full Potato Ecosystem</span>
+        <span class="potato-cta-banner-sub">
+          141 games researched and verified against real low-end hardware
+        </span>
+      </div>
+      <span class="potato-cta-banner-arrow" aria-hidden="true">→</span>
+    </a>
+  </div>
+</section>
+
+
+<!-- 8. HIDDEN GEMS -->
+
+<section class="nimlyx-section reveal" id="hidden-gems">
+  <div class="home-container">
+    <div class="nimlyx-section-head nimlyx-section-head--standalone">
+      <div>
+        <h2>Hidden Gems.</h2>
+        <span class="nimlyx-section-sub">Overlooked — a fantastic game that flew under the radar.</span>
+      </div>
+    </div>
+    <div class="editorial-gems">
+      
+      <a class="editorial-gems-main" href="/search?app_id=1245620">
+        <img src="https://cdn.akamai.steamstatic.com/steam/apps/1245620/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1245620/capsule_616x353.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1245620/library_hero.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1245620/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1245620/capsule_231x87.jpg?t=1784684281"]' alt="ELDEN RING" loading="lazy" onerror="NimlyxImgFallback(this)">
+        <div class="editorial-overlay">
+          <h3 class="nimlyx-card-title">ELDEN RING</h3>
+          <span class="nimlyx-card-context">A fantastic game that flew under the radar.</span>
+        </div>
+      </a>
+      <div class="editorial-gems-list">
+        
+        <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=2807960">
+          <div class="nimlyx-card-media">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/2807960/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2807960/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2807960/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2807960/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/2807960/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2807960/d7ae078e0a543a97ff5a5d72165999535b0b1cdc/capsule_231x87.jpg?t=1787669881"]' alt="Battlefield™ 6" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <h3 class="nimlyx-card-title">Battlefield™ 6</h3>
+            <span class="nimlyx-card-context">Hidden Gem</span>
+          </div>
+        </a>
+        
+        <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=1086940">
+          <div class="nimlyx-card-media">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/1086940/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1086940/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1086940/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1086940/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/1086940/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1086940/3dd81008e9c385caf68152450c22353f6a8abec9/capsule_231x87.jpg?t=1777363040"]' alt="Baldur&#39;s Gate 3" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <h3 class="nimlyx-card-title">Baldur&#39;s Gate 3</h3>
+            <span class="nimlyx-card-context">Hidden Gem</span>
+          </div>
+        </a>
+        
+        <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=252490">
+          <div class="nimlyx-card-media">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/252490/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/252490/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/252490/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/252490/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/252490/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/252490/21aac0b6e20e1ba12f635e7deb730e32a51afbd5/capsule_231x87.jpg?t=1781536981"]' alt="Rust" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <h3 class="nimlyx-card-title">Rust</h3>
+            <span class="nimlyx-card-context">Hidden Gem</span>
+          </div>
+        </a>
+        
+        <a class="nimlyx-card nimlyx-card--portrait" href="/search?app_id=438100">
+          <div class="nimlyx-card-media">
+            <img src="https://cdn.akamai.steamstatic.com/steam/apps/438100/header.jpg" data-img-candidates='["https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/438100/library_hero.jpg", "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/438100/library_600x900.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/438100/capsule_616x353.jpg", "https://cdn.akamai.steamstatic.com/steam/apps/438100/header.jpg", "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/438100/capsule_231x87.jpg?t=1762366454"]' alt="VRChat" loading="lazy" onerror="NimlyxImgFallback(this)">
+            <div class="nimlyx-card-overlay"></div>
+          </div>
+          <div class="nimlyx-card-body">
+            <h3 class="nimlyx-card-title">VRChat</h3>
+            <span class="nimlyx-card-context">Hidden Gem</span>
+          </div>
+        </a>
+        
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 9. BEST MATCHES — personalized-compatibility roster: a compact
+     two-column list of rows (thumbnail + name + badge + shield),
+     not another wide-card grid. Deliberately no invented match %
+     since there's no real per-game compatibility score yet -- the
+     badge text is the only compatibility claim made. -->
+
+
+<!-- 10. GENRE DISCOVERY -->
+<section class="nimlyx-section reveal" id="genres">
+  <div class="home-container">
+    <div class="nimlyx-section-head nimlyx-section-head--standalone">
+      <div>
+        <h2>Browse by Category.</h2>
+      </div>
+    </div>
+    <div class="genre-grid">
+      <a href="/discover?genre=action" class="genre-tile" style="background: linear-gradient(135deg, #1e3a8a, #3b82f6)">
+        <span class="genre-tile-index">01</span>
+        <span class="genre-tile-label">Action</span>
+      </a>
+      <a href="/discover?genre=rpg" class="genre-tile" style="background: linear-gradient(135deg, #064e3b, #10b981)">
+        <span class="genre-tile-index">02</span>
+        <span class="genre-tile-label">RPG</span>
+      </a>
+      <a href="/discover?genre=fantasy" class="genre-tile" style="background: linear-gradient(135deg, #4c1d95, #8b5cf6)">
+        <span class="genre-tile-index">03</span>
+        <span class="genre-tile-label">Fantasy</span>
+      </a>
+      <a href="/discover?genre=horror" class="genre-tile" style="background: linear-gradient(135deg, #450a0a, #ef4444)">
+        <span class="genre-tile-index">04</span>
+        <span class="genre-tile-label">Horror</span>
+      </a>
+      <a href="/discover?genre=racing" class="genre-tile" style="background: linear-gradient(135deg, #78350f, #f59e0b)">
+        <span class="genre-tile-index">05</span>
+        <span class="genre-tile-label">Racing</span>
+      </a>
+      <a href="/discover?genre=strategy" class="genre-tile" style="background: linear-gradient(135deg, #0f172a, #64748b)">
+        <span class="genre-tile-index">06</span>
+        <span class="genre-tile-label">Strategy</span>
+      </a>
+      <a href="/discover?playWith=co-op" class="genre-tile" style="background: linear-gradient(135deg, #0f766e, #14b8a6)">
+        <span class="genre-tile-index">07</span>
+        <span class="genre-tile-label">Co-Op</span>
+      </a>
+      <a href="/discover?playWith=online-multiplayer" class="genre-tile" style="background: linear-gradient(135deg, #9f1239, #f43f5e)">
+        <span class="genre-tile-index">08</span>
+        <span class="genre-tile-label">Multiplayer</span>
+      </a>
+      <a href="/discover?budget=free" class="genre-tile" style="background: linear-gradient(135deg, #166534, #22c55e)">
+        <span class="genre-tile-index">09</span>
+        <span class="genre-tile-label">Free to Play</span>
+      </a>
+      <a href="/discover?genre=casual" class="genre-tile" style="background: linear-gradient(135deg, #c2410c, #fb923c)">
+        <span class="genre-tile-index">10</span>
+        <span class="genre-tile-label">Casual</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- 11. WHY NIMLYX -->
+<section class="nimlyx-section nimlyx-section--elevated reveal" id="why-nimlyx">
+  <div class="home-container">
+    <div class="nimlyx-why-intro">
+      <span class="home-eyebrow">Why Nimlyx?</span>
+      <h2>Discover. Analyze. Match.</h2>
+    </div>
+    <div class="nimlyx-why-grid">
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+        <h3 class="nimlyx-why-title">Discover</h3>
+        <p class="nimlyx-why-desc">Find games worth playing, from trending blockbusters to hidden gems.</p>
+      </div>
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></div>
+        <h3 class="nimlyx-why-title">Analyze</h3>
+        <p class="nimlyx-why-desc">Understand a game's reception, real prices, and honest reviews before you buy.</p>
+      </div>
+      <div class="nimlyx-why-card">
+        <div class="nimlyx-why-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+        <h3 class="nimlyx-why-title">Match</h3>
+        <p class="nimlyx-why-desc">Know exactly how a game performs on your integrated GPU or potato PC.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12. FINAL CTA -->
+<section class="home-cta reveal">
+  <h2>Ready to find your next game?</h2>
+  <a href="/discover" class="home-btn home-btn-primary" style="display:inline-flex; align-items:center; gap:8px;">Start Exploring <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></a>
+</section>
+
+<!-- ============================================
+     FOOTER
+     ============================================ -->
+<footer class="home-footer">
+  <div class="home-container home-footer-inner">
+    <div class="home-footer-brand">
+      <div class="home-footer-logo">
+        <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+          <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+        </svg>
+        Nimlyx
+      </div>
+      <span class="home-footer-tag">Steam Data · Regional Pricing · Not affiliated with Valve</span>
+    </div>
+    <div class="home-footer-links">
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </div>
+  </div>
+  <div class="home-container home-footer-copy">© 2026 Nimlyx. Not affiliated with Valve Corporation or Steam.</div>
+</footer>
+
+<script src="/static/js/image-upgrade.js"></script>
+<script src="/static/js/home-rows.js"></script>
+<script src="/static/js/app.js"></script>
+<script src="/static/js/hero-rotation.js"></script>
+<script src="/static/js/picks.js"></script>
+<script src="/static/js/trending.js"></script>
+<script src="/static/js/hero-refresh.js"></script>
+
+
+<script>
+  const rawSeenGames = '["3859630", "1284210", "298110", "1867240", "553850", "252490", "381210", "236430", "242050", "359550", "2584270", "413150", "2767030", "3240220", "632360", "3448650", "552520", "4356430", "4162040", "582660", "1623730", "4001890", "1361210", "3321460", "236390", "620", "550", "220", "2537590", "730", "72850", "438100", "4704690", "292000", "3892270", "2406770", "230410", "2399830", "105600", "570", "2651280", "203160", "2357570", "1174180", "1172470", "1245620", "3513350", "2483190", "3949550", "1476970", "3932890", "1478500", "271590", "1086940", "39210", "287700", "3722330", "391540", "20920", "264710", "220240", "3079210", "239140", "2075800", "2807960", "4508340", "1142710", "3751950", "3940610", "1643320", "3211430"]';
+  window.NIMLYX_SEEN_GAMES = new Set(JSON.parse(rawSeenGames || "[]"));
+
+  (function() {
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const feedId = el.getAttribute('data-feed-id');
+          obs.unobserve(el);
+          
+          const seenParam = Array.from(window.NIMLYX_SEEN_GAMES).slice(-100).join(',');
+          
+          fetch(`/api/feed/row/${feedId}?seen=${encodeURIComponent(seenParam)}`)
+            .then(res => res.text())
+            .then(html => {
+              if (html.trim() !== "") {
+                el.innerHTML = html;
+                const injectedSection = el.querySelector('.home-section') || el.querySelector('section');
+                if (injectedSection && injectedSection.hasAttribute('data-appids')) {
+                  const newIds = injectedSection.getAttribute('data-appids').split(',');
+                  newIds.forEach(id => {
+                    if (id.trim() !== "") window.NIMLYX_SEEN_GAMES.add(id.trim());
+                  });
+                }
+                if (window.NimlyxImageUpgrade && window.NimlyxImageUpgrade.upgradeAll) {
+                  window.NimlyxImageUpgrade.upgradeAll(el);
+                }
+                if (window.NimlyxRows && window.NimlyxRows.wireAll) {
+                  window.NimlyxRows.wireAll(el);
+                }
+                if (window.NimlyxReveal && window.NimlyxReveal.init) {
+                  window.NimlyxReveal.init(el);
+                }
+              }
+            })
+            .catch(err => console.error("Feed load failed", err));
+        }
+      });
+    }, {
+      rootMargin: "0px 0px 800px 0px"
+    });
+
+    document.querySelectorAll('.lazy-row-placeholder').forEach(el => {
+      observer.observe(el);
+    });
+  })();
+</script>
+
+</body>
+</html>

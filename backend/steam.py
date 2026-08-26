@@ -1388,6 +1388,20 @@ def _fetch_packagedetails_payload(package_id, cc="US"):
     return _execute_deduplicated(cache_key, 3600, _fetch, failure_ttl=60)
 
 
+_CURRENCY_SYMBOLS = {
+    "USD": "$",
+    "PKR": "Rs ",
+    "GBP": "£",
+    "INR": "₹",
+    "EUR": "€",
+    "CAD": "CDN$ ",
+    "AUD": "A$ ",
+    "AED": "AED ",
+    "TRY": "₺",
+    "JPY": "¥",
+    "BRL": "R$ ",
+}
+
 def _format_price_cents(cents, currency="USD"):
     """Formats a raw integer cent amount into a display string.
 
