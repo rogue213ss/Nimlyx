@@ -999,43 +999,6 @@ def release_recency_label(release_date_obj, today=None):
     return f"{days_ago} Days Ago"
 
 
-def fetch_new_release_candidates(count=40, cc="US"):
-    cache_key = ("new_release_candidates", count, cc)
-    def _fetch():
-        url = (
-            f"https://store.steampowered.com/search/results/"
-            f"?query=&start=0&count={count}&sort_by=Released_DESC"
-            f"&category1=998&cc={cc}&l=english"
-        )
-        try:
-            response = _safe_steam_get(url, timeout=10)
-            response.raise_for_status()
-        except (requests.exceptions.RequestException, ValueError):
-            return None
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        games = soup.find_all("a", class_="search_result_row")
-        cleaned = []
-        for game in games:
-            app_id = game.get("data-ds-appid")
-            title = game.find("span", class_="title")
-            name = title.text.strip() if title else "Unknown"
-            if any(keyword in name.lower() for keyword in HARDWARE_KEYWORDS):
-                continue
-            img = game.find("img")
-            image = img["src"] if img and img.get("src") else None
-            if not _is_genuine_app_row(game, app_id) or not image:
-                continue
-            cleaned.append({
-                "id": app_id,
-                "name": name,
-                "image": image
-            })
-        return cleaned
-
-    result = _execute_deduplicated(cache_key, 1800, _fetch, failure_ttl=60)
-    return result if result is not None else []
-
 
 def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
     """The only source of truth for the homepage's New Releases
@@ -1058,7 +1021,7 @@ def fetch_verified_new_releases(limit=5, cc="US", candidate_pool=40):
     callers must render however many this returns and never pad the
     list back up with anything fabricated.
     """
-    candidates = fetch_new_release_candidates(count=candidate_pool, cc=cc)
+    candidates = fetch_browse_category("popularnew", count=candidate_pool, cc=cc)
 
     def enrich(candidate):
         try:

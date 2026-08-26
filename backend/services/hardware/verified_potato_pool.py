@@ -69,7 +69,6 @@ which tier a game belongs to.
 import logging
 
 from services.hardware.verified_potato_db import get_games_by_tier, load_verified_potato_games
-from services.hero.builder import enrich_pool
 from services.hero.candidate import HeroCandidate
 from services.store.memory_store import store
 
@@ -148,33 +147,16 @@ def format_evidence_for_card(evidence):
 
 
 def _build_tier_candidates(cc):
-    """Enriches every renderable verified entry, grouped by tier.
-    Reads the store's CURRENT (possibly stale) cached value for this
-    key as `previous_by_app_id` -- safe to call from inside this
-    builder: the store already marked this (key, cc) as `refreshing`
-    before invoking us, so this get() cannot recurse into a second
-    rebuild, it just hands back whatever's currently cached (or the
-    empty dict on a true cold start) -- used to fall back to
-    stale-but-real Steam metadata for any entry that fails to enrich
-    this round, per the module docstring above."""
-    cached_tiers = store.get("verified_potato_tiers", cc)
-    previous_by_app_id = {}
-    for tier in TIERS:
-        for candidate in cached_tiers.get(tier, []):
-            if candidate.app_id:
-                previous_by_app_id[candidate.app_id] = candidate
-
-    rows_by_app_id = {}
+    """Builds the Potato ecosystem directly from the local verified database.
+    ZERO Steam API requests are made here. The verified database is the source of truth,
+    and we only need app_id, name, and evidence to render the cards (images are built
+    locally via CDN URL synthesis)."""
+    tier_candidates = {tier: [] for tier in TIERS}
     entry_by_app_id = {}
+    
     for tier in TIERS:
         for entry in get_games_by_tier(_ALL_ENTRIES, tier):
-            if entry.app_id in rows_by_app_id:
-                # Real duplicate app id across the verified DB --
-                # keep the first entry encountered (friendly, since
-                # TIERS is iterated in that order) and log the rest
-                # rather than silently overwriting or crashing. There
-                # were none in the shipped dataset, but a future
-                # research update could introduce one.
+            if entry.app_id in entry_by_app_id:
                 logger.warning(
                     "Verified Potato DB: app_id %s ('%s') already claimed by tier '%s' -- "
                     "duplicate entry '%s' (tier '%s') skipped.",
@@ -182,67 +164,32 @@ def _build_tier_candidates(cc):
                     entry.name, entry.tier,
                 )
                 continue
-            rows_by_app_id[entry.app_id] = {"id": entry.app_id, "name": entry.name, "sources": ["verified_potato_db"]}
             entry_by_app_id[entry.app_id] = entry
-
-    enriched_games = enrich_pool(list(rows_by_app_id.values()), cc=cc)
-    enriched_by_app_id = {g.get("steam_appid") or g.get("id"): g for g in enriched_games}
-
-    tier_candidates = {tier: [] for tier in TIERS}
-    fell_back_count = 0
-    dropped_count = 0
-
-    for app_id, entry in entry_by_app_id.items():
-        game = enriched_by_app_id.get(app_id)
-        if game is None:
-            previous_candidate = previous_by_app_id.get(app_id)
-            if previous_candidate is not None:
-                game = previous_candidate.game
-                fell_back_count += 1
-            else:
-                # Never enriched successfully, ever -- no real Steam
-                # data to build a card from. Not fabricated; simply
-                # not rendered until a future rebuild succeeds.
-                dropped_count += 1
-                continue
-
-        # Evidence comes entirely from the verified DB, never from
-        # Steam -- always (re)computed fresh from the CURRENT entry
-        # here, even on the stale-Steam-metadata fallback path above,
-        # since a research data update should show up immediately
-        # without waiting on Steam to also succeed.
-        game = dict(game)
-        game["verified_evidence"] = format_evidence_for_card(entry.evidence)
-
-        tier_candidates[entry.tier].append(HeroCandidate(
-            game=game,
-            category="verified_potato",
-            confidence=1.0,
-            insight="",
-            why_it_matters="",
-        ))
-
-    if fell_back_count or dropped_count:
-        logger.warning(
-            "Verified Potato pool enrichment for region %s: %d game(s) fell back to stale "
-            "cached metadata, %d game(s) dropped (never successfully enriched).",
-            cc, fell_back_count, dropped_count,
-        )
-
+            
+            game = {
+                "id": entry.app_id,
+                "steam_appid": entry.app_id,
+                "name": entry.name,
+                "verified_evidence": format_evidence_for_card(entry.evidence)
+            }
+            
+            tier_candidates[entry.tier].append(HeroCandidate(
+                game=game,
+                category="verified_potato",
+                confidence=1.0,
+                insight="",
+                why_it_matters="",
+            ))
+            
     return tier_candidates
 
 
-store.register("verified_potato_tiers", _build_tier_candidates, _CACHE_TTL_SECONDS, empty_value={tier: [] for tier in TIERS})
 
+
+_CACHED_TIERS = None
 
 def get_verified_potato_tiers(cc="US"):
-    """Returns {"friendly": [HeroCandidate, ...], "tweaks": [...],
-    "extreme": [...]} for the requested region. Backed by the shared
-    NimlyxMemoryStore -- same three-outcome serve-stale-while-
-    revalidating shape as every other dataset there: fresh hit returns
-    immediately; stale hit returns the stale-but-real data immediately
-    and kicks off a background rebuild; true cold start returns empty
-    lists and starts the first build in the background (never worse
-    than before this pool existed -- callers should treat empty lists
-    the same way they'd treat "hero pool still building")."""
-    return store.get("verified_potato_tiers", cc)
+    global _CACHED_TIERS
+    if _CACHED_TIERS is None:
+        _CACHED_TIERS = _build_tier_candidates(cc)
+    return _CACHED_TIERS

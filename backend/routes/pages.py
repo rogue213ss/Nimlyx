@@ -55,39 +55,38 @@ logger = logging.getLogger(__name__)
 _HERO_TTL_SECONDS = 5 * 3600      # "Featured" tier -- ~5h per the plan
 _TOP_SELLERS_TTL_SECONDS = 3 * 3600   # feeds Trending/Popular/Deals -- 1-3h tier, use the tighter end since it also drives pricing
 _NEW_RELEASES_TTL_SECONDS = 8 * 3600  # 5-12h tier
-_POTATO_POOL_TTL_SECONDS = 24 * 3600  # dynamic budget-catalog scan -- Potato/iGPU tier, 24h+
-_CURATED_SEED_TTL_SECONDS = 24 * 3600  # iGPU tier, 24h+
 
 
 def _build_hero(cc):
-    """Returns (selected, all_candidates) -- same shape home() always
-    unpacked from the old _HERO_CACHE entry."""
-    return build_hero_lineup(cc=cc)
+    res = build_hero_lineup(cc=cc)
+    if not res or not res[0]:
+        raise RuntimeError("Hero lineup failed to build (likely Steam rate limited)")
+    return res
 
 
 def _build_top_sellers(cc):
-    return fetch_browse_category("topsellers", count=100, cc=cc)
+    res = fetch_browse_category("topsellers", count=100, cc=cc)
+    if not res:
+        raise RuntimeError("Top sellers failed to build")
+    return res
 
 
 def _build_new_releases(cc):
-    return fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
+    res = fetch_verified_new_releases(limit=14, cc=cc, candidate_pool=60)
+    if not res:
+        raise RuntimeError("New releases failed to build")
+    return res
 
 
-def _build_potato_pool(cc):
-    from services.hero.potato_pool import build_potato_candidate_pool
-    return build_potato_candidate_pool(cc=cc)
 
 
-def _build_curated_seed(cc):
-    from services.hero.potato_curated_seed import build_curated_seed_pool
-    return build_curated_seed_pool(cc=cc)
+
+
 
 
 store.register("hero", _build_hero, _HERO_TTL_SECONDS, empty_value=(None, None))
 store.register("top_sellers", _build_top_sellers, _TOP_SELLERS_TTL_SECONDS, empty_value=[])
 store.register("new_releases", _build_new_releases, _NEW_RELEASES_TTL_SECONDS, empty_value=[])
-store.register("potato_pool", _build_potato_pool, _POTATO_POOL_TTL_SECONDS, empty_value=[])
-store.register("curated_seed", _build_curated_seed, _CURATED_SEED_TTL_SECONDS, empty_value=[])
 
 
 def _get_hero_lineup(cc):
@@ -105,12 +104,10 @@ def _is_hero_build_pending(cc):
     return store.is_refreshing("hero", cc)
 
 
-def _get_potato_pool(cc):
-    return store.get("potato_pool", cc)
 
 
-def _get_curated_seed_pool(cc):
-    return store.get("curated_seed", cc)
+
+
 
 
 def _get_verified_new_releases(cc):
@@ -270,43 +267,31 @@ def home():
             seen_ids.add(str(g.get("id")))
         available_games = available_games[14:]
 
-        # ---------------- INTEGRATED GPU ----------------
-        # Still the dynamic classifier -- unaffected by the verified-
-        # database migration below. Runs against three merged
-        # candidate sources (hero pool, budget-price potato pool,
-        # curated seed pool) exactly as before.
+        # ---------------- POTATO AND INTEGRATED GPU ----------------
         try:
-            potato_candidates = _get_potato_pool(cc)
+            verified_tiers = get_verified_potato_tiers(cc)
         except Exception:
-            logger.exception("Potato pool fetch failed for region %s", cc)
-            potato_candidates = []
-
-        # 3. curated_seed_candidates -- guaranteed-considered pool of
-        #    user-researched titles (services/hero/potato_curated_seed.py).
-        #    Neither of the two sources above is guaranteed to surface
-        #    any SPECIFIC title on a given day (Steam's search ranking
-        #    and a 100-per-band fetch cap both affect what comes back);
-        #    this closes that gap for iGPU classification purposes.
-        try:
-            curated_seed_candidates = _get_curated_seed_pool(cc)
-        except Exception:
-            logger.exception("Curated seed pool fetch failed for region %s", cc)
-            curated_seed_candidates = []
-
+            logger.exception("Verified Potato pool fetch failed for region %s", cc)
+            verified_tiers = {"friendly": [], "tweaks": [], "extreme": []}
+            
+        # iGPU uses a mix of hero pool and verified low-spec games
         _hardware_pool_ids = {str(c.app_id) for c in all_candidates if c.app_id}
-        hardware_pool = list(all_candidates) + [
-            c for c in potato_candidates if c.app_id and str(c.app_id) not in _hardware_pool_ids
-        ]
-        _hardware_pool_ids.update(str(c.app_id) for c in potato_candidates if c.app_id)
-        hardware_pool += [
-            c for c in curated_seed_candidates if c.app_id and str(c.app_id) not in _hardware_pool_ids
-        ]
-
+        hardware_pool = list(all_candidates)
+        
+        # Add verified potato games to the hardware pool
+        for tier in ("friendly", "tweaks", "extreme"):
+            for candidate in verified_tiers.get(tier, []):
+                app_id = str(candidate.app_id) if candidate.app_id else None
+                if app_id and app_id not in _hardware_pool_ids:
+                    hardware_pool.append(candidate)
+                    _hardware_pool_ids.add(app_id)
+        
         try:
             igpu_games = classify_igpu_only(hardware_pool, seen_ids, limit=14)
         except Exception:
             logger.exception("iGPU classification failed for region %s", cc)
             igpu_games = []
+            
         for g in igpu_games:
             seen_ids.add(str(g["id"]))
 
@@ -319,12 +304,6 @@ def home():
         # tier here was decided by real-world low-end testing evidence,
         # not by re-running the dynamic classifier against whatever
         # Steam currently lists as the minimum spec.
-        try:
-            verified_tiers = get_verified_potato_tiers(cc)
-        except Exception:
-            logger.exception("Verified Potato pool fetch failed for region %s", cc)
-            verified_tiers = {"friendly": [], "tweaks": [], "extreme": []}
-
         potato_friendly, potato_tweaks, potato_extreme = [], [], []
         # Homepage rows are a PREVIEW, not the full list -- capped
         # noticeably lower than the verified pool's real size (see
