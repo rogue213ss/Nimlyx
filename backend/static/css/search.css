@@ -260,6 +260,43 @@
   font-size:clamp(1.4rem,2vw,1.8rem);
   letter-spacing:-0.01em;
 }
+/* ---------------- POTATO VERDICT ----------------
+   Populated client-side from ?potato_* URL params by search.js's
+   renderPotatoVerdict() -- see templates/search.html's
+   potatoVerdictPanel comment for the full data flow. Tier color
+   comes from the same .hw-badge--potato-* classes the homepage and
+   /potato already use (style.css), so a Friendly/Tweaks/Extreme
+   verdict reads consistently everywhere it appears in the app. */
+.potato-verdict-card{
+  border-radius:var(--home-radius-md);
+  border:1px solid var(--home-glass-border);
+  background:var(--home-bg-card);
+  padding:20px 22px;
+}
+.potato-verdict-badge-row{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+}
+.potato-verdict-badge-row .hw-badge{ margin:0; }
+.potato-verdict-tier-label{
+  font-size:.9rem; font-weight:500; color:var(--home-text-muted);
+}
+.potato-verdict-summary{
+  font-family:var(--home-font-mono); font-size:.95rem; font-weight:600;
+  color:var(--home-text-primary); margin-top:14px;
+}
+.potato-verdict-notes{
+  font-size:.88rem; color:var(--home-text-muted); margin-top:8px; line-height:1.5;
+}
+.potato-verdict-tweak{
+  font-size:.86rem; color:#facc15; margin-top:8px; line-height:1.5;
+}
+.potato-verdict-link{
+  display:inline-block; margin-top:16px;
+  font-family:var(--home-font-mono); font-size:.8rem; font-weight:600;
+  color:var(--home-accent); text-decoration:none;
+}
+.potato-verdict-link:hover{ text-decoration:underline; }
+
 .panel__meta{
   font-family:var(--home-font-body); font-size:.88rem; font-weight:500;
   color:var(--home-text-muted);
@@ -1530,7 +1567,8 @@
   .trending-title{ font-size:.92rem; }
 }
 
-
+/* ================================================================
+   LOADING SKELETONS
    Shown by loadGame() the instant it knows which fetch is about to
    go out (before the request itself starts), hidden the moment the
    real view or error state takes over. Shaped to roughly match each

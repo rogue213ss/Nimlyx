@@ -389,6 +389,18 @@ const appIdParam = params.get("app_id");
 // Absent for ordinary app clicks, and build_game_detail's own app_id
 // output is completely unaffected by it either way.
 const packageIdParam = params.get("package_id");
+// Present only when this game was reached by clicking a card on
+// /potato (see potato.html / potato.js's withPotatoParams()) --
+// carries that card's real-world-tested tier/badge/evidence over so
+// renderPotatoVerdict() can show it here. Absent for every other
+// entry path (search, Trending, a direct app_id link, etc.), same
+// "only present when it genuinely applies" pattern as packageIdParam
+// above.
+const potatoTierParam = params.get("potato_tier");
+const potatoBadgeParam = params.get("potato_badge");
+const potatoSummaryParam = params.get("potato_summary");
+const potatoNotesParam = params.get("potato_notes");
+const potatoTweakParam = params.get("potato_tweak");
 const gameName = params.get("q");
 document.getElementById("gameInput").value = gameName || "";
 
@@ -580,11 +592,74 @@ function renderGame(game) {
     renderPurchaseOptions(game);
     renderCredits(game);
     renderStats(game);
+    renderPotatoVerdict();
     renderRequirements(game);
     initCompatibility(game);
     renderDeveloperGames(game);
     renderPublisherGames(game);
     initScrollReveal();
+}
+
+/* ---------------- POTATO VERDICT ----------------
+   Purely a function of the URL's potato_* params (see their
+   declarations above) -- doesn't touch `game` at all, since the
+   verdict data already arrived fully-formed from the /potato card
+   that linked here. Panel stays hidden (its default is-hidden state
+   in search.html is left alone) whenever potato_tier is absent,
+   i.e. every non-Potato entry path into this page. */
+const POTATO_TIER_LABELS = {
+    friendly: "🥔 Potato Friendly — comfortable on the reference low-end PC",
+    tweaks: "🔧 Potato + Tweaks — playable after sensible settings compromises",
+    extreme: "💀 Extreme Tweaks — official minimum spec says no, real-world evidence says maybe",
+};
+
+function renderPotatoVerdict() {
+    const panel = document.getElementById("potatoVerdictPanel");
+    if (!panel) return;
+
+    if (!potatoTierParam || !POTATO_TIER_LABELS[potatoTierParam]) {
+        panel.classList.add("is-hidden");
+        return;
+    }
+
+    const badgeEl = document.getElementById("potatoVerdictBadge");
+    const tierLabelEl = document.getElementById("potatoVerdictTierLabel");
+    const summaryEl = document.getElementById("potatoVerdictSummary");
+    const notesEl = document.getElementById("potatoVerdictNotes");
+    const tweakEl = document.getElementById("potatoVerdictTweak");
+
+    if (badgeEl) {
+        badgeEl.textContent = potatoBadgeParam || "Pending Check";
+        badgeEl.className = "hw-badge hw-badge--potato-" + potatoTierParam;
+    }
+    if (tierLabelEl) tierLabelEl.textContent = POTATO_TIER_LABELS[potatoTierParam];
+
+    if (summaryEl) {
+        if (potatoSummaryParam) {
+            summaryEl.textContent = potatoSummaryParam;
+            summaryEl.classList.remove("is-hidden");
+        } else {
+            summaryEl.classList.add("is-hidden");
+        }
+    }
+    if (notesEl) {
+        if (potatoNotesParam) {
+            notesEl.textContent = potatoNotesParam;
+            notesEl.classList.remove("is-hidden");
+        } else {
+            notesEl.classList.add("is-hidden");
+        }
+    }
+    if (tweakEl) {
+        if (potatoTweakParam) {
+            tweakEl.textContent = "🔧 " + potatoTweakParam;
+            tweakEl.classList.remove("is-hidden");
+        } else {
+            tweakEl.classList.add("is-hidden");
+        }
+    }
+
+    panel.classList.remove("is-hidden");
 }
 
 /* ---------------- CAROUSELS (Sprint 4 Phase 3) ----------------

@@ -496,6 +496,38 @@
         <div class="stats-grid" id="statsRows"></div>
     </section>
 
+    <!-- ================= POTATO VERDICT =================
+         Carries the real-world-tested Potato Ecosystem verdict
+         (services/hardware/verified_potato_pool.py's evidence data)
+         over from a /potato card click -- see potato.html /
+         potato.js's withPotatoParams(). Nothing on this page fetches
+         Potato data itself; it's entirely populated client-side from
+         ?potato_tier=/&potato_badge=/&potato_summary=/&potato_notes=
+         URL params by search.js's renderPotatoVerdict(), and stays
+         hidden whenever a game was reached any other way (search,
+         Trending, a direct /search?app_id= link, etc.) since those
+         carry no such params. Deliberately placed ahead of the
+         generic System Requirements panel below -- if a visitor
+         arrived specifically because a game IS Potato-friendly,
+         that verdict is the most relevant "can it run?" answer on
+         the page, not a secondary footnote. -->
+    <section class="panel potato-verdict-panel reveal is-hidden" id="potatoVerdictPanel">
+        <div class="panel__head">
+            <span class="panel__eyebrow">Low End Optimization</span>
+            <h2 class="panel__title">Potato Ecosystem Verdict</h2>
+        </div>
+        <div class="potato-verdict-card" id="potatoVerdictCard">
+            <div class="potato-verdict-badge-row">
+                <span class="hw-badge" id="potatoVerdictBadge"></span>
+                <span class="potato-verdict-tier-label" id="potatoVerdictTierLabel"></span>
+            </div>
+            <p class="potato-verdict-summary" id="potatoVerdictSummary"></p>
+            <p class="potato-verdict-notes is-hidden" id="potatoVerdictNotes"></p>
+            <p class="potato-verdict-tweak is-hidden" id="potatoVerdictTweak"></p>
+            <a class="potato-verdict-link" href="/potato">See the full Potato Ecosystem →</a>
+        </div>
+    </section>
+
     <!-- ================= SYSTEM REQUIREMENTS =================
          Sprint 5. Backend-normalized only -- see
          services/game/requirements.py and build_game_detail() in

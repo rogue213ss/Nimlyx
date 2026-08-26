@@ -1257,9 +1257,45 @@ main{ counter-reset: nimlyx-section; }
 }
 .nimlyx-card--portrait .nimlyx-card-title{ font-size:.98rem; }
 
+/* ---- Potato Friendly card revamp ----
+   Previous version reused the generic single-line, nowrap+ellipsis
+   title/evidence treatment tuned for short trending-card names --
+   real Potato titles ("The Elder Scrolls IV: Oblivion GOTY Edition")
+   and evidence strings ("50 FPS · 720p or 1080p · Medium settings")
+   are routinely longer than that budget and were getting silently
+   cut off mid-word with no way to read the rest. Fixed by clamping
+   to two lines (still bounded, still aligns in the grid) instead of
+   one, on both the title and the evidence line, plus a fixed card
+   body min-height so a short title/evidence pair doesn't leave the
+   grid looking uneven next to a two-line neighbor. Also gives the
+   tier its own colored top accent + stronger hover glow so Potato
+   Friendly reads as a distinct visual family rather than a reskinned
+   Trending card. */
+.nimlyx-card--potato-friendly{
+  border-top:2px solid rgba(74,222,128,0.35);
+}
+.nimlyx-card--potato-friendly:hover{
+  border-color:var(--home-glass-border-strong);
+  border-top-color:rgba(74,222,128,0.7);
+  box-shadow:0 18px 40px -20px rgba(0,0,0,0.55), 0 0 30px rgba(74,222,128,0.16);
+}
+.nimlyx-card--potato-friendly .nimlyx-card-body{
+  min-height:118px; display:flex; flex-direction:column;
+}
+.nimlyx-card--potato-friendly .nimlyx-card-title{
+  white-space:normal; display:-webkit-box; -webkit-box-orient:vertical;
+  -webkit-line-clamp:2; line-clamp:2; overflow:hidden; text-overflow:ellipsis;
+  min-height:2.6em;
+}
+.nimlyx-card--potato-friendly .hw-badge{ align-self:flex-start; }
+.nimlyx-card--potato-friendly .potato-evidence-line{
+  margin-top:auto; padding-top:4px;
+}
+
 .potato-evidence-line{
   font-size:.78rem; color:var(--home-text-faint); margin-top:2px;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+  overflow:hidden; text-overflow:ellipsis; white-space:normal; line-height:1.35;
 }
 
 /* ---- Wide (Deals) -- discount + price are the dominant elements.
@@ -1569,6 +1605,20 @@ main{ counter-reset: nimlyx-section; }
   margin-top: 24px;
 }
 
+/* Potato Friendly is the one .nimlyx-grid consumer using a
+   fixed-width card (.nimlyx-card--portrait, 216px -- shared with
+   Discover/Action's horizontal-scroll rows, so it can't just be
+   changed to stretch) instead of .nimlyx-card--wide's width:100%.
+   Left on the shared 280px/1fr columns above, each 216px card sat
+   pinned to the left edge of a much wider cell, leaving a large dead
+   gap around every card. Scoped override: size columns to the card
+   itself so they pack snugly with only `gap` between them, same as
+   the fixed-width card rows elsewhere on the site. */
+#potatoGrid-friendly{
+  grid-template-columns: repeat(auto-fill, minmax(180px, 216px));
+  justify-content: start;
+}
+
 /* Editorial Hidden Gems */
 .editorial-gems {
   display: grid;
@@ -1769,11 +1819,12 @@ main{ counter-reset: nimlyx-section; }
 .potato-extreme-body .hw-badge{ margin:0; font-size:.62rem; }
 .potato-extreme-evidence{
   font-size:.72rem; color:var(--home-text-faint); margin-top:6px;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2;
+  overflow:hidden; text-overflow:ellipsis; white-space:normal; line-height:1.35;
 }
 .potato-extreme-tweak{
   font-size:.72rem; color:rgba(248,113,113,0.85); margin-top:3px;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 
 /* ----------------------------------------------------------------

@@ -37,20 +37,36 @@
         return div.innerHTML;
     }
 
+    // Carries a card's Potato tier/badge/evidence over to the game
+    // detail page as URL params, exactly matching potato.html's
+    // Jinja-side query-string building (see routes/potato.py's
+    // server-rendered first page) -- Load More pages built here need
+    // to produce the identical link shape, or only games on page 1
+    // would show their Potato verdict on the game page. Read by
+    // search.js's readPotatoParamsFromUrl().
+    function withPotatoParams(baseUrl, tier, badge, evidence) {
+        const sep = baseUrl.indexOf("?") === -1 ? "?" : "&";
+        let qs = "potato_tier=" + encodeURIComponent(tier) + "&potato_badge=" + encodeURIComponent(badge || "Pending Check");
+        if (evidence && evidence.summary) qs += "&potato_summary=" + encodeURIComponent(evidence.summary);
+        if (evidence && evidence.notes) qs += "&potato_notes=" + encodeURIComponent(evidence.notes);
+        if (evidence && evidence.tweak) qs += "&potato_tweak=" + encodeURIComponent(evidence.tweak);
+        return baseUrl + sep + qs;
+    }
+
     function cardMarkup(tier, game) {
         const imgCandidates = escapeHtml(JSON.stringify(game.image_candidates || []));
         const badge = escapeHtml(game.hardware_badge || "Pending Check");
         const image = escapeHtml(game.header_image || "");
         const name = escapeHtml(game.name || "");
-        const url = escapeHtml(game.analyze_url || "#");
         const evidence = game.evidence || null;
+        const url = escapeHtml(withPotatoParams(game.analyze_url || "#", tier, game.hardware_badge, evidence));
         const evidenceSummary = evidence && evidence.summary ? escapeHtml(evidence.summary) : "";
         const evidenceNotes = evidence && evidence.notes ? escapeHtml(evidence.notes) : "";
         const evidenceTweak = evidence && evidence.tweak ? escapeHtml(evidence.tweak) : "";
 
         if (tier === "friendly") {
             return (
-                '<a class="nimlyx-card nimlyx-card--portrait" href="' + url + '">' +
+                '<a class="nimlyx-card nimlyx-card--portrait nimlyx-card--potato-friendly" href="' + url + '">' +
                 '<div class="nimlyx-card-media"><img src="' + image + '" data-img-candidates=\'' + imgCandidates + '\' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></div>' +
                 '<div class="nimlyx-card-body">' +
                 '<h3 class="nimlyx-card-title">' + name + '</h3>' +

@@ -83,7 +83,9 @@
       </div>
       <div class="nimlyx-grid" id="potatoGrid-friendly" data-tier="friendly" data-offset="{{ page_size }}">
         {% for game in friendly.games %}
-        <a class="nimlyx-card nimlyx-card--portrait" href="{{ game.analyze_url }}">
+        {% set sep = '&' if '?' in game.analyze_url else '?' %}
+        {% set potato_url = game.analyze_url ~ sep ~ 'potato_tier=friendly&potato_badge=' ~ (game.hardware_badge | urlencode) ~ (('&potato_summary=' ~ (game.evidence.summary | urlencode)) if game.evidence and game.evidence.summary else '') ~ (('&potato_notes=' ~ (game.evidence.notes | urlencode)) if game.evidence and game.evidence.notes else '') %}
+        <a class="nimlyx-card nimlyx-card--portrait nimlyx-card--potato-friendly" href="{{ potato_url }}">
           <div class="nimlyx-card-media"><img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></div>
           <div class="nimlyx-card-body">
             <h3 class="nimlyx-card-title">{{ game.name }}</h3>
@@ -119,7 +121,9 @@
       </div>
       <div class="potato-list" id="potatoGrid-tweaks" data-tier="tweaks" data-offset="{{ page_size }}">
         {% for game in tweaks.games %}
-        <a class="potato-list-row" href="{{ game.analyze_url }}">
+        {% set sep = '&' if '?' in game.analyze_url else '?' %}
+        {% set potato_url = game.analyze_url ~ sep ~ 'potato_tier=tweaks&potato_badge=' ~ ((game.hardware_badge or "Pending Check") | urlencode) ~ (('&potato_summary=' ~ (game.evidence.summary | urlencode)) if game.evidence and game.evidence.summary else '') ~ (('&potato_notes=' ~ (game.evidence.notes | urlencode)) if game.evidence and game.evidence.notes else '') %}
+        <a class="potato-list-row" href="{{ potato_url }}">
           <span class="potato-list-thumb"><img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' loading="lazy" alt="" onerror="NimlyxImgFallback(this)"></span>
           <span class="potato-list-text">
             <span class="potato-list-name">{{ game.name }}</span>
@@ -156,7 +160,9 @@
       </div>
       <div class="potato-extreme-grid" id="potatoGrid-extreme" data-tier="extreme" data-offset="{{ page_size }}">
         {% for game in extreme.games %}
-        <a class="potato-extreme-card" href="{{ game.analyze_url }}">
+        {% set sep = '&' if '?' in game.analyze_url else '?' %}
+        {% set potato_url = game.analyze_url ~ sep ~ 'potato_tier=extreme&potato_badge=' ~ ((game.hardware_badge or "Pending Check") | urlencode) ~ (('&potato_summary=' ~ (game.evidence.summary | urlencode)) if game.evidence and game.evidence.summary else '') ~ (('&potato_notes=' ~ (game.evidence.notes | urlencode)) if game.evidence and game.evidence.notes else '') ~ (('&potato_tweak=' ~ (game.evidence.tweak | urlencode)) if game.evidence and game.evidence.tweak else '') %}
+        <a class="potato-extreme-card" href="{{ potato_url }}">
           <div class="potato-extreme-media">
             <img src="{{ game.header_image }}" data-img-candidates='{{ game.image_candidates | tojson }}' loading="lazy" alt="" onerror="NimlyxImgFallback(this)">
             <span class="potato-extreme-ribbon">Challenge</span>
