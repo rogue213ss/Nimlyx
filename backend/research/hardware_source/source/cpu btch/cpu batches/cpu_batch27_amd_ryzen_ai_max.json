@@ -1,0 +1,122 @@
+[
+  {
+    "external_id": "cpu-amd-ryzen-ai-max-plus-395",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI Max+ 395",
+    "architecture": "Zen 5 (Strix Halo)",
+    "release_year": 2025,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 3000,
+    "boost_clock_mhz": 5100,
+    "gpu_shaders": null,
+    "cpu_cores": 16,
+    "cpu_threads": 32,
+    "tdp_w": 55,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-plus-395.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Flagship Strix Halo SoC. Homogeneous Zen 5 design (16x Zen 5, no Zen 5c cores), 16 cores/32 threads. Base Clock 3.0 GHz, Max Boost Clock 5.1 GHz per AMD's spec page. Default TDP is 55W with AMD Configurable TDP (cTDP) range of 45-120W; tdp_w field stores the Default TDP. Includes the full-fat Radeon 8060S integrated GPU (40 RDNA 3.5 CUs). Uses FP11 socket (different package/socket from Ryzen AI 300 series' FP8). Launched Jan 2025."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-max-plus-392",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI Max+ 392",
+    "architecture": "Zen 5 (Strix Halo)",
+    "release_year": 2026,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 3200,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 12,
+    "cpu_threads": 24,
+    "tdp_w": 55,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-plus-392.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Announced at CES 2026 (AMD newsroom press release, Jan 5 2026) alongside the Max+ 388, extending the Max+ sub-line below the 395 while retaining the full 40-CU Radeon 8060S iGPU. Homogeneous Zen 5 design, 12 cores/24 threads (two CCDs). Base Clock 3.2 GHz, Max Boost Clock 5.0 GHz per AMD's spec page, corroborated by TechPowerUp, wccftech, and Technobezz launch coverage. Default TDP 55W, cTDP range 45-120W; tdp_w field stores Default TDP. Uses FP11 socket."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-max-390",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI Max 390",
+    "architecture": "Zen 5 (Strix Halo)",
+    "release_year": 2025,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 3200,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 12,
+    "cpu_threads": 24,
+    "tdp_w": 55,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-390.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Non-Plus tier: same core config as the Max+ 392 (12 cores/24 threads, homogeneous Zen 5, Base Clock 3.2 GHz, Max Boost Clock 5.0 GHz) but paired with the cut-down Radeon 8050S iGPU (32 CUs vs 40 CUs on Max+ SKUs), corroborated by Phoronix review. Default TDP 55W, cTDP range 45-120W; tdp_w field stores Default TDP. Uses FP11 socket."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-max-plus-388",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI Max+ 388",
+    "architecture": "Zen 5 (Strix Halo)",
+    "release_year": 2026,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 3600,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 8,
+    "cpu_threads": 16,
+    "tdp_w": 55,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "Notebookcheck (fallback)",
+      "source_url": "https://www.notebookcheck.com/AMD-Ryzen-AI-Max-388-Prozessor-Benchmarks-und-Specs.1197728.0.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "FALLBACK SOURCING: an AMD-hosted per-SKU spec page (ark-style product page) for this exact model was not surfaced in search results; AMD's own newsroom press release (amd.com/en/newsroom/press-releases/2026-1-5-...) confirms the SKU's existence and Jan 5 2026 CES announcement, but does not itemize clock tables. Clock/core/TDP figures below are corroborated across 3 independent secondary sources (Notebookcheck, TechPowerUp, AllCPUs/nanoreview) which agree: 8 cores/16 threads (homogeneous Zen 5, no Zen 5c), Base Clock 3.6 GHz, Max Boost Clock 5.0 GHz, L2 8MB, L3 32MB, Default TDP 55W with cTDP range 45-120W. Notably pairs the smaller 8-core CCD configuration with the full 40-CU Radeon 8060S iGPU (previously exclusive to the flagship 395), differentiating it from the otherwise identical Ryzen AI Max 385 which uses the cut-down Radeon 8050S. Uses FP11 socket."
+    }
+  },
+  {
+    "external_id": "cpu-amd-ryzen-ai-max-385",
+    "type": "cpu",
+    "manufacturer": "AMD",
+    "model_name": "AMD Ryzen AI Max 385",
+    "architecture": "Zen 5 (Strix Halo)",
+    "release_year": 2025,
+    "vram_mb": null,
+    "memory_bandwidth_gb_s": null,
+    "base_clock_mhz": 3600,
+    "boost_clock_mhz": 5000,
+    "gpu_shaders": null,
+    "cpu_cores": 8,
+    "cpu_threads": 16,
+    "tdp_w": 55,
+    "is_integrated": null,
+    "has_integrated_graphics": true,
+    "provenance": {
+      "source_name": "AMD.com",
+      "source_url": "https://www.amd.com/en/products/processors/laptop/ryzen/ai-300-series/amd-ryzen-ai-max-385.html",
+      "retrieved_date": "2026-08-12",
+      "notes": "Entry-level Strix Halo SKU. Homogeneous Zen 5 design (8x Zen 5, no Zen 5c), 8 cores/16 threads. Base Clock 3.6 GHz, Max Boost Clock 5.0 GHz per AMD's spec page. Default TDP 55W, cTDP range 45-120W; tdp_w field stores Default TDP. Includes the cut-down Radeon 8050S integrated GPU (32 CUs), distinguishing it from the identically-clocked Ryzen AI Max+ 388 which pairs the same 8-core CCD with the full 40-CU Radeon 8060S. Uses FP11 socket. Launched Jan 2025."
+    }
+  }
+]
