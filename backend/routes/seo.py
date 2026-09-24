@@ -41,7 +41,7 @@ from flask import Blueprint, Response, url_for
 
 seo_bp = Blueprint("seo", __name__)
 
-SITE_URL = os.environ.get("SITE_URL", "https://nimlyx.com").rstrip("/")
+SITE_URL = os.environ.get("SITE_URL", "https:/nimlyx-1.onrender.com").rstrip("/")
 
 _POTATO_JSON_PATH = Path(__file__).resolve().parent.parent / "data" / "potato" / "verified_potato_games.json"
 
