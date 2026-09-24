@@ -5,6 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nimlyx — Discover. Analyze. Decide.</title>
 <meta name="description" content="Nimlyx analyzes Steam games using ratings, reviews, screenshots and trailers so you know what you're getting before you buy.">
+<link rel="canonical" href="{{ request.url_root }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Nimlyx — Discover. Analyze. Decide.">
+<meta property="og:description" content="Nimlyx analyzes Steam games using ratings, reviews, screenshots and trailers so you know what you're getting before you buy.">
+<meta property="og:url" content="{{ request.url_root }}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "Nimlyx",
+  "url": "{{ request.url_root }}",
+  "description": "Nimlyx is a game discovery platform that helps PC gamers find games worth playing based on reviews, hardware compatibility and low-end PC gaming considerations.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ request.url_root }}search?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -106,7 +126,7 @@
       <span aria-hidden="true">★</span> Handpicked by Nimlyx
     </span>
 
-    <h1 class="home-hero-title" id="homeHeroTitle">{{ g0.name }}</h1>
+    <h2 class="home-hero-title" id="homeHeroTitle">{{ g0.name }}</h2>
 
     {% if g0.insight %}
     <p class="home-hero-desc" id="homeHeroDesc">{{ g0.insight }}</p>
@@ -160,6 +180,26 @@
   {% endif %}
 </section>
 {% endif %}
+
+<!-- SEO identity statement — always rendered (not gated on hero/
+     Steam data availability like the sections above), so Google
+     always has a stable, crawlable answer to "what is this site"
+     independent of live Steam data. Also fixes the page's H1: the
+     hero title above is now an H2 (rotates with whatever game is
+     featured -- a real heading, just not the page's PRIMARY topic),
+     and this is the one true H1, so the page's main heading is
+     always "Nimlyx", never a rotating, unrelated game name. Styled
+     to match ordinary body copy (not a big display heading) so this
+     doesn't visually compete with the hero -- same text, same look,
+     just semantically correct. -->
+<section class="home-container" style="padding:1.5rem 1.5rem 0;">
+  <h1 style="max-width:60ch;color:var(--text-secondary,#9ca3af);font-size:0.95rem;font-weight:400;line-height:1.6;margin:0;">
+    Nimlyx is a game discovery platform for PC gamers. Steam tells you what games exist —
+    Nimlyx tells you what's worth your time, money, and hardware, with review-based scoring,
+    system requirement breakdowns, and dedicated <a href="/potato">low-end &amp; Potato PC</a>
+    recommendations for older GPUs and CPUs.
+  </h1>
+</section>
 
 {% if hero_pending %}
 <section class="home-insight-bar home-insight-bar--pending" id="heroPendingNotice" aria-live="polite">

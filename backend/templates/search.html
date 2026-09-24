@@ -3,7 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nimlyx | Game Details</title>
+{% if game_meta and game_meta.title %}
+<title>{{ game_meta.title }}</title>
+<meta name="description" content="{{ game_meta.description }}">
+<link rel="canonical" href="{{ request.url_root.rstrip('/') }}/search?app_id={{ app_id }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ game_meta.title }}">
+<meta property="og:description" content="{{ game_meta.description }}">
+{% if game_meta.image %}<meta property="og:image" content="{{ game_meta.image }}">{% endif %}
+<meta property="og:url" content="{{ request.url_root.rstrip('/') }}/search?app_id={{ app_id }}">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": {{ game_meta.name|tojson }},
+  "description": {{ game_meta.description|tojson }},
+  {% if game_meta.image %}"image": {{ game_meta.image|tojson }},{% endif %}
+  {% if game_meta.genres %}"genre": {{ game_meta.genres|tojson }},{% endif %}
+  {% if game_meta.developers %}"author": [{% for d in game_meta.developers %}{"@type": "Organization", "name": {{ d|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}],{% endif %}
+  "applicationCategory": "Game",
+  "operatingSystem": "Windows",
+  "url": "{{ request.url_root.rstrip('/') }}/search?app_id={{ app_id }}"
+}
+</script>
+{% else %}
+<title>Nimlyx Search — Find & Evaluate Any Steam Game</title>
+<meta name="description" content="Search any Steam game to see its Nimlyx Score, review sentiment, system requirements and hardware compatibility.">
+<link rel="canonical" href="{{ request.url_root.rstrip('/') }}/search">
+{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -123,7 +151,19 @@
         </div>
         <div class="search-landing-hero__content">
             <span class="panel__eyebrow">Nimlyx Search</span>
+            <!-- H1 here only on the genuine bare-/search landing
+                 state. Keyed on app_id (was this request FOR a game
+                 page), not on game_meta (did the lookup succeed) --
+                 if a Steam lookup transiently fails for a real
+                 app_id, this is still semantically a game-page
+                 request and must not fall back to a second H1
+                 fighting with #heroTitle below. Same class either
+                 way, so the visual result is identical either way. -->
+            {% if app_id %}
+            <p class="search-landing-title">Find Your Next Game</p>
+            {% else %}
             <h1 class="search-landing-title">Find Your Next Game</h1>
+            {% endif %}
             <p class="search-landing-subtitle">Explore games, analyze player opinions, and discover what is worth playing.</p>
             <form class="search-landing-box" action="/search" method="get" role="search">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -258,13 +298,32 @@
      heroBg image as a full-bleed cinematic banner, with the title
      block sitting in a glass panel over it. -->
 <section class="hero">
-    <img class="hero__bg" id="heroBg" alt="">
+    <!-- SSR fill (existing SEO lookup data, no new API call): a
+         crawler that never runs search.js still sees a real image,
+         alt text, kicker and H1 here instead of empty containers.
+         search.js overwrites these with the identical live values
+         once /api/game-detail/<id> resolves -- this is progressive
+         enhancement, not hidden/cloaked text: the same content real
+         users see, just present before JS runs instead of after. -->
+    <img class="hero__bg" id="heroBg" alt="{{ game_meta.name if game_meta else '' }}" {% if game_meta and game_meta.image %}src="{{ game_meta.image }}"{% endif %}>
     <div class="hero__scrim"></div>
     <div class="hero__vignette"></div>
     <div class="hero__content">
         <div class="hero__panel reveal">
-            <div class="hero__kicker" id="heroKicker"></div>
-            <h1 class="hero__title" id="heroTitle"></h1>
+            <div class="hero__kicker" id="heroKicker">{{ game_meta.genres|join(" · ") if game_meta and game_meta.genres else "" }}</div>
+            <!-- Only a real <h1> when this request is actually for a
+                 game (app_id present) -- on a bare /search visit
+                 this element is permanently empty (search.js only
+                 populates #heroTitle via loadGameById(), which never
+                 runs without an app_id), so it must not also be a
+                 second, empty H1 alongside the landing title above.
+                 Same id either way -- search.js selects by id, not
+                 tag, so this is purely semantic. -->
+            {% if app_id %}
+            <h1 class="hero__title" id="heroTitle">{{ game_meta.name if game_meta else "" }}</h1>
+            {% else %}
+            <div class="hero__title" id="heroTitle"></div>
+            {% endif %}
             <div class="hero__credits" id="heroCredits"></div>
             <div class="hero__meta" id="heroMeta"></div>
             <div class="hero__ctas">
@@ -304,7 +363,7 @@
             <h2 class="panel__title">About</h2>
             <span class="ai-tag"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Summary</span>
         </div>
-        <div class="about-copy" id="aboutText"></div>
+        <div class="about-copy" id="aboutText">{% if game_meta and game_meta.description %}<p>{{ game_meta.description }}</p>{% endif %}</div>
     </section>
 
     <!-- ================= MEDIA (screenshots + trailer) =================

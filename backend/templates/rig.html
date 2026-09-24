@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Rig — Nimlyx</title>
+<meta name="description" content="Set up your PC hardware and Nimlyx will automatically check if games run on your PC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style_mobile.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+<script src="{{ url_for('static', filename='js/hardware-discovery.js') }}"></script>
+<style>
+.rig-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+.rig-card {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+.rig-header {
+    margin-bottom: 24px;
+}
+.rig-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 8px;
+    color: #fff;
+}
+.rig-header p {
+    color: #aaa;
+    font-size: 1.1rem;
+}
+.rig-form-group {
+    margin-bottom: 24px;
+}
+.rig-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #ccc;
+    font-weight: 500;
+}
+.rig-input-group {
+    display: flex;
+    align-items: center;
+}
+.rig-input-wrapper {
+    flex-grow: 1;
+}
+.rig-input-suffix {
+    margin-left: 12px;
+    color: #888;
+    font-family: var(--home-font-mono);
+    font-size: 1rem;
+}
+.rig-input {
+    width: 100%;
+    background: var(--home-glass-fill);
+    border: 1px solid var(--home-glass-border);
+    border-radius: var(--home-radius-md);
+    color: var(--home-text-primary);
+    font-family: var(--home-font-body);
+    font-size: .85rem;
+    padding: 12px 14px;
+    transition: border-color .2s var(--home-ease), background-color .2s var(--home-ease);
+}
+.rig-input:focus {
+    outline: none;
+    border-color: var(--home-cta-blue);
+}
+.rig-input::placeholder {
+    color: var(--home-text-faint);
+}
+.rig-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+.rig-btn {
+    padding: 12px 24px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-size: 1rem;
+}
+.rig-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+.rig-btn-secondary {
+    background: transparent;
+    color: #aaa;
+    border: 1px solid #444;
+}
+.rig-status {
+    padding: 16px;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    display: none;
+}
+.rig-status.success {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    color: #93c5fd;
+    display: block;
+}
+.rig-status.empty {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #aaa;
+    display: block;
+}
+.rig-view {
+    display: none;
+}
+.rig-view.active {
+    display: block;
+}
+.hw-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 640px) {
+    .hw-info {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+.hw-item {
+    background: #1a1a1a;
+    padding: 16px;
+    border-radius: 4px;
+    border: 1px solid #333;
+}
+.hw-item h3 {
+    font-size: 0.9rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 8px 0;
+}
+.hw-item p {
+    font-size: 1.1rem;
+    color: #fff;
+    margin: 0;
+    font-weight: 500;
+}
+.hw-item-icon {
+    margin-right: 8px;
+    color: #555;
+}
+.hw-item-pass-icon {
+    margin-right: 8px;
+    color: #22c55e;
+}
+.hw-item-empty-icon {
+    margin-right: 8px;
+    color: #555;
+}
+</style>
+</head>
+<body class="home-page">
+
+<header class="home-header">
+  <div class="home-container home-header-inner">
+    <a href="/" class="home-logo" aria-label="Nimlyx home">
+      <svg width="24" height="24" viewBox="0 0 26 26" fill="none">
+        <polyline points="3,20 9,12 14,16 23,5" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="23" cy="5" r="2.4" fill="#3b82f6"/>
+      </svg>
+      Nimlyx
+    </a>
+
+    <input type="checkbox" id="homeSearchToggle" class="home-search-checkbox">
+    <label for="homeSearchToggle" class="home-mobile-search-btn" aria-label="Search">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </label>
+
+    <input type="checkbox" id="homeNavToggle" class="home-nav-checkbox">
+    <label for="homeNavToggle" class="home-nav-burger" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </label>
+
+    <div class="home-nav-panel">
+      <nav class="home-nav" aria-label="Primary">
+        <a href="/">Home</a>
+        <a href="/discover">Discover</a>
+        <a href="/search">Search</a>
+        <a href="/potato">Potato</a>
+        <a href="/about">About</a>
+      </nav>
+
+      <form class="home-search" action="/search" method="get" role="search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="gameInput" name="q" placeholder="Search any Steam game…" autocomplete="off" aria-label="Search games">
+      </form>
+    </div>
+  </div>
+</header>
+
+<main class="rig-container">
+    <div class="rig-header">
+        <h1>Set up your Rig</h1>
+        <p>Tell Nimlyx what you're running.<br>We'll use this PC automatically when checking games.</p>
+    </div>
+
+    <div id="rigStatus" class="rig-status"></div>
+
+    <div id="rigDisplay" class="rig-view">
+        <div class="rig-card">
+            <div class="hw-info">
+                <div class="hw-item">
+                    <h3>Processor</h3>
+                    <p id="displayCpu"><i class="fa-solid fa-microchip hw-item-icon"></i> Loading...</p>
+                </div>
+                <div class="hw-item">
+                    <h3>Graphics Card</h3>
+                    <p id="displayGpu"><i class="fa-solid fa-tv hw-item-icon"></i> Loading...</p>
+                </div>
+                <div class="hw-item">
+                    <h3>Memory</h3>
+                    <p id="displayRam"><i class="fa-solid fa-memory hw-item-icon"></i> Loading...</p>
+                </div>
+            </div>
+            <div class="rig-actions">
+                <button type="button" class="rig-btn rig-btn-primary" onclick="showEditForm()">Edit Rig</button>
+                <button type="button" class="rig-btn rig-btn-secondary" onclick="clearRig()">Reset Rig</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="rigEdit" class="rig-view active">
+        <div class="rig-card">
+            <div class="rig-form-group">
+                <label for="rigCpuInput">Processor</label>
+                <div class="compat-combobox" id="rigCpuCombobox">
+                    <div class="compat-combobox__control">
+                        <input type="text" class="compat-combobox__input" id="rigCpuInput"
+                               placeholder="Search your processor..." autocomplete="off" role="combobox"
+                               aria-expanded="false" aria-autocomplete="list" aria-controls="rigCpuListbox">
+                        <button type="button" class="compat-combobox__clear is-hidden" id="rigCpuClear" aria-label="Clear CPU selection">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <ul class="compat-combobox__listbox is-hidden" id="rigCpuListbox" role="listbox" aria-label="CPU results"></ul>
+                </div>
+                <input type="hidden" id="rigCpuSelect" value="">
+            </div>
+            <div class="rig-form-group">
+                <label for="rigGpuInput">Graphics Card</label>
+                <div class="compat-combobox" id="rigGpuCombobox">
+                    <div class="compat-combobox__control">
+                        <input type="text" class="compat-combobox__input" id="rigGpuInput"
+                               placeholder="Search your graphics card..." autocomplete="off" role="combobox"
+                               aria-expanded="false" aria-autocomplete="list" aria-controls="rigGpuListbox">
+                        <button type="button" class="compat-combobox__clear is-hidden" id="rigGpuClear" aria-label="Clear GPU selection">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <ul class="compat-combobox__listbox is-hidden" id="rigGpuListbox" role="listbox" aria-label="GPU results"></ul>
+                </div>
+                <input type="hidden" id="rigGpuSelect" value="">
+            </div>
+            <div class="rig-form-group">
+                <label for="rigRam">Memory</label>
+                <div class="rig-input-group">
+                    <div class="rig-input-wrapper">
+                        <input type="number" id="rigRam" class="rig-input" placeholder="How much RAM do you have?" min="1" step="1">
+                    </div>
+                    <span class="rig-input-suffix">GB</span>
+                </div>
+            </div>
+            <div class="rig-actions">
+                <button type="button" class="rig-btn rig-btn-primary" onclick="saveRig()">Save My Rig</button>
+                <button type="button" class="rig-btn rig-btn-secondary" id="cancelEditBtn" onclick="showDisplay()" style="display:none">Cancel</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+let cpuComboboxCtrl = null;
+let gpuComboboxCtrl = null;
+
+async function loadCatalog() {
+    try {
+        const catalog = await window.NimlyxHardware.getHardwareCatalog();
+        
+        cpuComboboxCtrl = window.NimlyxHardware.initHardwareCombobox({
+            inputId: "rigCpuInput", listboxId: "rigCpuListbox",
+            clearBtnId: "rigCpuClear", hiddenId: "rigCpuSelect",
+            items: catalog.cpus, vendorKey: "manufacturer",
+            placeholder: "Search your processor..."
+        });
+        
+        gpuComboboxCtrl = window.NimlyxHardware.initHardwareCombobox({
+            inputId: "rigGpuInput", listboxId: "rigGpuListbox",
+            clearBtnId: "rigGpuClear", hiddenId: "rigGpuSelect",
+            items: catalog.gpus, vendorKey: "vendor",
+            placeholder: "Search your graphics card..."
+        });
+        
+        return catalog;
+    } catch (e) {
+        console.error("Failed to load hardware catalog");
+    }
+}
+
+async function loadRig() {
+    try {
+        const res = await fetch("/api/rig");
+        if (res.ok) {
+            const rig = await res.json();
+            
+            const cpuId = rig.cpu_external_id || "";
+            const gpuId = rig.gpu_external_id || "";
+            const ramVal = rig.ram_gb || "";
+            
+            if (cpuComboboxCtrl && cpuId) cpuComboboxCtrl.setValue(cpuId);
+            if (gpuComboboxCtrl && gpuId) gpuComboboxCtrl.setValue(gpuId);
+            document.getElementById("rigRam").value = ramVal;
+            
+            updateDisplay(rig);
+            
+            showStatus("Your Rig is ready. Nimlyx will now automatically check games against this hardware.", "success");
+            showDisplay();
+        } else {
+            showStatus("Your Rig isn't set up yet. Add your PC hardware and Nimlyx will automatically check games for you.", "empty");
+            showEditForm(false);
+        }
+    } catch (e) {
+        console.error("Failed to load rig");
+    }
+}
+
+function updateDisplay(rig) {
+    const cpuEl = document.getElementById("displayCpu");
+    if (rig.cpu_external_id) {
+        cpuEl.innerHTML = `<i class="fa-solid fa-check hw-item-pass-icon"></i> ${document.getElementById("rigCpuInput").value}`;
+    } else {
+        cpuEl.innerHTML = `<i class="fa-solid fa-xmark hw-item-empty-icon"></i> Not selected`;
+    }
+    
+    const gpuEl = document.getElementById("displayGpu");
+    if (rig.gpu_external_id) {
+        gpuEl.innerHTML = `<i class="fa-solid fa-check hw-item-pass-icon"></i> ${document.getElementById("rigGpuInput").value}`;
+    } else {
+        gpuEl.innerHTML = `<i class="fa-solid fa-xmark hw-item-empty-icon"></i> Not selected`;
+    }
+    
+    const ramEl = document.getElementById("displayRam");
+    if (rig.ram_gb) {
+        ramEl.innerHTML = `<span>${rig.ram_gb} GB</span>`;
+    } else {
+        ramEl.innerHTML = `<i class="fa-solid fa-xmark hw-item-empty-icon"></i> Not selected`;
+    }
+}
+
+async function saveRig() {
+    const data = {
+        cpu_external_id: document.getElementById("rigCpuSelect").value || null,
+        gpu_external_id: document.getElementById("rigGpuSelect").value || null,
+        ram_gb: parseInt(document.getElementById("rigRam").value, 10) || null
+    };
+    
+    try {
+        const res = await fetch("/api/rig", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            // Re-fetch to get accurate state
+            await loadRig();
+        }
+    } catch (e) {
+        console.error("Failed to save rig");
+    }
+}
+
+async function clearRig() {
+    try {
+        const res = await fetch("/api/rig", { method: "DELETE" });
+        if (res.ok) {
+            if (cpuComboboxCtrl) cpuComboboxCtrl.reset();
+            if (gpuComboboxCtrl) gpuComboboxCtrl.reset();
+            document.getElementById("rigRam").value = "";
+            
+            showStatus("Your Rig isn't set up yet. Add your PC hardware and Nimlyx will automatically check games for you.", "empty");
+            showEditForm(false);
+        }
+    } catch (e) {
+        console.error("Failed to clear rig");
+    }
+}
+
+function showDisplay() {
+    document.getElementById("rigDisplay").classList.add("active");
+    document.getElementById("rigEdit").classList.remove("active");
+}
+
+function showEditForm(canCancel = true) {
+    document.getElementById("rigDisplay").classList.remove("active");
+    document.getElementById("rigEdit").classList.add("active");
+    document.getElementById("cancelEditBtn").style.display = canCancel ? "block" : "none";
+}
+
+function showStatus(message, type) {
+    const status = document.getElementById("rigStatus");
+    status.textContent = message;
+    status.className = `rig-status ${type}`;
+}
+
+// Init
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadCatalog();
+    await loadRig();
+});
+</script>
+
+</body>
+</html>

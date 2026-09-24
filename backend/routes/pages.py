@@ -31,10 +31,10 @@ import logging
 import threading
 import time
 import requests
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, request
 
 from region import get_region_code
-from steam import fetch_browse_category, fetch_verified_new_releases, fetch_homepage_row
+from steam import fetch_browse_category, fetch_verified_new_releases, fetch_homepage_row, get_appdetails
 from formatters import format_price
 from services.hero.builder import build_hero_lineup
 from services.hero.picks import select_worth_buying
@@ -474,7 +474,60 @@ def discover():
 
 @pages_bp.route("/search")
 def search_page():
-    return render_template("search.html")
+    """Game Detail lives here, at /search?app_id=<id> -- there's no
+    separate clean-path route for it (see routes/seo.py's docstring).
+    The page body/data is still entirely client-rendered by search.js
+    (unchanged -- this route isn't turning into SSR for the actual
+    game content), but the <head> now IS rendered server-side per
+    app_id: a crawler that never executes the client fetch still sees
+    a real, unique <title>/description/canonical for that specific
+    game instead of the one generic "Nimlyx | Game Details" every
+    /search URL used to share.
+
+    A cheap, cached (see steam.get_appdetails's own 10-minute cache)
+    appdetails lookup is all this needs -- name + short_description -
+    - not the full build_game_detail() pipeline (reviews, trajectory,
+    pulse, etc.) that route already re-fetches client-side via
+    /api/game-detail/<app_id>. Doing that whole pipeline twice per
+    request just for a <title> tag would be wasteful and slower for
+    zero SEO benefit.
+    """
+    app_id = request.args.get("app_id")
+    game_meta = None
+
+    if app_id:
+        try:
+            cc = get_region_code()
+            raw = get_appdetails(app_id, cc)
+            if raw is None:
+                raw = get_appdetails(app_id, "US")
+            if raw:
+                name = raw.get("name")
+                short_desc = raw.get("short_description") or ""
+                # Strip to a clean single-sentence-ish meta description --
+                # Steam's short_description is usually already a good
+                # length, but truncate defensively so a long one can
+                # never blow past search engines' ~155-char display cutoff.
+                if len(short_desc) > 155:
+                    short_desc = short_desc[:152].rsplit(" ", 1)[0] + "…"
+                game_meta = {
+                    "app_id": app_id,
+                    "name": name,
+                    "title": f"{name} — Reviews, Requirements & Nimlyx Score | Nimlyx" if name else None,
+                    "description": short_desc or (
+                        f"See {name}'s Nimlyx Score, review sentiment, system requirements "
+                        f"and hardware compatibility." if name else None
+                    ),
+                    "image": raw.get("header_image"),
+                    "genres": [g["description"] for g in raw.get("genres", []) if g.get("description")],
+                    "release_date": (raw.get("release_date") or {}).get("date"),
+                    "developers": raw.get("developers", []),
+                }
+        except Exception:
+            logger.exception("SEO meta lookup failed for app_id=%s", app_id)
+            game_meta = None
+
+    return render_template("search.html", game_meta=game_meta, app_id=app_id)
 
 
 @pages_bp.route("/about")
